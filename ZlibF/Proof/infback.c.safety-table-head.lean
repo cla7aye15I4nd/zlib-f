@@ -197,12 +197,13 @@ def TRound (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
     (pr : Proto c r i window n) (h0 : Heap) (B : Nat) (res : Except Ex Unit) (l' : IL) (h' : Heap) : Prop :=
   ∃ log', PInv c pr h0 h' l' log' ∧
     ((res = .ok () ∧ backMeasure pr h' l' log' < B) ∨
-     (res = .error Ex.leave ∧ (l'.ret = Z_STREAM_END ∨ l'.ret = Z_DATA_ERROR ∨ l'.ret = Z_BUF_ERROR)))
+     (res = .error Ex.leave ∧ (l'.ret = Z_STREAM_END ∨ l'.ret = Z_DATA_ERROR ∨ l'.ret = Z_BUF_ERROR))) ∧
+    (res = .ok () → Short i l' h')
 
 theorem TRound.leave {c : BCtx} {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
     {pr : Proto c r i window n} {h0 h : Heap} {l : IL} {log : BackLog} (I : PInv c pr h0 h l log)
     (B : Nat) (ret : l.ret = Z_BUF_ERROR) : TRound c pr h0 B (.error Ex.leave) l h :=
-  ⟨log, I, Or.inr ⟨rfl, Or.inr (Or.inr ret)⟩⟩
+  ⟨log, I, Or.inr ⟨rfl, Or.inr (Or.inr ret)⟩, fun x => (nomatch x)⟩
 
 /-- **`strm->msg = "..."; state->mode = BAD;` on the invariant.** The rank becomes 0. -/
 theorem PInv.badRound {c : BCtx} {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
@@ -227,8 +228,8 @@ theorem TRound.bad {c : BCtx} {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Na
     {pr : Proto c r i window n} {h0 h : Heap} {l : IL} {log : BackLog} (I : PInv c pr h0 h l log)
     (msg : String) (hm : msg ∈ strTable) {B : Nat} (lt : baseM pr l log < B) :
     ∃ h', badMode c msg h = .ok ((), h') ∧ TRound c pr h0 B (.ok ()) l h' := by
-  obtain ⟨h', run, I', m, -⟩ := I.badRound msg hm
-  exact ⟨h', run, log, I', Or.inl ⟨rfl, by rw [m]; exact lt⟩⟩
+  obtain ⟨h', run, I', m, sF, hsF, mF⟩ := I.badRound msg hm
+  exact ⟨h', run, log, I', Or.inl ⟨rfl, by rw [m]; exact lt⟩, fun _ => Short.of_mode hsF (Or.inl mF)⟩
 
 theorem PInv.withRegs {c : BCtx} {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
     {pr : Proto c r i window n} {h0 h : Heap} {l : IL} {log : BackLog} (I : PInv c pr h0 h l log) {l' : IL}

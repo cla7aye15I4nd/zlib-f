@@ -48,7 +48,7 @@ theorem tabC_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
     have := rdS_ok I.cst hs (·.mode); rwa [I.cst] at this
   rcases st with bad | ⟨rd, full⟩
   · left
-    refine ⟨.ok (), l, h, ?_, log, I, Or.inl ⟨rfl, ?_⟩⟩
+    refine ⟨.ok (), l, h, ?_, log, I, Or.inl ⟨rfl, ?_⟩, fun _ => Short.of_mode hs (Or.inl bad)⟩
     · unfold tabC
       simp only [I.cst, runX_bind, runX_lift_ok rdm, bad, beq_self_eq_true, ↓reduceIte]
       rfl

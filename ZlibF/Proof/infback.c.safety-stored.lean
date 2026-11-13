@@ -212,7 +212,7 @@ theorem storedBody_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : 
     {w woff : Nat} (hw : window = .ref (.blk w) woff) {s : InflateState} (hs : h.istates i = some s)
     (hlen : s.length ≠ 0) :
     ∃ res l' h' log', runX (storedBody c) l h = .ok ((res, l'), h') ∧ PInv c pr h0 h' l' log' ∧
-      (res = .ok () → baseM pr l' log' < baseM pr l log ∧
+      (res = .ok () → l'.bits = l.bits ∧ baseM pr l' log' < baseM pr l log ∧
         ∃ s', h'.istates i = some s' ∧ s'.length.toNat < s.length.toNat) ∧
       (∀ e, res = .error e → e = Ex.leave ∧ l'.ret = Z_BUF_ERROR) := by
   have hld : ldInflateState c.st h = .ok (s, h) := by rw [I.cst]; exact ldInflateState_tab hs
@@ -232,8 +232,8 @@ theorem storedBody_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : 
     · injection x with x; subst x; exact ⟨rfl, ret⟩
   | ok u =>
     cases u
-    obtain ⟨have1, -, -, -, -, -, -⟩ := ok1 rfl
-    obtain ⟨res2, l2, h2, log2, run2, I2, ok2, err2, have2, -, bits2, hold2, copy2, len2, meas2⟩ := ROOM_p c pr I1
+    obtain ⟨have1, bits1, -, -, -, -, -⟩ := ok1 rfl
+    obtain ⟨res2, l2, h2, log2, run2, I2, ok2, err2, have2, -, bits2, hold2, copy2, len2, -, meas2⟩ := ROOM_p c pr I1
     have pre2 : runX (storedBody c) l h = runX (ROOM c >>= fun _ => storedTail c) l1 h1 := by
       rw [pre1, runX_bind, run1]
     cases res2 with
@@ -251,7 +251,7 @@ theorem storedBody_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : 
         storedTail_p c pr I2 hw hs2 cl (by rw [have2]; exact have1) left2 (by rw [cl, l2s]; exact hlen)
       have b1 := baseM_le meas1
       have b2 := baseM_le meas2
-      refine ⟨.ok (), l3, h3, log2, ?_, I3, fun _ => ⟨?_, s3, hs3, by rw [← l2s]; exact slt⟩,
+      refine ⟨.ok (), l3, h3, log2, ?_, I3, fun _ => ⟨by rw [bits3, bits2, bits1], ?_, s3, hs3, by rw [← l2s]; exact slt⟩,
         fun e x => (nomatch x)⟩
       · rw [pre2, runX_bind, run2]; exact run3
       · unfold baseM at b1 b2 ⊢
@@ -268,16 +268,17 @@ theorem storedLoop_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : 
     (pr : Proto c r i window n) {h0 h : Heap} {l : IL} {log : BackLog} (I : PInv c pr h0 h l log)
     {w woff : Nat} (hw : window = .ref (.blk w) woff) :
     ∃ res l' h' log', runX (xwhile (storedCond c) (storedBody c)) l h = .ok ((res, l'), h') ∧
-      PInv c pr h0 h' l' log' ∧ (res = .ok () → baseM pr l' log' ≤ baseM pr l log) ∧
+      PInv c pr h0 h' l' log' ∧ (res = .ok () → baseM pr l' log' ≤ baseM pr l log ∧ l'.bits = l.bits) ∧
       (∀ e, res = .error e → e = Ex.leave ∧ l'.ret = Z_BUF_ERROR) := by
   obtain ⟨z0, s0, valid0, -, -⟩ := I.valid
   have key := xwhileBrk_wf (cond := storedCond c) (body := (do storedBody c; pure false : X Bool))
-    (fun l1 h1 => ∃ log1, PInv c pr h0 h1 l1 log1 ∧ baseM pr l1 log1 ≤ baseM pr l log)
-    (fun res l1 h1 => ∃ log1, PInv c pr h0 h1 l1 log1 ∧ (res = .ok () → baseM pr l1 log1 ≤ baseM pr l log) ∧
+    (fun l1 h1 => ∃ log1, PInv c pr h0 h1 l1 log1 ∧ baseM pr l1 log1 ≤ baseM pr l log ∧ l1.bits = l.bits)
+    (fun res l1 h1 => ∃ log1, PInv c pr h0 h1 l1 log1 ∧
+      (res = .ok () → baseM pr l1 log1 ≤ baseM pr l log ∧ l1.bits = l.bits) ∧
       (∀ e, res = .error e → e = Ex.leave ∧ l1.ret = Z_BUF_ERROR))
     (fun _ h1 => stLen i h1)
     (fun l1 h1 hI => by
-      obtain ⟨log1, I1, b1⟩ := hI
+      obtain ⟨log1, I1, b1, bb1⟩ := hI
       obtain ⟨z1, s1, valid1, -, -⟩ := I1.valid
       have hs1 := valid1.2.1
       have hcond : runX (storedCond c) l1 h1 = .ok ((.ok (s1.length != 0), l1), h1) := by
@@ -289,8 +290,8 @@ theorem storedLoop_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : 
         cases res with
         | ok u =>
           cases u
-          obtain ⟨lt, s2, hs2, slt⟩ := okc rfl
-          refine ⟨.ok false, l2, h2, ?_, ⟨log2, I2, by omega⟩, ?_⟩
+          obtain ⟨bb2, lt, s2, hs2, slt⟩ := okc rfl
+          refine ⟨.ok false, l2, h2, ?_, ⟨log2, I2, by omega, bb2.trans bb1⟩, ?_⟩
           · rw [runX_bind, run2]; rfl
           · show stLen i h2 < stLen i h1
             rw [stLen_of hs2, stLen_of hs1]; exact slt
@@ -299,8 +300,8 @@ theorem storedLoop_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : 
           refine ⟨.error Ex.leave, l2, h2, ?_, log2, I2, fun x => (nomatch x), fun e x => ?_⟩
           · rw [runX_bind, run2]
           · injection x with x; subst x; exact ⟨rfl, ret⟩
-      · exact ⟨log1, I1, fun _ => b1, fun e x => (nomatch x)⟩)
-    (l := l) (h := h) ⟨log, I, Nat.le_refl _⟩
+      · exact ⟨log1, I1, fun _ => ⟨b1, bb1⟩, fun e x => (nomatch x)⟩)
+    (l := l) (h := h) ⟨log, I, Nat.le_refl _, rfl⟩
     (by rw [stLen_of valid0.2.1]; have := UInt32.toNat_lt s0.length; unfold fuel; omega)
   obtain ⟨res, l', h', hr, log', I', okc, errc⟩ := key
   exact ⟨res, l', h', log', by unfold xwhile; exact hr, I', okc, errc⟩
@@ -339,7 +340,7 @@ theorem STORED_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
   cases res0 with
   | error e =>
     obtain ⟨rfl, ret⟩ := errc e rfl
-    refine ⟨.error Ex.leave, l1, h1, ?_, log1, I1, Or.inr ⟨rfl, Or.inr (Or.inr ret)⟩⟩
+    refine ⟨.error Ex.leave, l1, h1, ?_, log1, I1, Or.inr ⟨rfl, Or.inr (Or.inr ret)⟩, fun x => (nomatch x)⟩
     rw [back_STORED_eq]
     simp only [runX_bind, BYTEBITS_run, run1]
   | ok u =>
@@ -357,7 +358,7 @@ theorem STORED_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
       have IC := IB.setState hsB { s1 with mode := BAD } rfl rfl rfl (wf_with wf1 _ rfl rfl rfl)
         (modeOk_of (Or.inr (Or.inr (Or.inr rfl))))
       refine ⟨.ok (), l1, setI (r.put h1 { z1 with msg := .ref (.str k) 0 }) i { s1 with mode := BAD }, ?_, log1, IC,
-        Or.inl ⟨rfl, ?_⟩⟩
+        Or.inl ⟨rfl, ?_⟩, fun _ => Short.of_mode (sF := { s1 with mode := BAD }) (by simp [setI]) (Or.inl rfl)⟩
       · rw [back_STORED_eq]
         simp only [runX_bind, BYTEBITS_run, run1, runX_get, hcond, ↓reduceIte, runX_lift_ok hbad]
         rfl
@@ -385,17 +386,18 @@ theorem STORED_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
       cases res3 with
       | error e =>
         obtain ⟨rfl, ret⟩ := err3 e rfl
-        refine ⟨.error Ex.leave, l3, h3, ?_, log3, I3, Or.inr ⟨rfl, Or.inr (Or.inr ret)⟩⟩
+        refine ⟨.error Ex.leave, l3, h3, ?_, log3, I3, Or.inr ⟨rfl, Or.inr (Or.inr ret)⟩, fun x => (nomatch x)⟩
         rw [pre, runX_bind, run3]
       | ok u =>
         cases u
-        have b3 := ok3 rfl
+        obtain ⟨b3, bb3⟩ := ok3 rfl
         obtain ⟨z3, s3, valid3, -, -⟩ := I3.valid
         have hs3 := valid3.2.1
         have wf3 := valid3.2.2.2.2.2.1
         have I4 := I3.setState hs3 { s3 with mode := TYPE } rfl rfl rfl (wf_with wf3 _ rfl rfl rfl)
           ⟨Or.inl rfl, fun e => absurd (e : TYPE = LEN) (by show TYPE ≠ LEN; decide)⟩
-        refine ⟨.ok (), l3, setI h3 i { s3 with mode := TYPE }, ?_, log3, I4, Or.inl ⟨rfl, ?_⟩⟩
+        refine ⟨.ok (), l3, setI h3 i { s3 with mode := TYPE }, ?_, log3, I4, Or.inl ⟨rfl, ?_⟩,
+          fun _ => Short.of_bits (by rw [bb3]; show (0 : UInt32).toNat < 8; decide)⟩
         · rw [pre, runX_bind, run3]
           simp only []
           rw [runX_lift_ok (setMode_ok I3.cst hs3 TYPE)]
