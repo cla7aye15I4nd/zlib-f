@@ -1635,6 +1635,10 @@ import ZlibF.Proof.«public-deflate-goals»
 import ZlibF.Proof.«trees.c.universal-spec»
 import ZlibF.Proof.«trees.c.universal-stored»
 import ZlibF.Proof.«zutil.c»
+import ZlibF.Proof.«gz.inv-model»
+import ZlibF.Proof.«gz.inv-put-scalars»
+import ZlibF.Proof.«gz.inv-queries»
+import ZlibF.Proof.«gz.inv-frame»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
