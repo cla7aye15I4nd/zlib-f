@@ -168,8 +168,11 @@ theorem comm_strLit (s : String) : Comm i z (Zlib.GzFs.strLit s) := comm_strLitR
 
 theorem comm_allocB (n : Nat) : Comm i z (allocB n) := by
   intro h
-  simp only [allocB, setStrm_allocOk, setStrm_nalloc, setStrm_nextBlk, slotUsed_setStrm]
-  cases h.allocOk h.nalloc <;> cases h.slotUsed h.nextBlk <;> rfl
+  by_cases hn : n < mallocLimit
+  · simp only [allocB, hn, and_true, setStrm_allocOk, setStrm_nalloc, setStrm_nextBlk, slotUsed_setStrm]
+    cases h.allocOk h.nalloc <;> cases h.slotUsed h.nextBlk <;> rfl
+  · simp only [allocB, hn, and_false, ite_false, setStrm_allocOk, setStrm_nalloc, setStrm_nextBlk]
+    rfl
 
 theorem comm_allocBytes (a : Array UInt8) : Comm i z (allocBytes a) := by
   intro h

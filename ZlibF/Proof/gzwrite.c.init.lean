@@ -261,10 +261,14 @@ def fHeap (H : Heap) : Heap := { H with nalloc := H.nalloc + 1 }
 def dHeap (H : Heap) (b : Nat) : Heap := { H with bytes := upd H.bytes b none }
 
 theorem allocB_eq (n : Nat) (H : Heap) : allocB n H =
-    if H.allocOk H.nalloc then
+    if H.allocOk H.nalloc = true ∧ n < mallocLimit then
       (if H.slotUsed H.nextBlk then .error (.ub "allocation: the block number is in use (the heap is not Fresh)")
        else .ok (.ref (.blk H.nextBlk) 0, aHeap H n))
     else .ok (.null, fHeap H) := rfl
+
+/-- The buffer sizes of `gz_init` are `unsigned`, so the allocator's `PTRDIFF_MAX` test passes. -/
+theorem mod_pow32_lt_mallocLimit (n : Nat) : n % 4294967296 < mallocLimit :=
+  lt_mallocLimit_of_lt_pow32 (Nat.mod_lt _ (by decide))
 
 theorem freeB_eq (b : Nat) (H : Heap) : freeB (.ref (.blk b) 0) H =
     match H.bytes b with
@@ -1691,7 +1695,8 @@ theorem outfail_tail (err : GzErrorSpec) (errOwn : GzErrorOwn)
 macro "gzsimp" "[" ts:Lean.Parser.Tactic.simpLemma,* "]" : tactic =>
   `(tactic| simp [liftM, monadLift, MonadLift.monadLift, MonadLiftT.monadLift, g_bind_app, g_pure_app, g_lift_app,
     Zlib.Gzlib.Proofs.ldS_eq, Zlib.Gzlib.Proofs.updS_eq, Zlib.Gzlib.Proofs.updX_eq, Zlib.Gzlib.Proofs.ldZ_eq,
-    Zlib.Gzlib.Proofs.updZ_eq, gzSt, allocB_eq, freeB_eq, aHeap_gz, aHeap_allocOk, aHeap_nalloc, aHeap_nextBlk,
+    Zlib.Gzlib.Proofs.updZ_eq, gzSt, allocB_eq, C.UInt32.toNat_lt_mallocLimit,
+    Zlib.Gzwrite.SafeInit.mod_pow32_lt_mallocLimit, freeB_eq, aHeap_gz, aHeap_allocOk, aHeap_nalloc, aHeap_nextBlk,
     aHeap_bytes, aHeap_ro, fHeap_gz, fHeap_allocOk, fHeap_nalloc, fHeap_nextBlk, fHeap_bytes, fHeap_ro, dHeap_gz,
     dHeap_bytes, dHeap_ro, dHeap_nextBlk, slot_setS, slot_aHeap, Zlib.GzFs.strLit, $ts,*])
 

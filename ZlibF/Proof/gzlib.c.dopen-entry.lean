@@ -83,8 +83,9 @@ theorem gzdopen_entry (h : Heap) (fs : Fs) (fd : Int32) (mode : BPtr)
     (descriptorAllocatedBytes h) fmt fd hn hfmt (by simp [descriptorAllocatedHeap])
     (by simp [descriptorAllocatedHeap]) (by simp [descriptorAllocatedBytes])
     (Fresh.slotUsed_next hfa)
+  have hsize : 7 + 3 * 4 < C.mallocLimit := by unfold C.mallocLimit; omega
   rw [gzdopen_source_cut]
-  offsetsimp [hfd, allocB, ha, Fresh.slotUsed_next hf]
+  offsetsimp [hfd, allocB, ha, hsize, Fresh.slotUsed_next hf]
   dsimp only [descriptorAllocatedHeap, descriptorAllocatedBytes] at hliteral hformat
   simp only [Zlib.GzFs.strLit] at hliteral ⊢
   erw [hliteral]

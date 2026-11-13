@@ -1021,6 +1021,7 @@ import ZlibF.Proof.«gzlib.c.initialized-error-path»
 import ZlibF.Proof.«gzread.c.errno-owned»
 import ZlibF.Proof.«gzwrite.c.comp-errno-owned»
 import ZlibF.Proof.«gzlib.c.error-message-previous»
+import ZlibF.Proof.«gzlib.c.error-message-oversize»
 import ZlibF.Proof.«gzread.c.load-errno-effects»
 import ZlibF.Proof.«gzread.c.load-errno»
 import ZlibF.Proof.«gzlib.c.error-keeps-x»

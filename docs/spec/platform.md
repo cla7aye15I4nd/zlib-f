@@ -33,8 +33,10 @@ their whole-input/output object-size facts from it. The bound gives a signed
 
 The zlib proofs must establish that their actual initialization, allocation and
 updates preserve the premise. A caller replacing buffers must supply storage
-within the accepted environment. The predicate is not derived from an arbitrary
-mathematical heap or from the unrestricted runtime allocator.
+within the accepted environment. The runtime allocator refuses requests above
+`PTRDIFF_MAX`, so library allocations preserve the predicate
+(`ByteObjectsFit.allocB`); it is not derived for caller storage or for an
+arbitrary mathematical heap.
 
 Each exact statement retains its written domain. Statements that do not need
 the bound may quantify over a larger mathematical domain. This page does not

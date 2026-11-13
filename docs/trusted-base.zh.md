@@ -1,4 +1,4 @@
-<!-- source-sha256: 717b9ae61bf915c3d8ce744918ddc78daacdc82d86a33c78e6db464028da2de8 -->
+<!-- source-sha256: 16ca7df64e35ce19062f1dd5cc0d157e49a7cc595f17fc694e062398ac9106ab -->
 # 内核检查与可信边界
 
 内核检查证明是否符合其 Lean 命题。将结果用于选定 C 源码，还依赖以下事项。它们经过审阅和测试，不能仅靠编译证明消除。结论、验收规则和当前状态分别见[安全性](spec/safety.md)、[验证策略](anti-cheating.md)和[进度](progress.md)。
@@ -27,7 +27,7 @@
 | `memmove` | 检查相同范围与可写性，但允许重叠，并从原始源复制。 |
 | `memset`, `zmemzero` | `Ptr.fill` 按元素计数并赋值；只有指定用法才表示字节 `memset` 或零填充。`Ptr.memset` 重复一个字节。整记录清零存储显式零记录。 |
 | `strlen` | 要求表示出的块内有 NUL。 |
-| 分配 | 新鲜整数来自任意初值函数，新鲜指针字段为 NULL。`allocOk` 预言机决定失败。自动局部对象绕过它，不消耗分配尝试。 |
+| 分配 | 新鲜整数来自任意初值函数，新鲜指针字段为 NULL。超过 `PTRDIFF_MAX` 字节的 `malloc` 请求返回 NULL；否则由 `allocOk` 预言机决定失败。每次 `malloc` 调用消耗一个预言编号。自动局部对象绕过它，不消耗分配尝试。 |
 | `free` | NULL 无操作。否则参数必须指向对应种类的存活可写分配起点。没有分配来源标签。 |
 | 字符串字面量 | `strLitRef` 表示生成的封闭 `strTable` 中静态、只读、NUL 结尾的条目。它始终存活、身份稳定且永不释放。未知字面量文本会故障。借用的外部错误文本具有独立的只读视图和生命周期。 |
 
@@ -72,6 +72,8 @@
 首个目标是默认 x86_64 Linux/LP64 静态构建和默认分配器。接受的[平台范围](spec/platform.md)要求每个表示出的字节对象小于 `2^63` 字节。这是环境前提；zlib 证明建立其操作保持该条件。它就是 LP64 的 `PTRDIFF_MAX` 对象大小限制，并在调用历史的每个堆上成立。
 
 分配失败仍在范围内。其他上游配置和自定义分配器需要自己的对应关系论证；完整项目目标包含它们。
+
+**分配大小。** 对超过 `PTRDIFF_MAX`（`2^63 − 1` 字节）的请求，`malloc` 无论分配预言如何都返回 NULL。该调用仍消耗一个预言编号，之后的堆与预言失败之后的堆相同：除请求大小外，调用者无法区分两者。低于该上限时仍由预言决定。这是 glibc 2.43 的行为（`malloc/malloc.c`：`_int_malloc` 与 `__libc_realloc` 检查 `bytes > PTRDIFF_MAX`，返回 NULL 并设置 `ENOMEM`；`__libc_calloc` 先拒绝溢出 `size_t` 的乘积）。`malloc` 的 `errno` 不建模；zlib 没有路径在分配之后读取它。只有两个调用点可能发出这样的请求（`gz_open` 的路径复制和 `gz_error` 的消息）；其他分配的大小是 `unsigned` 或固定值。因此每次库分配都使每个字节对象保持在 `2^63` 字节以下（`ByteObjectsFit.allocB`），平台前提只对调用者存储才需要。
 
 **格式化。** `GzFs.snprintf` 模拟 `gzlib.c` 的三个固定格式调用（`"%s%s%s"`、`"%s"`、`"<fd:%d>"`）。它在 `[dst, dst + size)` 内写入完整输出的至多 `size - 1` 个字节和一个 NUL，返回完整长度；超过 `INT_MAX` 时返回 -1。在 glibc 2.43 中，对 `char *` 的 `%s` 和 `%d` 这是唯一的失败（`stdio-common/vfprintf-process-arg.c` 的 `form_string` 与 `form_integer`；`stdio-common/Xprintf_buffer_done.c`，超过 `INT_MAX` 时为 `EOVERFLOW`）。它的 `errno` 不建模，这是明示的限制。在系统调用再次设置 `errno` 之前，没有调用者读取它：模型只在 `zstrerror` 和 `getErrno` 中读取 `errno`，位于 `gzwrite.c.lean`（`gz_comp`，在以 `setErrno 0` 开始的迭代中 `fsWrite` 失败之后）和 `gzread.c.lean`（`gz_load`，在 `fsRead` 失败之后；`gzread`，当 `again` 由同一次调用中的 `gz_load` 设置时）。
 

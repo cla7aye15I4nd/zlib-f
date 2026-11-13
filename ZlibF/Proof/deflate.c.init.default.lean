@@ -168,7 +168,7 @@ theorem bytes_run {h : Heap} {r : ZStreamRef} {z : ZStream}
   rw [bind_app, allocator_run hz ha]
   simp only []
   simp only [bind_app, ldZ_eq, hz]
-  exact byte_alloc_run hf _
+  exact byte_alloc_run hf _ (C.UInt32.toNat_lt_mallocLimit _)
 
 /-- The actual word-buffer allocator retains its unsigned byte product. -/
 theorem words_run {h : Heap} {r : ZStreamRef} {z : ZStream}
@@ -176,7 +176,9 @@ theorem words_run {h : Heap} {r : ZStreamRef} {z : ZStream}
     ZALLOC_words (some r) items h = .ok (wordPtr h, wordResult h ((items * 2).toNat / 2)) := by
   unfold ZALLOC_words
   rw [bind_app, allocator_run hz ha]
-  exact word_alloc_run hf _
+  exact word_alloc_run hf _ (by
+    have := UInt32.toNat_lt (items * 2)
+    unfold C.mallocLimit; omega)
 
 /-- The four actual buffer allocations and their intervening stores. -/
 def buffers (strm : ZStreamPtr) (s : DeflateStatePtr) : M (BPtr × WPtr × WPtr × BPtr) := do

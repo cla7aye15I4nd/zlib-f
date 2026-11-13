@@ -5,7 +5,8 @@ import ZlibF.Runtime.Tables
 
 `allocK` and `freeK` are `malloc(sizeof(K))` and `free` through the default allocator, `copyK dst src` is the
 `memcpy` of a whole record. They model the C library (see `Libc.lean` and `docs/trusted-base.md`); the loads and
-stores of the records are in `Tables.lean`.
+stores of the records are in `Tables.lean`. Each `allocK` takes a fixed `sizeof` far below `PTRDIFF_MAX`, so it
+has no size test (`allocB` and `allocW` refuse a request above `PTRDIFF_MAX`).
 -/
 
 namespace C

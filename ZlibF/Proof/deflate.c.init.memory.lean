@@ -118,18 +118,18 @@ theorem uniq_byteHeap {h : Heap} (hu : Uniq h) (hf : Fresh h) (n : Nat) :
     simp [byteHeap, Zlib.Zutil.Proofs.allocHeap, hw, hs, hg, hd, hi, hz]
   · simpa only [Uniq, byteHeap, Zlib.Zutil.Proofs.allocHeap, upd_ne _ _ _ _ hn] using hu x
 
-theorem byte_alloc_run {h : Heap} (hf : Fresh h) (n : Nat) :
+theorem byte_alloc_run {h : Heap} (hf : Fresh h) (n : Nat) (hn : n < mallocLimit) :
     allocB n h = .ok (bytePtr h, byteResult h n) := by
   by_cases ho : h.allocOk h.nalloc = true
-  · rw [allocB_some n ho]
+  · rw [allocB_some n ho hn]
     simp [bytePtr, byteResult, byteHeap, Zlib.Zutil.Proofs.allocHeap, ho]
   · rw [allocB_none n ho]
     simp [bytePtr, byteResult, failedHeap, ho]
 
-theorem word_alloc_run {h : Heap} (hf : Fresh h) (n : Nat) :
+theorem word_alloc_run {h : Heap} (hf : Fresh h) (n : Nat) (hn : 2 * n < mallocLimit) :
     allocW n h = .ok (wordPtr h, wordResult h n) := by
   by_cases ho : h.allocOk h.nalloc = true
-  · rw [allocW_some n ho]
+  · rw [allocW_some n ho hn]
     simp [wordPtr, wordResult, wordHeap, ho]
   · rw [allocW_none n ho]
     simp [wordPtr, wordResult, failedHeap, ho]

@@ -184,7 +184,9 @@ theorem zallocb_info {strm : ZStreamPtr} {n : UInt32} {h h2 : Heap} {w : BPtr}
           · cases hr1; exact Or.inr rfl
         · rename_i bad
           cases hr1
-          exact Or.inl ⟨rfl, rfl, by simpa using bad⟩
+          refine Or.inl ⟨rfl, rfl, ?_⟩
+          simp only [not_and] at bad
+          exact Bool.eq_false_iff.mpr fun hk => bad hk (C.lt_mallocLimit_of_lt_pow32 (UInt32.toNat_lt _))
     · simp [hn, ub] at hr1
 
 theorem wrS_eq {i : Nat} {f : InflateState → InflateState} {h h' : Heap} {s : InflateState} {u : Unit}
