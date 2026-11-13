@@ -1660,6 +1660,7 @@ import ZlibF.Proof.«gz.inv-put-scalars»
 import ZlibF.Proof.«gz.inv-queries»
 import ZlibF.Proof.«gz.inv-frame»
 import ZlibF.Proof.«gz.record-free»
+import ZlibF.Proof.«gz.inv-clearerr»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
