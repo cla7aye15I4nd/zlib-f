@@ -198,6 +198,33 @@ def GzCallSafe (i : Nat) (call : Call) : Prop :=
     (∀ value fs' after, call.execute fs h = .ok ((value, fs'), after) →
       FdsKept fs fs' ∧ GzStepPost h i s call fs' after)
 
+/-! ## Helper shapes for the internal call lemmas -/
+
+/-- The three parts of a run in `G` that a safety lemma states: no fault but `outOfFuel`; a result under the
+premise `finite` (M7 where needed, `True` otherwise); and `post` of every result. -/
+def RunSafe {α : Type} (m : G α) (fs : Fs) (h : Heap) (finite : Prop) (post : α → Fs → Heap → Prop) : Prop :=
+  (∀ e, m fs h = .error e → e = .outOfFuel) ∧
+  (finite → ∃ a fs' after, m fs h = .ok ((a, fs'), after)) ∧
+  (∀ a fs' after, m fs h = .ok ((a, fs'), after) → post a fs' after)
+
+/-- `GzStepPost` with explicit caller regions (for the internal helpers). -/
+def GzPost (h : Heap) (i : Nat) (s : GzState) (regions : List Region) (fs' : Fs) (after : Heap)
+    (inv : Heap → Nat → GzState → Prop) : Prop :=
+  FileSystem fs' ∧ ∃ s', inv after i s' ∧ s'.mode = s.mode ∧ s'.fd = s.fd ∧
+    BufferFrame h after (GzOwned h i s) regions ∧
+    LiveChange h after
+      (fun b => GzOwned after i s' b ∧ ¬ h.live b)
+      (fun b => GzOwned h i s b ∧ ¬ GzOwned after i s' b)
+
+/-- The record with no buffered output (`x.have = 0`, `x.next = NULL`). -/
+def clearOut (s : GzState) : GzState := { s with x := { s.x with «have» := 0, next := .null } }
+
+/-- **The invariant up to the buffered output**, for the inside of a reading call: `GzInv` of the record with no
+buffered output. `gz_decomp` and `gz_load` into the caller's buffer leave `x.next` in that buffer until `gz_read`
+resets it (the local patch for R-4); this is what holds in between. -/
+def GzInvUpToOutput (h : Heap) (i : Nat) (s : GzState) : Prop :=
+  h.gzstates i = some s ∧ GzInv (putGz h i (clearOut s)) i (clearOut s)
+
 /-! ## Interface lemmas of `GzInv` -/
 
 /-- The state pointer of handle `i`. -/
