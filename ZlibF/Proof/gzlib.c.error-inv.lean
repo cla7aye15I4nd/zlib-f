@@ -636,7 +636,8 @@ def ErrPost (h : Heap) (i : Nat) (s : GzState) (err : Int32) (after : Heap) (s' 
     LiveChange h after (fun b => blkOf s'.msg = some b ∧ ¬ h.live b) (fun b => blkOf s.msg = some b) ∧
     (∀ b, blkOf s'.msg = some b → ¬ h.live b) ∧
     after.gzstates i = some s' ∧
-    (∀ b, GzOwned after i s' b → GzOwned h i s b ∨ ¬ h.live b)
+    (∀ b, GzOwned after i s' b → GzOwned h i s b ∨ ¬ h.live b) ∧
+    (∀ b, GzOwned h i s b → blkOf s.msg ≠ some b → GzOwned after i s' b)
 
 /-- What the prefix of `gz_error` leaves: the old message freed, the code stored. -/
 structure Cleared (h : Heap) (i : Nat) (s : GzState) (err : Int32) (h1 : Heap) (s1 : GzState) : Prop where
@@ -675,13 +676,14 @@ theorem cleared_of {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) (err :
 /-- The paths that end after the prefix. -/
 theorem post_stop {h h1 : Heap} {i : Nat} {s s1 : GzState} {err : Int32} (c : Cleared h i s err h1 s1) :
     ErrPost h i s err h1 s1 := by
-  refine ⟨c.inv1, ?_, Or.inl c.err1, c.frame1, ?_, ?_, c.inv1.common.record, ?_⟩
+  refine ⟨c.inv1, ?_, Or.inl c.err1, c.frame1, ?_, ?_, c.inv1.common.record, ?_, ?_⟩
   · exact (show s1 = { s1 with err := s1.err, msg := s1.msg } from rfl).trans (c.shape1 _ _)
   · intro b
     rw [c.live1 b, c.msg1]
     simp [blkOf]
   · intro b hb; rw [c.msg1] at hb; cases hb
   · intro b hb; exact Or.inl ((c.own1 b).1 hb).1
+  · intro b ho hm; exact (c.own1 b).2 ⟨ho, hm⟩
 
 
 open GzErrorRun in
@@ -703,7 +705,7 @@ theorem post_refused {h h1 : Heap} {i : Nat} {s s1 : GzState} {err : Int32} (c :
   obtain ⟨inv3, own3⟩ := inv2.frame_core (frX _) inv2.common.fresh inv2.common.uniq inv2.common.globals
     inv2.common.fit
   have hm2 : ({ s1 with err := Z_MEM_ERROR, msg := .null } : GzState).msg = .null := rfl
-  refine ⟨inv3, c.shape1 _ _, Or.inr ⟨rfl, rfl⟩, ?_, ?_, ?_, inv3.common.record, ?_⟩
+  refine ⟨inv3, c.shape1 _ _, Or.inr ⟨rfl, rfl⟩, ?_, ?_, ?_, inv3.common.record, ?_, ?_⟩
   · refine frame_comp c.frame1 (frame_comp (frame_mono' frame2 ?_) (frX _))
     rintro x (e | e)
     · exact Or.inl e
@@ -715,6 +717,8 @@ theorem post_refused {h h1 : Heap} {i : Nat} {s s1 : GzState} {err : Int32} (c :
   · intro b e; rw [hm2] at e; cases e
   · intro b hb
     exact Or.inl ((c.own1 b).1 ((own2 b).1 ((own3 b).1 hb)).1).1
+  · intro b ho hm
+    exact (own3 b).2 ((own2 b).2 ⟨(c.own1 b).2 ⟨ho, hm⟩, by rw [c.msg1]; simp [blkOf]⟩)
 
 open GzErrorRun in
 /-- The copy path: a fresh block receives the message. -/
@@ -827,7 +831,7 @@ theorem post_copied {h h1 : Heap} {i : Nat} {s s1 : GzState} {err : Int32} {msg 
     (by simp; omega) hnbown hptr
   have hnbh : ¬ h.live h1.nextBlk := by rw [c.next1]; exact c.fresh0
   have hbk : blkOf ({ s1 with msg := .ref (.blk h1.nextBlk) 0 } : GzState).msg = some h1.nextBlk := rfl
-  refine ⟨invB, ?_, Or.inl c.err1, ?_, ?_, ?_, invB.common.record, ?_⟩
+  refine ⟨invB, ?_, Or.inl c.err1, ?_, ?_, ?_, invB.common.record, ?_, ?_⟩
   · exact (show ({ s1 with msg := .ref (.blk h1.nextBlk) 0 } : GzState) =
       { s1 with err := s1.err, msg := .ref (.blk h1.nextBlk) 0 } from rfl).trans (c.shape1 _ _)
   · refine frame_comp c.frame1 ?_
@@ -854,6 +858,8 @@ theorem post_copied {h h1 : Heap} {i : Nat} {s s1 : GzState} {err : Int32} {msg 
     rcases (ownB b).1 hb with ho | e
     · exact Or.inl ((c.own1 b).1 ((ownA b).1 ho)).1
     · subst e; exact Or.inr hnbh
+  · intro b ho hm
+    exact (ownB b).2 (Or.inl ((ownA b).2 ((c.own1 b).2 ⟨ho, hm⟩)))
 
 open GzErrorRun in
 /-- **`gz_error` keeps `GzInv`**, with the skeleton's post-condition, the record of the result and no grab. -/

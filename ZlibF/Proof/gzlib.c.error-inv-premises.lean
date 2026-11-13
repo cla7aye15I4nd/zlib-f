@@ -23,7 +23,7 @@ theorem GzInv.gz_error {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) (e
       s' = { s with err := s'.err, msg := s'.msg } ∧ (s'.err = err ∨ (s'.err = Z_MEM_ERROR ∧ s'.msg = .null)) ∧
       Frame h after (fun b => b = i ∨ blkOf s.msg = some b) ∧
       LiveChange h after (fun b => blkOf s'.msg = some b ∧ ¬ h.live b) (fun b => blkOf s.msg = some b) := by
-  obtain ⟨after, s', run, inv', eq, herr, fr, lc, -, -, -⟩ := inv.gz_error_full err msg hmsg
+  obtain ⟨after, s', run, inv', eq, herr, fr, lc, -, -, -, -⟩ := inv.gz_error_full err msg hmsg
   exact ⟨after, s', run, inv', eq, herr, fr, lc⟩
 
 /-- **No grab**: a block the handle owns after `gz_error` and that was live before was owned before. -/
@@ -31,7 +31,7 @@ theorem GzInv.gz_error_own {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s
     (hmsg : msg = .null ∨ ∃ t, CString h msg t ∧ ∀ b, ByteRoot msg b → ¬ GzOwned h i s b) {after : Heap}
     (run : C.run (Zlib.Gzlib.gz_error (gzSt i) err msg) h = .ok ((), after)) :
     ∀ s', after.gzstates i = some s' → ∀ b, GzOwned after i s' b → h.live b → GzOwned h i s b := by
-  obtain ⟨a', s'', run', -, -, -, -, -, -, hrec, hown⟩ := inv.gz_error_full err msg hmsg
+  obtain ⟨a', s'', run', -, -, -, -, -, -, hrec, hown, -⟩ := inv.gz_error_full err msg hmsg
   rw [run'] at run
   cases run
   intro s' hs' b ho hl
