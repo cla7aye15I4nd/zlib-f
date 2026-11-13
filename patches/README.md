@@ -48,6 +48,21 @@ The patch is exactly the change of
 [upstream PR #1363](https://github.com/madler/zlib/pull/1363) at head
 `37627fd3bb47`. The pull request is open.
 
+## 0004-gz-position-overflow.patch
+
+Local, not yet submitted upstream; approved by the owner on 2026-11-12.
+
+Keep the uncompressed position `state->x.pos` within `z_off64_t`. Reading: `gz_fetch` fills the
+output buffer only with bytes whose position is representable (at least one, to find the end of
+the input), and `gz_read` and `gzgets` deliver no byte past `GZ_OFF_MAX`; data beyond it gives
+`Z_DATA_ERROR` "position overflow". Writing: `gz_write`, the fast path of `gzputc` and `gzprintf`
+refuse a write that would carry the position past `GZ_OFF_MAX`, with the same error. Findings:
+[gzread-pos-overflow](../docs/findings/gzread-pos-overflow/README.md) (F-1) and
+[gzwrite-pos-overflow](../docs/findings/gzwrite-pos-overflow/README.md) (W7). Evidence:
+UndefinedBehaviorSanitizer reports the signed overflow on x86_64 Linux for both, with
+`/dev/zero` and the real `/dev/null`; reproductions under `tests/regression/`. This blocks the
+safety proof of the gz readers and writers. A pull request draft is in the read-side finding.
+
 The submodule is never edited. A patch is allowed only for a confirmed upstream bug
 that blocks a proof. It must be minimal, match a submitted upstream fix, and be listed
 here. Remove it once upstream incorporates the fix and the pin moves past it.

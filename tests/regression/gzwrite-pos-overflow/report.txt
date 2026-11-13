@@ -1,0 +1,29 @@
+# run.sh, default mode (fastwrite.c, UBSan), x86_64 Linux, kernel 7.0, gcc 15.2
+== before write
+gzbuffer 2^29 = 0
+gzseek INT64_MAX - 10 = 9223372036854775797
+gzwrite.c:230:26: runtime error: signed integer overflow: 9223372036854775797 + 100 cannot be represented in type 'long int'
+ok: before the fix: signed overflow of the position
+== before putc
+gzbuffer 2^29 = 0
+gzseek INT64_MAX = 9223372036854775807
+gzwrite.c:352:25: runtime error: signed integer overflow: 9223372036854775807 + 1 cannot be represented in type 'long int'
+ok: before the fix: signed overflow of the position
+== after write
+gzbuffer 2^29 = 0
+gzseek INT64_MAX - 10 = 9223372036854775797
+gzwrite 100 = 0, err = -3 (<fd:3>: position overflow), gztell = 9223372036854775797
+ok: with the fix: Z_DATA_ERROR position overflow, no report
+== after putc
+gzbuffer 2^29 = 0
+gzseek INT64_MAX = 9223372036854775807
+gzputc = -1, err = -3 (<fd:3>: position overflow), gztell = 9223372036854775807
+ok: with the fix: Z_DATA_ERROR position overflow, no report
+rc=0
+
+# the write history of wpos.c with the real /dev/null (an earlier copy of the program), UBSan, source with patches 0001 to 0003, same host
+gzwrite.c:230:26: runtime error: signed integer overflow: 9223372036854775797 + 100 cannot be represented in type 'long int'
+
+real	16m56.950s
+user	6m38.047s
+sys	10m18.803s
