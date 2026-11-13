@@ -3,13 +3,15 @@ import ZlibF.Zlib.«gzguts.h»
 /-!
 # gzlib.c — faithful translation
 
-Source: `gzlib.c` of the verified source (no patch touches it), default x86_64 Linux build: `LSEEK` is `lseek64`
+Source: `gzlib.c` of the verified source (with `patches/0002-gzseek-negative-position-overflow.patch`), default x86_64 Linux build: `LSEEK` is `lseek64`
 (`_LARGEFILE64_SOURCE`, `_LFS64_LARGEFILE`), `O_CLOEXEC`, `O_NONBLOCK`, `O_EXCL`, `O_LARGEFILE` are defined
 (`O_LARGEFILE` is 0), `O_BINARY`, `WIDECHAR`, `UNDER_CE`, `NO_GZCOMPRESS` are not. So `gz_strwinerror`, the `-2`
 (wide path) branches and the `#ifndef O_EXCL` block are not compiled.
 
-Open code paths that need a patch in the earlier repository (the translation follows the unpatched C):
-* `gzseek64`: signed overflow with a negative `x.pos` (R-1, upstream PR 1361) is a `Fault.ub`.
+`gzseek64` follows the patched C: the range checks no longer overflow after `gzungetc` at the start (R-1, upstream
+PR 1361, applied as patch 0002).
+
+Open code path that needed a patch in the earlier repository (the translation follows the C):
 * `gz_reset`: does not write `x.next` (R-3). A fresh `gz_state` has `x.next = NULL`, so `x.next += 0` is `NULL + 0`
   and does not fault; only R-4 (a dangling `x.next`) can.
 
@@ -254,8 +256,8 @@ def gzrewind (file : GzFilePtr) : G Int32 := do
   gz_reset state
   return 0
 
-/-- `z_off64_t ZEXPORT gzseek64(gzFile file, z_off64_t offset, int whence)`. Unpatched: signed overflow after a
-`gzungetc()` right after `gzopen()` (R-1, upstream PR 1361) is `Fault.ub`. -/
+/-- `z_off64_t ZEXPORT gzseek64(gzFile file, z_off64_t offset, int whence)`. With patch 0002 (upstream PR 1361):
+the range checks are safe after a `gzungetc()` right after `gzopen()` (R-1). -/
 def gzseek64 (file : GzFilePtr) (offset : Int64) (whence : Int32) : G Int64 := do
   if file.isNone then return -1
   let state := castState file
@@ -268,12 +270,16 @@ def gzseek64 (file : GzFilePtr) (offset : Int64) (whence : Int32) : G Int64 := d
   -- pos = whence == SEEK_SET ? 0 : state->x.pos + (state->past ? 0 : state->skip);
   let mut pos : Int64 ← if whence == SEEK_SET then pure 0
     else i64add s.x.pos (if s.past != 0 then 0 else s.skip)
-  -- if (offset > GZ_OFF_MAX - pos) return -1;
-  if offset > (← i64sub GZ_OFF_MAX pos) then return -1
+  -- if (pos > 0 && offset > GZ_OFF_MAX - pos) return -1;
+  if pos > 0 then
+    if offset > (← i64sub GZ_OFF_MAX pos) then return -1
   -- if (offset < -pos) return -1;
   if offset < (← i64neg pos) then return -1
   -- pos += offset;
   pos ← i64add pos offset
+  -- if (state->x.pos < 0 && pos > GZ_OFF_MAX + state->x.pos) return -1;
+  if s.x.pos < 0 then
+    if pos > (← i64add GZ_OFF_MAX s.x.pos) then return -1
   -- if (state->mode == GZ_READ && state->how == COPY) { ... }
   if s.mode == GZ_READ && s.how == GZ_COPY then
     let d ← i64sub (← i64sub pos s.x.pos) (u32ToI64 s.x.«have»)

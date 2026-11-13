@@ -161,14 +161,15 @@ must preserve the caller's descriptor. No public query legitimizes using a freed
 
 ## Historical reports and current behavior
 
-These reports remain useful counterexamples to proposed invariants. This documentation
-revision did not rerun their reproductions or apply their proposed fixes. Their tracked status
+These reports remain useful counterexamples to proposed invariants. R-1 and R-2 are reproduced
+under sanitizers and their upstream fixes are applied as patches 0002 and 0003; the other rows
+were not rerun and their proposed fixes are not applied. Their tracked status
 belongs in [progress](../progress.md); the applied patch list remains authoritative.
 
 | Case | Source behavior and consequence | Historical fix or evidence |
 | --- | --- | --- |
-| R-1: negative seek position | After initial `gzungetc`, `GZ_OFF_MAX - pos` or a later position difference can overflow signed 64-bit arithmetic. The translation retains checked operations. | Earlier notes report a sanitizer reproduction and upstream [PR 1361](https://github.com/madler/zlib/pull/1361). Proposed guards check positive `pos` and representable subtraction from negative `x.pos`. No patch is applied here. |
-| R-2: partial read then error | In `gz_fetch`'s COPY case, `gz_load` can leave nonzero `x.have` on error before `x.next = out` executes. Readers can then use a stale pointer. The current model cannot generate that partial-success/failure sequence on regular files. | Earlier notes report a sanitizer reproduction and upstream [PR 1363](https://github.com/madler/zlib/pull/1363). Proposed fix moves the pointer assignment before the load. Current translation preserves the old order. |
+| R-1: negative seek position | After initial `gzungetc`, `GZ_OFF_MAX - pos` or a later position difference overflowed signed 64-bit arithmetic in the unpatched C. The translation follows the patched C; `gzseek64_head_any` shows that its checks do not fault from a negative position. | Reproduced: [gzseek-pushback-overflow](../../tests/regression/gzseek-pushback-overflow/README.md). Upstream [PR 1361](https://github.com/madler/zlib/pull/1361), applied as patch 0002: the first check runs only for positive `pos`, and a target whose displacement from a negative `x.pos` is not representable is refused. Not yet confirmed by the maintainer. |
+| R-2: partial read then error | In the unpatched `gz_fetch` COPY case, `gz_load` could leave nonzero `x.have` on error before `x.next = out` executed; `gz_read` then copied from a stale pointer. The translation follows the patched C. The file model cannot generate that partial-success/failure sequence on regular files. | Reproduced: [gzread-transparent-stale-next](../../tests/regression/gzread-transparent-stale-next/README.md). Upstream [PR 1363](https://github.com/madler/zlib/pull/1363), applied as patch 0003: the pointer assignment moves before the load. Not yet confirmed by the maintainer. |
 | R-3: unwritten pointer | `gz_reset` leaves `x.next` unwritten; seek or skip code may add zero to it. Fresh null pointers hide the missing write in the model. | Historical `ub.patch` proposed `x.next = NULL`. It is absent. A passing model run does not settle the C initialization issue. |
 | R-4: caller-buffer lifetime | Direct decompression sets `x.next` into the caller buffer. `gz_read` clears `x.have` but retains the pointer. After the caller frees the buffer, later zero-offset pointer arithmetic can fault. | Source-level concern and proposed reset to null; no reproduction is established here and no patch is applied. Embedded `strm` input/output fields can also retain caller pointers, so distinguish a stored pointer from a later use. |
 

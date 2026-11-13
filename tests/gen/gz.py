@@ -9,8 +9,11 @@ Lines: "gz OP OP ..." (a scenario on temporary files; the output is one token pe
   read:H:N fread:H:SIZE:N gets:H:LEN getc:H ungetc:H:C seek:H:OFF:WHENCE tell:H offset:H rewind:H eof:H
   direct:H error:H clearerr:H
 Handles H are 0..3; a handle that was never opened (or whose open failed) is the NULL gzFile.
-Inputs avoid the three known unpatched bugs of zlib (gz_fetch overread after a failing read, gzseek64 after a
-gzungetc right after gzopen, x.next left dangling): see docs/design/external-io.md.
+Inputs avoid the known bug of zlib that no patch fixes (x.next left dangling, docs/design/external-io.md). Section 6
+seeks right after a gzungetc at position 0, which the unpatched gzseek64 overflowed on (patch 0002); the translation of
+the unpatched C faults there, so those lines tell the two apart. The gz_fetch overread after a partial read that then
+fails (patch 0003) needs a read() the file model cannot produce; tests/regression/gzread-transparent-stale-next
+covers it on the C side.
 """
 import random
 import zlib
@@ -223,6 +226,20 @@ for src, name in [(gzbig, "gz"), (big, "raw")]:
 line("put:f:" + hx(gzbig), "open:0:f:rb", "seek:0:-1:0", "seek:0:-9223372036854775808:0", "seek:0:9223372036854775807:0",
      "seek:0:9223372036854775807:1", "tell:0", "close:0")
 line("put:f:" + hx(big), "open:0:f:rb", "read:0:10", "seek:0:9223372036854775807:1", "seek:0:-9223372036854775808:1", "tell:0", "close:0")
+# gzseek right after gzungetc at position 0 (x.pos = -1): the unpatched gzseek64 overflowed in GZ_OFF_MAX - pos
+# (SEEK_CUR) and in pos - x.pos (SEEK_SET to GZ_OFF_MAX); patch 0002, upstream PR 1361
+# (an accepted target near GZ_OFF_MAX only for gzip input: on a raw file it is an lseek whose result depends on the
+# file system's maximum file size)
+for src in (gzbig, big):
+    p = "put:f:" + hx(src)
+    line(p, "open:0:f:rb", "ungetc:0:81", "seek:0:1:1", "tell:0", "read:0:5", "close:0")
+    line(p, "open:0:f:rb", "ungetc:0:81", "seek:0:0:1", "seek:0:-1:1", "tell:0", "getc:0", "close:0")
+    line(p, "open:0:f:rb", "ungetc:0:81", "seek:0:9223372036854775807:0", "tell:0", "getc:0", "close:0")
+    line(p, "open:0:f:rb", "ungetc:0:81", "seek:0:-9223372036854775808:1", "seek:0:5:0", "tell:0", "read:0:3", "close:0")
+    line(p, "open:0:f:rb", "ungetc:0:81", "seek:0:100:0", "tell:0", "read:0:5", "close:0")
+p = "put:f:" + hx(gzbig)
+line(p, "open:0:f:rb", "ungetc:0:81", "seek:0:9223372036854775806:0", "tell:0", "close:0")
+line(p, "open:0:f:rb", "ungetc:0:81", "seek:0:9223372036854775807:1", "tell:0", "seek:0:5:0", "tell:0", "read:0:3", "close:0")
 
 # gzseek on write handles (zero fill), tell, backward seeks
 for off in [0, 1, 5, 8191, 8192, 8193, 20000, 70000]:
