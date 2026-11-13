@@ -243,6 +243,95 @@ theorem Acc.put {h0 h1 : Heap} {i : Nat} {s0 s1 s2 : GzState} {fs0 fs : Fs} {R :
     have := inv1.common.live b
     grind
 
+/-! ## The accumulated effect up to the pending skip (inside `gz_skip`) -/
+
+/-- `GzPost` with a weaker invariant. -/
+theorem GzPost.mono {h : Heap} {i : Nat} {s : GzState} {R : List Region} {fs : Fs} {a : Heap}
+    {I J : Heap → Nat → GzState → Prop} (p : GzPost h i s R fs a I) (f : ∀ s', I a i s' → J a i s') :
+    GzPost h i s R fs a J :=
+  let ⟨hfs, s', inv, rest⟩ := p
+  ⟨hfs, s', f s' inv, rest⟩
+
+/-- The effect of a call so far, ending in `GzInvUpToSkip`. -/
+def AccU (h0 : Heap) (i : Nat) (s0 : GzState) (fs0 : Fs) (R : List Region) (fs : Fs) (h : Heap) : Prop :=
+  FdsKept fs0 fs ∧ GzPost h0 i s0 R fs h GzInvUpToSkip
+
+theorem AccU.refl {h0 : Heap} {i : Nat} {s0 : GzState} {fs0 : Fs} (R : List Region) (u : GzInvUpToSkip h0 i s0)
+    (hfs : FileSystem fs0) : AccU h0 i s0 fs0 R fs0 h0 := by
+  refine ⟨fun _ => Iff.rfl, ⟨hfs, s0, u, rfl, rfl, Zlib.Infback.Safety.BufferFrame.refl h0 _ R, ?_,
+    fun b hb => Or.inl hb⟩⟩
+  intro b
+  have : GzOwned h0 i s0 b → h0.live b := fun hb => u.live hb
+  constructor
+  · intro hl; exact Or.inl ⟨hl, fun hh => hh.2 hh.1⟩
+  · rintro (⟨hl, _⟩ | ⟨ho, hn⟩)
+    · exact hl
+    · exact absurd (this ho) hn
+
+theorem AccU.cur {h0 : Heap} {i : Nat} {s0 : GzState} {fs0 : Fs} {R : List Region} {fs : Fs} {h : Heap}
+    (acc : AccU h0 i s0 fs0 R fs h) : ∃ s', GzInvUpToSkip h i s' ∧ s'.mode = s0.mode ∧ s'.fd = s0.fd :=
+  let ⟨_, ⟨_, s', inv, hm, hf, _⟩⟩ := acc
+  ⟨s', inv, hm, hf⟩
+
+theorem AccU.fsys {h0 : Heap} {i : Nat} {s0 : GzState} {fs0 : Fs} {R : List Region} {fs : Fs} {h : Heap}
+    (acc : AccU h0 i s0 fs0 R fs h) : FileSystem fs := acc.2.1
+
+/-- **One more step** with no caller region composes. -/
+theorem AccU.step {h0 h1 h2 : Heap} {i : Nat} {s0 s1 : GzState} {fs0 fs1 fs2 : Fs} {R : List Region}
+    (acc : AccU h0 i s0 fs0 R fs1 h1) (inv1 : GzInvUpToSkip h1 i s1) (post : GzPost h1 i s1 [] fs2 h2 GzInvUpToSkip)
+    (kept : FdsKept fs1 fs2)
+    (views : Zlib.Inflate.Proofs.RegionViews (StartChanged h0 i s0) R) : AccU h0 i s0 fs0 R fs2 h2 := by
+  classical
+  obtain ⟨k1, ⟨_, t1, it1, m1, f1, bf1, lc1, g1⟩⟩ := acc
+  have e1 : t1 = s1 := Option.some.inj (it1.cur.symm.trans inv1.cur)
+  subst e1
+  obtain ⟨fs2ok, s2, inv2, m2, f2, bf2, lc2, g2⟩ := post
+  have n1 : ∀ b, GzOwned h1 i t1 b → h0.live b → GzOwned h0 i s0 b := fun b hb hl =>
+    (g1 b hb).elim id (fun hn => absurd hl hn)
+  refine ⟨fun j => (kept j).trans (k1 j), ⟨fs2ok, s2, inv2, m2.trans m1, f2.trans f1, ?_, ?_, ?_⟩⟩
+  · have ntc : ∀ b, GzOwned h1 i t1 b → StartChanged h0 i s0 b := fun b hb =>
+      (Classical.em (h0.live b)).elim (fun hl => Or.inl (n1 b hb hl)) Or.inr
+    have l := Zlib.Inflate.Proofs.BufferFrame.mono_changed (wider := StartChanged h0 i s0) bf1 (fun b hb => Or.inl hb)
+    have r := Zlib.Inflate.Proofs.BufferFrame.mono_changed (wider := StartChanged h0 i s0) bf2 ntc
+    have c := Zlib.Infback.Safety.BufferFrame.trans_within' l r (Zlib.Inflate.Proofs.RegionsWithin.nil R) views
+    exact ⟨⟨c.1.1, c.1.2.1, c.1.2.2.1, c.1.2.2.2.1, c.1.2.2.2.2.1,
+      fun b hl hn => c.1.2.2.2.2.2 b hl (fun hc => hc.elim hn (fun x => x hl))⟩, c.2⟩
+  · intro b
+    have L1 := lc1 b
+    have L2 := lc2 b
+    have o1l : GzOwned h1 i t1 b → h1.live b := fun hb => inv1.live hb
+    have o2l : GzOwned h2 i s2 b → h2.live b := fun hb => inv2.live hb
+    have a1 := n1 b
+    have a2 := g2 b
+    grind
+  · intro b hb
+    by_cases hl0 : h0.live b
+    · left
+      by_cases hl1 : h1.live b
+      · exact n1 b ((g2 b hb).elim id (fun hn => absurd hl1 hn)) hl0
+      · exact Classical.byContradiction fun hn => hl1 ((lc1 b).2 (Or.inl ⟨hl0, fun hh => hn hh.1⟩))
+    · exact Or.inr hl0
+
+/-- A record write that keeps the pointer fields keeps the accumulated effect. -/
+theorem AccU.put {h0 h1 : Heap} {i : Nat} {s0 s1 s2 : GzState} {fs0 fs : Fs} {R : List Region}
+    (acc : AccU h0 i s0 fs0 R fs h1) (inv1 : GzInvUpToSkip h1 i s1) (inv2 : GzInvUpToSkip (putGz h1 i s2) i s2)
+    (same : s2.path = s1.path ∧ s2.msg = s1.msg ∧ s2.«in» = s1.«in» ∧ s2.out = s1.out ∧ s2.size = s1.size ∧
+      s2.mode = s1.mode ∧ s2.direct = s1.direct ∧ s2.strm = s1.strm) (hfd : s2.fd = s1.fd)
+    (views : Zlib.Inflate.Proofs.RegionViews (StartChanged h0 i s0) R) : AccU h0 i s0 fs0 R fs (putGz h1 i s2) := by
+  have rec1 := inv1.cur
+  have hown := putGz_owned (s' := s2) rec1 same
+  refine acc.step inv1 ⟨acc.fsys, s2, inv2, same.2.2.2.2.2.1, hfd, BufferFrame.nil_of_frame ?_, ?_,
+    fun b hb => Or.inl ((hown b).1 hb)⟩ (fun _ => Iff.rfl) views
+  · refine ⟨rfl, rfl, rfl, Nat.le_refl _, Nat.le_refl _, ?_⟩
+    intro b _ hb
+    have hbi : b ≠ i := fun e => hb (Or.inl e)
+    exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, by simp [putGz, upd_ne _ _ _ _ hbi], rfl⟩
+  · intro b
+    have := putGz_live (s' := s2) rec1 b
+    have ho := hown b
+    have : GzOwned h1 i s1 b → h1.live b := fun hb => inv1.live hb
+    grind
+
 /-! ## `gz_error` as a step -/
 
 /-- The codec's blocks keep their records across a frame that does not change them. -/
@@ -324,11 +413,12 @@ theorem post_of_gz_error {h1 h2 : Heap} {i : Nat} {s1 s2 : GzState} {fs : Fs} (i
 
 /-! ## The callees, as premises -/
 
-/-- The skeleton statement `gz_fetch_safe` (branch `skeleton/gz`, `gz.skeleton-read.lean`). -/
+/-- The skeleton statement `gz_fetch_safe` (branch `skeleton/gz`, `gz.skeleton-read.lean`), with the post over
+`GzInvUpToSkip` (`gz_fetch` may buffer output while a skip is pending). -/
 def GzFetchSpec : Prop :=
   ∀ (i : Nat) (h : Heap) (fs : Fs) (s : GzState), GzInv h i s → FileSystem fs → s.mode = GZ_READ → s.x.have = 0 →
     RunSafe (Zlib.Gzread.gz_fetch (gzSt i)) fs h (ReadsFinite fs s.fd) fun r fs' after =>
-      (r = 0 ∨ r = -1) ∧ FdsKept fs fs' ∧ GzPost h i s [] fs' after GzInv
+      (r = 0 ∨ r = -1) ∧ FdsKept fs fs' ∧ GzPost h i s [] fs' after GzInvUpToSkip
 
 /-- The skeleton statement `GzInv.gz_error` (branch `skeleton/gz`, `gz.skeleton-model.lean`). -/
 def GzErrorSpec : Prop :=
@@ -339,11 +429,13 @@ def GzErrorSpec : Prop :=
       Frame h after (fun b => b = i ∨ blkOf s.msg = some b) ∧
       LiveChange h after (fun b => blkOf s'.msg = some b ∧ ¬ h.live b) (fun b => blkOf s.msg = some b)
 
-/-- The skeleton statement `gz_skip_safe`. -/
+/-- The skeleton statement `gz_skip_safe`, restated: from the invariant up to the pending skip, back to `GzInv`, with
+no skip left on success. -/
 def GzSkipSpec : Prop :=
-  ∀ (i : Nat) (h : Heap) (fs : Fs) (s : GzState), GzInv h i s → FileSystem fs → s.mode = GZ_READ →
+  ∀ (i : Nat) (h : Heap) (fs : Fs) (s : GzState), GzInvUpToSkip h i s → FileSystem fs → s.mode = GZ_READ →
     RunSafe (Zlib.Gzread.gz_skip (gzSt i)) fs h (ReadsFinite fs s.fd) fun r fs' after =>
-      (r = 0 ∨ r = -1) ∧ FdsKept fs fs' ∧ GzPost h i s [] fs' after GzInv
+      (r = 0 ∨ r = -1) ∧ FdsKept fs fs' ∧ GzPost h i s [] fs' after GzInv ∧
+      (r = 0 → ∀ s', after.gzstates i = some s' → s'.skip = 0)
 
 /-- The no-grab fact on `gz_error` (not in the skeleton statement; batch 1 adds it there later). With the skeleton's
 frame it says that a new message block was not live before. -/
@@ -407,7 +499,7 @@ theorem GzInv.put_past {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) (h
       by show s.x.pos.toInt + (0 : Int64).toInt ≤ _; simp; omega, c.pos.2.2⟩ ?_ ?_
   · intro _
     exact ⟨r.how, r.copyDirect, r.gzipDirect, r.junk, r.flags.1, Or.inr rfl, r.flags.2.2,
-      fun hz => (r.unalloc hz).2.2.1, r.againSize, r.posHave⟩
+      fun hz => (r.unalloc hz).2.2.1, r.againSize, r.posHave, fun _ => rfl⟩
   · intro hw; rw [hm] at hw; cases hw
 
 /-- The measure of the `gz_skip` loop: twice the skip, plus one when a fetch is due. -/
@@ -419,45 +511,54 @@ theorem skipMeasure_lt (s : GzState) : skipMeasure s < 2 ^ 64 := by
   unfold skipMeasure
   split <;> omega
 
-/-- What holds between the rounds of `gz_skip`. -/
+/-- What holds between the rounds of `gz_skip`: the effect so far, up to the pending skip. -/
 def SkipInv (h : Heap) (i : Nat) (s : GzState) (fs : Fs) (sizeFact : Prop) (fsc : Fs) (hc : Heap) : Prop :=
-  Acc h i s fs [] fsc hc ∧ (ReadsFinite fs s.fd → ReadsFinite fsc s.fd) ∧
+  AccU h i s fs [] fsc hc ∧ (ReadsFinite fs s.fd → ReadsFinite fsc s.fd) ∧
     (sizeFact → s.size ≠ 0 → ∀ sc, hc.gzstates i = some sc → sc.size = s.size)
 
-/-- **`gz_skip`, the three halves.** The size clause holds under `GzFetchSize`. -/
+/-- How a round of `gz_skip` ends: `-1` with nothing buffered, `0` (end of input) with no skip left. -/
+abbrev SkipEnd (y : Option Int32) (hc : Heap) (i : Nat) : Prop :=
+  ∀ sc, hc.gzstates i = some sc → (y = some (-1) → sc.x.have = 0) ∧ (y = some 0 → sc.skip = 0)
+
+/-- **`gz_skip`, the three halves**, from the invariant up to the pending skip. It ends with no skip left (`0`), or
+with nothing buffered (`-1`). The size clause holds under `GzFetchSize`. -/
 theorem gz_skip_run (fetch : GzFetchSpec) (gzerr : GzErrorSpec) (gzerrOwn : GzErrorOwn)
     (progress : GzFetchProgress) (sizeFact : Prop) (fsize : sizeFact → GzFetchSize)
-    (i : Nat) (h : Heap) (fs : Fs) (s : GzState) (inv : GzInv h i s) (hfs : FileSystem fs) (hm : s.mode = GZ_READ) :
+    (i : Nat) (h : Heap) (fs : Fs) (s : GzState) (inv : GzInvUpToSkip h i s) (hfs : FileSystem fs)
+    (hm : s.mode = GZ_READ) :
     RunSafe (Zlib.Gzread.gz_skip (gzSt i)) fs h (ReadsFinite fs s.fd) fun r fs' after =>
-      (r = 0 ∨ r = -1) ∧ SkipInv h i s fs sizeFact fs' after := by
+      (r = 0 ∨ r = -1) ∧ SkipInv h i s fs sizeFact fs' after ∧
+      ∀ sc, after.gzstates i = some sc → (r = -1 → sc.x.have = 0) ∧ (r = 0 → sc.skip = 0) := by
   have V := views_nil (StartChanged h i s)
   unfold Zlib.Gzread.gz_skip
   dsimp only
-  refine RunSafe.bind (P := fun y fs' h' => (y = none ∨ y = some 0 ∨ y = some (-1)) ∧ SkipInv h i s fs sizeFact fs' h')
+  refine RunSafe.bind (P := fun y fs' h' => (y = none ∨ y = some 0 ∨ y = some (-1)) ∧ SkipInv h i s fs sizeFact fs' h' ∧
+      SkipEnd y h' i ∧ (y = none → ∀ sc, h'.gzstates i = some sc → sc.skip = 0))
     (RunSafe.doWhile (fun k _ fs' h' => SkipInv h i s fs sizeFact fs' h' ∧
         ∃ sc, h'.gzstates i = some sc ∧ k = skipMeasure sc)
       (fun k y fs' h' => (y = none ∨ y = some 0 ∨ y = some (-1)) ∧ SkipInv h i s fs sizeFact fs' h' ∧
-        (y = none → ∀ sc, h'.gzstates i = some sc → sc.skip ≠ 0 → skipMeasure sc < k)) _ ?_ ?_
+        (y = none → ∀ sc, h'.gzstates i = some sc → sc.skip ≠ 0 → skipMeasure sc < k) ∧ SkipEnd y h' i) _ ?_ ?_
       (k := skipMeasure s) (fun _ => skipMeasure_lt s)
-      ⟨⟨Acc.refl [] inv hfs, id, fun _ _ sc hsc => by rw [inv.state_eq hsc]⟩, s, inv.cur, rfl⟩) ?_
+      ⟨⟨AccU.refl [] inv hfs, id, fun _ _ sc hsc => by rw [Option.some.inj (inv.cur.symm.trans hsc)]⟩, s, inv.cur,
+        rfl⟩) ?_
   · rintro k _ fsc hc ⟨⟨acc, hfin, hsz⟩, sk, hsk, rfl⟩
     obtain ⟨sc, invc, hmc, hfdc⟩ := acc.cur
-    have e := invc.state_eq hsk
+    have e := Option.some.inj (invc.cur.symm.trans hsk)
     subst e
     have hmr : sc.mode = GZ_READ := hmc.trans hm
     refine RunSafe.bind_lift (ldS_run invc.cur) ?_
     refine RunSafe.ite (fun hh => ?_) (fun hh => ?_)
     · have hh' : sc.x.have ≠ 0 := by simpa using hh
-      obtain ⟨hr, hinv, hor, -, hmin, -⟩ := gz_skip_have_run invc
+      obtain ⟨hr, hinv, hor, -, hmin, -⟩ := gz_skip_have_run' invc
       refine RunSafe.bind_lift hr ?_
-      refine RunSafe.pure' ⟨Or.inl rfl, ⟨acc.put invc hinv ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩ rfl V, hfin,
-        fun hf hs0 s' hs' => ?_⟩, fun _ s' hs' hne => ?_⟩
+      refine RunSafe.pure' ⟨Or.inl rfl, ⟨acc.put invc hinv.upToSkip ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩ rfl V,
+        hfin, fun hf hs0 s' hs' => ?_⟩, fun _ s' hs' hne => ?_, fun _ _ => ⟨fun e => (by cases e), fun e => by cases e⟩⟩
       · simp only [putGz, upd_same, Option.some.injEq] at hs'
         subst hs'
         exact hsz hf hs0 sc invc.cur
       · simp only [putGz, upd_same, Option.some.injEq] at hs'
         subst hs'
-        have hp := invc.common.pos.1
+        have hp := invc.2.2.1
         have hsk := skipRec_skip sc hp
         have hhv := skipRec_have_toNat sc hp
         have hne' : (skipRec sc).skip.toInt ≠ 0 := fun e0 => hne (Int64.toInt_inj.mp (by rw [e0]; rfl))
@@ -471,39 +572,49 @@ theorem gz_skip_run (fetch : GzFetchSpec) (gzerr : GzErrorSpec) (gzerrOwn : GzEr
         have : (skipRec sc).skip.toInt.toNat ≤ sc.skip.toInt.toNat - 1 := by omega
         split <;> omega
     · have h0 : sc.x.have = 0 := by simpa using hh
+      have invg : GzInv hc i sc := invc.inv (Or.inl h0)
       refine RunSafe.bind_lift (ldZ_run invc.cur) ?_
       refine RunSafe.ite (fun he => ?_) (fun he => ?_)
       · refine RunSafe.ite (fun _ => ?_) (fun _ => ?_)
         · obtain ⟨p, hp, ⟨t, ht⟩, hroot⟩ := lit_eof hc
           have hmsg : p = .null ∨ ∃ t, CString hc p t ∧ ∀ b, ByteRoot p b → ¬ GzOwned hc i sc b :=
             Or.inr ⟨t, ht, fun b hb => absurd hb (hroot b)⟩
-          obtain ⟨after, s', hrun, inv', hs', -, fr, lc⟩ := gzerr invc Z_BUF_ERROR p hmsg
+          obtain ⟨after, s', hrun, inv', hs', -, fr, lc⟩ := gzerr invg Z_BUF_ERROR p hmsg
           refine RunSafe.bind_lift hp (RunSafe.bind_lift hrun ?_)
-          have acc2 := acc.step invc (post_of_gz_error invc inv' hs' fr lc
-            (gzerrOwn hc i sc _ _ after invc hmsg hrun) acc.fsys) (fun _ => Iff.rfl) V
+          have acc2 := acc.step invc ((post_of_gz_error invg inv' hs' fr lc
+            (gzerrOwn hc i sc _ _ after invg hmsg hrun) acc.fsys).mono fun _ x => x.upToSkip) (fun _ => Iff.rfl) V
           have hsize' : s'.size = sc.size := by rw [hs']
           refine RunSafe.bind_lift (updS_run inv'.cur _) ?_
-          refine RunSafe.pure' ⟨Or.inr (Or.inl rfl), ⟨acc2.put inv' (inv'.put_past (by rw [hs']; exact hmr))
-            ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩ rfl V, hfin, fun hf hs0 s2 hs2 => ?_⟩, fun e => by cases e⟩
-          simp only [setS, upd_same, Option.some.injEq] at hs2
-          subst hs2
-          exact hsize'.trans (hsz hf hs0 sc invc.cur)
+          refine RunSafe.pure' ⟨Or.inr (Or.inl rfl), ⟨acc2.put inv'.upToSkip
+            (inv'.put_past (by rw [hs']; exact hmr)).upToSkip
+            ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩ rfl V, hfin, fun hf hs0 s2 hs2 => ?_⟩, fun e => (by cases e),
+            fun s2 hs2 => ⟨fun e => (by cases e), fun _ => ?_⟩⟩
+          · simp only [setS, upd_same, Option.some.injEq] at hs2
+            subst hs2
+            exact hsize'.trans (hsz hf hs0 sc invc.cur)
+          · simp only [setS, upd_same, Option.some.injEq] at hs2
+            subst hs2
+            rfl
         · refine RunSafe.bind_lift (updS_run invc.cur _) ?_
-          refine RunSafe.pure' ⟨Or.inr (Or.inl rfl), ⟨acc.put invc (invc.put_past hmr)
-            ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩ rfl V, hfin, fun hf hs0 s2 hs2 => ?_⟩, fun e => by cases e⟩
-          simp only [setS, upd_same, Option.some.injEq] at hs2
-          subst hs2
-          exact hsz hf hs0 sc invc.cur
+          refine RunSafe.pure' ⟨Or.inr (Or.inl rfl), ⟨acc.put invc (invg.put_past hmr).upToSkip
+            ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩ rfl V, hfin, fun hf hs0 s2 hs2 => ?_⟩, fun e => (by cases e),
+            fun s2 hs2 => ⟨fun e => (by cases e), fun _ => ?_⟩⟩
+          · simp only [setS, upd_same, Option.some.injEq] at hs2
+            subst hs2
+            exact hsz hf hs0 sc invc.cur
+          · simp only [setS, upd_same, Option.some.injEq] at hs2
+            subst hs2
+            rfl
       · have hnend : ¬ (sc.eof ≠ 0 ∧ sc.strm.avail_in = 0) := fun ⟨a, b⟩ => he (by simp [a, b])
-        have F := fetch i hc fsc sc invc acc.fsys hmr h0
+        have F := fetch i hc fsc sc invg acc.fsys hmr h0
         have F' : RunSafe (Zlib.Gzread.gz_fetch (gzSt i)) fsc hc (ReadsFinite fs s.fd) fun r fs' after =>
-            ((r = 0 ∨ r = -1) ∧ FdsKept fsc fs' ∧ GzPost hc i sc [] fs' after GzInv) ∧
+            ((r = 0 ∨ r = -1) ∧ FdsKept fsc fs' ∧ GzPost hc i sc [] fs' after GzInvUpToSkip) ∧
             ((ReadsFinite fsc sc.fd → ReadsFinite fs' sc.fd) ∧ ∀ s', after.gzstates i = some s' →
               s'.skip = sc.skip ∧ (r = 0 → s'.x.have ≠ 0 ∨ (s'.eof ≠ 0 ∧ s'.strm.avail_in = 0))) ∧
             (sizeFact → sc.size ≠ 0 → ∀ s', after.gzstates i = some s' → s'.size = sc.size) :=
           ⟨F.1, fun f => F.2.1 (by rw [hfdc]; exact hfin f), fun r fs' after he' =>
-            ⟨F.2.2 r fs' after he', progress i hc fsc sc r fs' after invc acc.fsys hmr h0 he',
-              fun hf => fsize hf i hc fsc sc r fs' after invc acc.fsys hmr h0 he'⟩⟩
+            ⟨F.2.2 r fs' after he', progress i hc fsc sc r fs' after invg acc.fsys hmr h0 he',
+              fun hf => fsize hf i hc fsc sc r fs' after invg acc.fsys hmr h0 he'⟩⟩
         refine RunSafe.bind F' ?_
         rintro r fs2 h2 ⟨⟨hr01, kept, post⟩, ⟨pfin, prog⟩, psz⟩
         have acc2 := acc.step invc post kept V
@@ -511,15 +622,20 @@ theorem gz_skip_run (fetch : GzFetchSpec) (gzerr : GzErrorSpec) (gzerrOwn : GzEr
         obtain ⟨hskip2, hprog⟩ := prog s2 inv2.cur
         have hsz2 : sizeFact → s.size ≠ 0 → ∀ sc', h2.gzstates i = some sc' → sc'.size = s.size := by
           intro hf hs0 sc' hsc'
-          rw [← inv2.state_eq hsc']
+          have e2 := Option.some.inj (inv2.cur.symm.trans hsc')
+          subst e2
           rw [hsz hf hs0 sc invc.cur] at psz
           exact (psz hf hs0 s2 inv2.cur)
         have SI : SkipInv h i s fs sizeFact fs2 h2 :=
           ⟨acc2, fun f => by rw [← hfdc]; exact pfin (by rw [hfdc]; exact hfin f), hsz2⟩
         refine RunSafe.bind_lift (ldS_run inv2.cur) ?_
-        refine RunSafe.ite (fun _ => RunSafe.pure' ⟨by simp, SI, fun e => by cases e⟩) (fun hne => ?_)
-        refine RunSafe.pure' ⟨by simp, SI, fun _ sc' hsc' _ => ?_⟩
-        rw [← inv2.state_eq hsc']
+        refine RunSafe.ite (fun hc1 => RunSafe.pure' ⟨by simp, SI, fun e => (by cases e),
+          fun sc' hsc' => ⟨fun _ => ?_, fun e => by cases e⟩⟩) (fun hne => ?_)
+        · rw [← Option.some.inj (inv2.cur.symm.trans hsc')]
+          simp at hc1
+          exact hc1.2
+        refine RunSafe.pure' ⟨by simp, SI, fun _ sc' hsc' _ => ?_, fun _ _ => ⟨fun e => (by cases e), fun e => by cases e⟩⟩
+        rw [← Option.some.inj (inv2.cur.symm.trans hsc')]
         have hbr : ¬ (s2.x.have = 0 ∧ ¬ (s2.eof ≠ 0 ∧ s2.strm.avail_in = 0)) := by
           rintro ⟨hz, hn⟩
           rcases hr01 with rfl | rfl
@@ -530,36 +646,64 @@ theorem gz_skip_run (fetch : GzFetchSpec) (gzerr : GzErrorSpec) (gzerrOwn : GzEr
         unfold skipMeasure
         rw [if_neg hbr, if_pos ⟨h0, hnend⟩, hskip2]
         omega
-  · rintro k y fsc hc ⟨hy, si, hlt⟩
+  · rintro k y fsc hc ⟨hy, si, hlt, hend⟩
     obtain ⟨sc, invc, -, -⟩ := si.1.cur
-    refine RunSafe.ite (fun _ => RunSafe.pure' ⟨fun e => (by cases e), fun _ => ⟨hy, si⟩⟩) (fun hs => ?_)
+    refine RunSafe.ite (fun hsome => RunSafe.pure' ⟨fun e => (by cases e), fun _ => ⟨hy, si, hend, fun hn => ?_⟩⟩)
+      (fun hs => ?_)
+    · subst hn; simp_all
     refine RunSafe.bind_lift (ldS_run invc.cur) ?_
-    refine RunSafe.pure' ⟨fun hc0 => ⟨skipMeasure sc, fun _ => ?_, si, sc, invc.cur, rfl⟩, fun _ => ⟨hy, si⟩⟩
     have hyn : y = none := by cases y <;> simp_all
-    exact hlt hyn sc invc.cur (by simpa using hc0)
-  · rintro y fs' h' ⟨hy, si⟩
-    refine RunSafe.pure' ⟨?_, si⟩
-    rcases hy with rfl | rfl | rfl <;> simp
+    refine RunSafe.pure' ⟨fun hc0 => ⟨skipMeasure sc, fun _ => ?_, si, sc, invc.cur, rfl⟩,
+      fun hc0 => ⟨hy, si, hend, fun _ sc' hsc' => ?_⟩⟩
+    · exact hlt hyn sc invc.cur (by simpa using hc0)
+    · rw [← Option.some.inj (invc.cur.symm.trans hsc')]
+      simpa using hc0
+  · rintro y fs' h' ⟨hy, si, hend, hnone⟩
+    refine RunSafe.pure' ⟨?_, si, fun sc hsc => ?_⟩
+    · rcases hy with rfl | rfl | rfl <;> simp
+    · obtain ⟨e1, e2⟩ := hend sc hsc
+      rcases hy with rfl | rfl | rfl
+      · exact ⟨fun e => absurd e (by decide), fun _ => hnone rfl sc hsc⟩
+      · exact ⟨fun e => absurd e (by decide), fun _ => e2 rfl⟩
+      · exact ⟨fun _ => e1 rfl, fun e => absurd e (by decide)⟩
 
-/-- **`gz_skip_safe`** (the skeleton statement), from the skeleton statements of `gz_fetch` and `gz_error`, the
-no-grab fact of `gz_error` and the progress fact of `gz_fetch`. -/
+/-- The end of `gz_skip` is a `GzInv` record: no skip left, or nothing buffered. -/
+theorem skip_post_inv {h : Heap} {i : Nat} {s : GzState} {fs fs' : Fs} {after : Heap} {r : Int32}
+    (hr : r = 0 ∨ r = -1) (acc : AccU h i s fs [] fs' after)
+    (hend : ∀ sc, after.gzstates i = some sc → (r = -1 → sc.x.have = 0) ∧ (r = 0 → sc.skip = 0)) :
+    GzPost h i s [] fs' after GzInv :=
+  acc.2.mono fun s' u => u.inv (by
+    obtain ⟨e1, e2⟩ := hend s' u.cur
+    rcases hr with rfl | rfl
+    · exact Or.inr (e2 rfl)
+    · exact Or.inl (e1 rfl))
+
+/-- **`gz_skip_safe`** (the skeleton statement as restated: from the invariant up to the pending skip, back to
+`GzInv`, no skip left on success), from the skeleton statements of `gz_fetch` (post over `GzInvUpToSkip`) and
+`gz_error`, the no-grab fact of `gz_error` and the progress fact of `gz_fetch`. -/
 theorem gz_skip_safe_of (fetch : GzFetchSpec) (gzerr : GzErrorSpec) (gzerrOwn : GzErrorOwn)
     (progress : GzFetchProgress)
-    (i : Nat) (h : Heap) (fs : Fs) (s : GzState) (inv : GzInv h i s) (hfs : FileSystem fs) (hm : s.mode = GZ_READ) :
+    (i : Nat) (h : Heap) (fs : Fs) (s : GzState) (inv : GzInvUpToSkip h i s) (hfs : FileSystem fs)
+    (hm : s.mode = GZ_READ) :
     RunSafe (Zlib.Gzread.gz_skip (gzSt i)) fs h (ReadsFinite fs s.fd) fun r fs' after =>
-      (r = 0 ∨ r = -1) ∧ FdsKept fs fs' ∧ GzPost h i s [] fs' after GzInv :=
+      (r = 0 ∨ r = -1) ∧ FdsKept fs fs' ∧ GzPost h i s [] fs' after GzInv ∧
+      (r = 0 → ∀ s', after.gzstates i = some s' → s'.skip = 0) :=
   (gz_skip_run fetch gzerr gzerrOwn progress False (fun f => f.elim) i h fs s inv hfs hm).mono
-    fun _ _ _ ⟨hr, ⟨k, post⟩, _⟩ => ⟨hr, k, post⟩
+    fun _ _ _ ⟨hr, ⟨⟨k, post⟩, _⟩, hend⟩ => ⟨hr, k, skip_post_inv hr ⟨k, post⟩ hend,
+      fun h0 s' hs' => (hend s' hs').2 h0⟩
 
 /-- `gz_skip_safe` with the size of the buffers kept (`gzungetc` needs it), under `GzFetchSize`. -/
 theorem gz_skip_safe_of' (fetch : GzFetchSpec) (gzerr : GzErrorSpec) (gzerrOwn : GzErrorOwn)
     (progress : GzFetchProgress) (fsize : GzFetchSize)
-    (i : Nat) (h : Heap) (fs : Fs) (s : GzState) (inv : GzInv h i s) (hfs : FileSystem fs) (hm : s.mode = GZ_READ) :
+    (i : Nat) (h : Heap) (fs : Fs) (s : GzState) (inv : GzInvUpToSkip h i s) (hfs : FileSystem fs)
+    (hm : s.mode = GZ_READ) :
     RunSafe (Zlib.Gzread.gz_skip (gzSt i)) fs h (ReadsFinite fs s.fd) fun r fs' after =>
       (r = 0 ∨ r = -1) ∧ FdsKept fs fs' ∧ GzPost h i s [] fs' after GzInv ∧
-      (s.size ≠ 0 → ∀ s', after.gzstates i = some s' → s'.size = s.size) :=
+      (r = 0 → ∀ s', after.gzstates i = some s' → s'.skip = 0) ∧
+      (∀ s', after.gzstates i = some s' → s.size ≠ 0 → s'.size = s.size) :=
   (gz_skip_run fetch gzerr gzerrOwn progress True (fun _ => fsize) i h fs s inv hfs hm).mono
-    fun _ _ _ ⟨hr, ⟨k, post⟩, _, hsz⟩ => ⟨hr, k, post, hsz trivial⟩
+    fun _ _ _ ⟨hr, ⟨⟨k, post⟩, _, hsz⟩, hend⟩ => ⟨hr, k, skip_post_inv hr ⟨k, post⟩ hend,
+      fun h0 s' hs' => (hend s' hs').2 h0, fun s' hs' hs0 => hsz trivial hs0 s' hs'⟩
 
 #print axioms gz_skip_run
 #print axioms gz_skip_safe_of
