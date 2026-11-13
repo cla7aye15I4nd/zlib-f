@@ -2513,6 +2513,9 @@ Corrected on 2026-11-13. `gz_open` copies the caller path with `malloc(len + 1)`
   [regression](../tests/verification/regressions/gzopen-path-ptrdiff.lean)
   (`old_open_clause_false`). `Goal.gz_initialisation_domain` was false for the same path: it
   promised a handle under `NoAllocationFailure h`.
+  Review: the runtime change (`6db5fca9`), the statement correction (`b35b5523`) and the string
+  literal "position overflow" (`110d11cf`) had a second reading against the design note, with no
+  objection. Open: the C side of the `malloc <n>` differential rows has not run yet.
 
 Correction, in its own commit. `OpenContract` (`Goal.gzopen`, `Goal.gzopen64`), second clause:
 old premises `Fresh h → Uniq h → LibraryGlobals h → FileSystem fs → CString h path name →

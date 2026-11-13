@@ -1,4 +1,4 @@
-<!-- source-sha256: 045614b90ad6f64aa7adbb547d8fa090363887aa3da91fbac0b7c0f13860e8b7 -->
+<!-- source-sha256: 9503399038989cba48cbb1765d02c92792605e2f67b314afddeca60090c30f0c -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1992,7 +1992,7 @@ gzip 文件接口的安全（第 5 项结论，所有者 2026-11-12 的决定）
 已于 2026-11-13 修正。`gz_open` 用 `malloc(len + 1)` 和 `snprintf(state->path, len + 1, "%s", path)` 复制调用者路径。分两部分：
 
 - `snprintf` 超过 `INT_MAX`：模型 `snprintf` 在此返回 -1，与 glibc 相同（[可信基础](trusted-base.zh.md)，格式化）。不出错，陈述不变。
-- `malloc` 超过 `PTRDIFF_MAX`：运行时分配器现在拒绝 `2^63` 字节及以上的请求，与 glibc 2.43 相同（[可信基础](trusted-base.zh.md)，分配大小）。于是长度为 `2^63 − 1` 字节的路径使 `gzopen` 在没有预言失败、也没有调用 `open` 的情况下返回 NULL。`OpenContract` 原来的第二条款接受该路径，并要求模式无效、预言失败或 `open` 失败三者之一，因此它对修正后的模型为假。经过检查的反例是该[回归](../tests/verification/regressions/gzopen-path-ptrdiff.lean)（`old_open_clause_false`）。`Goal.gz_initialisation_domain` 对同一路径也为假：它在 `NoAllocationFailure h` 下承诺返回句柄。
+- `malloc` 超过 `PTRDIFF_MAX`：运行时分配器现在拒绝 `2^63` 字节及以上的请求，与 glibc 2.43 相同（[可信基础](trusted-base.zh.md)，分配大小）。于是长度为 `2^63 − 1` 字节的路径使 `gzopen` 在没有预言失败、也没有调用 `open` 的情况下返回 NULL。`OpenContract` 原来的第二条款接受该路径，并要求模式无效、预言失败或 `open` 失败三者之一，因此它对修正后的模型为假。经过检查的反例是该[回归](../tests/verification/regressions/gzopen-path-ptrdiff.lean)（`old_open_clause_false`）。`Goal.gz_initialisation_domain` 对同一路径也为假：它在 `NoAllocationFailure h` 下承诺返回句柄。复核：运行时修改（`6db5fca9`）、陈述更正（`b35b5523`）和字符串字面量 "position overflow"（`110d11cf`）已对照设计说明进行第二次阅读，没有异议。未完成：`malloc <n>` 差分测试行的 C 端尚未运行。
 
 修正在单独的提交中。`OpenContract`（`Goal.gzopen`、`Goal.gzopen64`）第二条款：原前提为 `Fresh h → Uniq h → LibraryGlobals h → FileSystem fs → CString h path name → CString h mode flags`；新前提在 `FileSystem fs` 之后加入 `ZlibF.PlatformMemory.ByteObjectsFit h`。`Goal.gz_initialisation_domain` 第一条款：原前提为 `... FileSystem fs → NoAllocationFailure h → CString h path name → ...`；新前提在 `NoAllocationFailure h` 之后加入 `ByteObjectsFit h`。有了它，路径及其 NUL 位于同一个小于 `2^63` 字节的对象中，因此复制不会因大小被拒绝，`len + 1` 也不会回绕。见证条款和 `Goal.gzdopen`（19 字节路径）不变。这三个目标都尚未证明或登记。该前提就是已接受的平台范围（[偏差](deviations.zh.md)，“平台字节对象范围”一行）。
 
