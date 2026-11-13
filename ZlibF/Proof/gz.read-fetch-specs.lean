@@ -45,10 +45,18 @@ the bound a source of about `2^70` bytes of empty gzip members runs `gz_fetch` o
 def ReadsBounded (fs : Fs) (fd : Int32) : Prop :=
   ReadsFinite fs fd ∧ (fs.readBudget fd.toInt.toNat).getD 0 < 2 ^ 61
 
-/-- The embedded inflate stream is freshly reset: mode `HEAD` and no held bits (`inflateReset` clears them). With
-held bits (`inflatePrime` after `inflateReset2(-15)`) a call from `HEAD` can reach the stream end using no input. -/
+/-- The embedded inflate stream is freshly reset: mode `HEAD`, no held bits and `last = 0` (`inflateReset` clears
+them). With held bits (`inflatePrime` after `inflateReset2(-15)`), or with `last ≠ 0` and `wrap = 0` (`TYPEDO` then goes
+to `CHECK`), a call from `HEAD` can reach the stream end using no input. -/
 def InflateAtHead (h : Heap) (s : GzState) : Prop :=
-  ∃ k st, s.strm.state = some (.inflate k) ∧ h.istates k = some st ∧ st.mode = HEAD ∧ st.bits = 0
+  ∃ k st, s.strm.state = some (.inflate k) ∧ h.istates k = some st ∧ st.mode = HEAD ∧ st.bits = 0 ∧
+    st.last = 0
+
+/-- The message of the embedded stream is `NULL` or a string literal of the sources (`inflateInit2_` and
+`inflateReset` clear it, `inflate` sets literals). `gz_decomp` hands it to `gz_error`. **Open**: to become a clause of
+the reader invariant. -/
+def MsgLit (s : GzState) : Prop :=
+  s.size ≠ 0 → s.strm.msg = .null ∨ ∃ j, j < strTable.size ∧ s.strm.msg = .ref (.str j) 0
 
 /-- The record fields a fetching helper keeps. -/
 def FetchKeeps (s s' : GzState) : Prop :=
@@ -59,12 +67,13 @@ def FetchKeeps (s s' : GzState) : Prop :=
 only there; from COPY with no input left it returns 0 with `how = COPY`). -/
 def GzLookSpec : Prop :=
   ∀ (i : Nat) (h : Heap) (fs : Fs) (s : GzState), GzInvUpToOutput h i s → s.x.have = 0 → FileSystem fs →
-    s.mode = GZ_READ → s.how = LOOK →
+    s.mode = GZ_READ → s.how = LOOK → MsgLit s →
     RunSafe (Zlib.Gzread.gz_look (gzSt i)) fs h True fun r fs' after =>
       (r = 0 ∨ r = -1) ∧ FdsKept fs fs' ∧ GzPost h i s [] fs' after GzInvOut ∧
       (ReadsFinite fs s.fd → ReadsFinite fs' s.fd) ∧
       (ReadsBounded fs s.fd → ReadsBounded fs' s.fd) ∧
-      ∃ s', after.gzstates i = some s' ∧ FetchKeeps s s' ∧ (ReadsFinite fs s.fd → inputLeft fs' s' ≤ inputLeft fs s) ∧
+      ∃ s', after.gzstates i = some s' ∧ FetchKeeps s s' ∧ MsgLit s' ∧
+        (ReadsFinite fs s.fd → inputLeft fs' s' ≤ inputLeft fs s) ∧
         (s.err ≠ Z_STREAM_END → s'.err ≠ Z_STREAM_END) ∧
         (s'.size = 0 → s'.err ≠ Z_OK ∧ s'.err ≠ Z_BUF_ERROR) ∧
         (r = 0 → (s'.how = LOOK ∧ s'.x.have = 0) ∨ (s'.how = GZIP ∧ s'.x.have = 0 ∧ InflateAtHead after s') ∨
@@ -74,7 +83,7 @@ def GzLookSpec : Prop :=
 written; the caller's buffer in `gz_read`), as the skeleton states it, with the fields kept and the progress clauses `gz_fetch` needs. -/
 def GzDecompSpec : Prop :=
   ∀ (i : Nat) (out : Region) (h : Heap) (fs : Fs) (s : GzState), GzInvUpToOutput h i s → FileSystem fs →
-    s.mode = GZ_READ → s.how = GZIP →
+    s.mode = GZ_READ → s.how = GZIP → MsgLit s →
     (s.strm.next_out = out.pointer ∧ s.strm.avail_out.toNat = out.length ∧ out.length ≠ 0 ∧
       Writable h out.pointer out.length) →
     ((∀ b, ByteRoot out.pointer b → ¬ GzOwned h i s b) ∨ out.pointer = s.out) →
@@ -82,7 +91,8 @@ def GzDecompSpec : Prop :=
       (r = 0 ∨ r = -1) ∧ FdsKept fs fs' ∧
       GzPost h i s (if out.pointer = s.out then [] else [out]) fs' after GzInvUpToOutput ∧
       (ReadsFinite fs s.fd → ReadsFinite fs' s.fd) ∧ (ReadsBounded fs s.fd → ReadsBounded fs' s.fd) ∧
-      ∃ s', after.gzstates i = some s' ∧ FetchKeeps s s' ∧ (ReadsFinite fs s.fd → inputLeft fs' s' ≤ inputLeft fs s) ∧
+      ∃ s', after.gzstates i = some s' ∧ FetchKeeps s s' ∧ MsgLit s' ∧
+        (ReadsFinite fs s.fd → inputLeft fs' s' ≤ inputLeft fs s) ∧
         (s.err ≠ Z_STREAM_END → s'.err ≠ Z_STREAM_END) ∧
         (s'.x.have ≠ 0 → ∃ c, s'.x.next = padv out.pointer c ∧ c + s'.x.have.toNat ≤ out.length) ∧
         (s'.how = GZIP ∨ s'.how = LOOK) ∧
@@ -92,16 +102,17 @@ def GzDecompSpec : Prop :=
 
 /-- **`gz_fetch`** on a reader with no buffered output: the skeleton statement with the post `GzInvOut`, the kept
 fields, and its progress. The premise `err ≠ Z_STREAM_END` holds on every handle (`gz_error` never records that
-code); so does `how = GZ_COPY → avail_in = 0` (`gz_look` and `gzseek` zero `avail_in` when they set COPY). Both are to be
-discharged by clauses of the invariant (**open**). Its progress (`GzFetchProgress` as it holds: a `0` result leaves output, the end of the input, or
+code); so does `how = GZ_COPY → avail_in = 0` (`gz_look` and `gzseek` zero `avail_in` when they set COPY), and so does
+`MsgLit` (the embedded stream's message is `NULL` or a literal). All three are to be discharged by clauses of the
+invariant (**open**). Its progress (`GzFetchProgress` as it holds: a `0` result leaves output, the end of the input, or
 `how = LOOK` after `gz_look` found too little input). -/
 def GzFetchSafe : Prop :=
   ∀ (i : Nat) (h : Heap) (fs : Fs) (s : GzState), GzInvUpToOutput h i s → s.x.have = 0 → FileSystem fs →
-    s.mode = GZ_READ → s.err ≠ Z_STREAM_END → (s.how = GZ_COPY → s.strm.avail_in = 0) →
+    s.mode = GZ_READ → s.err ≠ Z_STREAM_END → (s.how = GZ_COPY → s.strm.avail_in = 0) → MsgLit s →
     RunSafe (Zlib.Gzread.gz_fetch (gzSt i)) fs h (ReadsBounded fs s.fd) fun r fs' after =>
       (r = 0 ∨ r = -1) ∧ FdsKept fs fs' ∧ GzPost h i s [] fs' after GzInvOut ∧
       (ReadsFinite fs s.fd → ReadsFinite fs' s.fd) ∧ (ReadsBounded fs s.fd → ReadsBounded fs' s.fd) ∧
-      ∃ s', after.gzstates i = some s' ∧ FetchKeeps s s' ∧
+      ∃ s', after.gzstates i = some s' ∧ FetchKeeps s s' ∧ MsgLit s' ∧
         (s'.size = 0 → s'.err ≠ Z_OK ∧ s'.err ≠ Z_BUF_ERROR) ∧
         (r = 0 → s'.x.have ≠ 0 ∨ (s'.eof ≠ 0 ∧ s'.strm.avail_in = 0) ∨ s'.how = LOOK)
 

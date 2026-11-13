@@ -350,7 +350,7 @@ theorem inputLeft_lt {fs : Fs} {s : GzState} (hb : ReadsBounded fs s.fd) : input
 def BodyPost (i : Nat) (h : Heap) (fs : Fs) (s : GzState) (y : Option Int32) (fs' : Fs) (h' : Heap) : Prop :=
   (y = none ∨ y = some 0 ∨ y = some (-1)) ∧ FdsKept fs fs' ∧ GzPost h i s [] fs' h' GzInvOut ∧
   (ReadsFinite fs s.fd → ReadsFinite fs' s.fd) ∧ (ReadsBounded fs s.fd → ReadsBounded fs' s.fd) ∧
-  ∃ s', h'.gzstates i = some s' ∧ FetchKeeps s s' ∧ (s.err ≠ Z_STREAM_END → s'.err ≠ Z_STREAM_END) ∧
+  ∃ s', h'.gzstates i = some s' ∧ FetchKeeps s s' ∧ MsgLit s' ∧ (s.err ≠ Z_STREAM_END → s'.err ≠ Z_STREAM_END) ∧
     (s'.size = 0 → s'.err ≠ Z_OK ∧ s'.err ≠ Z_BUF_ERROR) ∧
     (y = some 0 → s'.x.«have» ≠ 0 ∨ (s'.eof ≠ 0 ∧ s'.strm.avail_in = 0) ∨ s'.how = LOOK) ∧
     (y = none → s'.x.«have» = 0 → (s'.eof = 0 ∨ s'.strm.avail_in ≠ 0) →
@@ -396,20 +396,20 @@ abbrev gzipRec (s : GzState) (n : UInt32) : GzState :=
 
 /-- **The LOOK trip.** -/
 theorem fetch_look (look : GzLookSpec) (i : Nat) (h : Heap) (fs : Fs) (s : GzState) (hu : GzInvUpToOutput h i s)
-    (hh : s.x.«have» = 0) (hfs : FileSystem fs) (hm : s.mode = GZ_READ) (hl : s.how = LOOK) :
+    (hh : s.x.«have» = 0) (hfs : FileSystem fs) (hm : s.mode = GZ_READ) (hl : s.how = LOOK) (hml : MsgLit s) :
     RunSafe (do
         if (← Zlib.Gzread.gz_look (some (.tab i))) == -1 then return some (-1)
         if (← ldS (some (.tab i))).how == LOOK then return some 0
         return none : G (Option Int32)) fs h (ReadsBounded fs s.fd) (BodyPost i h fs s) := by
-  refine RunSafe.bind ((look i h fs s hu hh hfs hm hl).fin_mono (fun _ => trivial)) ?_
-  rintro r fs1 h1 ⟨hr, hk, post, rf, rb, s', hs', keep, hil, herr, hsize, hprog⟩
+  refine RunSafe.bind ((look i h fs s hu hh hfs hm hl hml).fin_mono (fun _ => trivial)) ?_
+  rintro r fs1 h1 ⟨hr, hk, post, rf, rb, s', hs', keep, hml', hil, herr, hsize, hprog⟩
   have common : ∀ y, (y = none ∨ y = some 0 ∨ y = some (-1)) →
       (y = some 0 → s'.x.«have» ≠ 0 ∨ (s'.eof ≠ 0 ∧ s'.strm.avail_in = 0) ∨ s'.how = LOOK) →
       (y = none → s'.x.«have» = 0 → (s'.eof = 0 ∨ s'.strm.avail_in ≠ 0) →
         (s'.how = LOOK ∨ s'.how = GZIP) ∧ (ReadsBounded fs s.fd → s.err ≠ Z_STREAM_END →
           4 * inputLeft fs1 s' + cOf h1 s' < 4 * inputLeft fs s + cOf h s)) →
       BodyPost i h fs s y fs1 h1 := fun y hy h0 hn =>
-    ⟨hy, hk, post, rf, rb, s', hs', keep, herr, hsize, h0, hn⟩
+    ⟨hy, hk, post, rf, rb, s', hs', keep, hml', herr, hsize, h0, hn⟩
   refine RunSafe.ite (fun hc => ?_) (fun hc => ?_)
   · refine RunSafe.pure' (common _ (Or.inr (Or.inr rfl)) (fun e => absurd e (by decide))
       (fun e => absurd e (by decide)))
@@ -432,7 +432,8 @@ theorem fetch_look (look : GzLookSpec) (i : Nat) (h : Heap) (fs : Fs) (s : GzSta
 
 /-- **The COPY trip.** -/
 theorem fetch_copy (i : Nat) (h : Heap) (fs : Fs) (s : GzState) (hu : GzInvUpToOutput h i s)
-    (hfs : FileSystem fs) (hm : s.mode = GZ_READ) (hc : s.how = GZ_COPY) (hcopy : s.strm.avail_in = 0) :
+    (hfs : FileSystem fs) (hm : s.mode = GZ_READ) (hc : s.how = GZ_COPY) (hcopy : s.strm.avail_in = 0)
+    (hml : MsgLit s) :
     RunSafe (do
         let room ← Zlib.Gzread.gz_room (some (.tab i)) (s.size <<< 1)
         updX (some (.tab i)) fun x => { x with next := s.out }
@@ -504,7 +505,7 @@ theorem fetch_copy (i : Nat) (h : Heap) (fs : Fs) (s : GzState) (hu : GzInvUpToO
     intro y hy
     subst hy
     refine ⟨by rcases hr with rfl | rfl <;> simp, hk, Pout, budget_rf hbud, budget_rb hbud, _, hs3,
-      ⟨rfl, rfl, rfl, rfl, fun _ => ⟨rfl, rfl, rfl⟩⟩, ?_, fun hz => absurd hz hsz, ?_,
+      ⟨rfl, rfl, rfl, rfl, fun _ => ⟨rfl, rfl, rfl⟩⟩, hml, ?_, fun hz => absurd hz hsz, ?_,
       fun hn => absurd hn (by simp)⟩
     · intro hse
       show e ≠ Z_STREAM_END
@@ -531,7 +532,8 @@ theorem fetch_copy (i : Nat) (h : Heap) (fs : Fs) (s : GzState) (hu : GzInvUpToO
 
 /-- **The GZIP trip.** -/
 theorem fetch_gzip (decomp : GzDecompSpec) (i : Nat) (h : Heap) (fs : Fs) (s : GzState)
-    (hu : GzInvUpToOutput h i s) (hfs : FileSystem fs) (hm : s.mode = GZ_READ) (hg : s.how = GZIP) :
+    (hu : GzInvUpToOutput h i s) (hfs : FileSystem fs) (hm : s.mode = GZ_READ) (hg : s.how = GZIP)
+    (hml : MsgLit s) :
     RunSafe (do
         let room ← Zlib.Gzread.gz_room (some (.tab i)) (s.size <<< 1)
         updZ (strmOf (some (.tab i))) fun z =>
@@ -558,10 +560,10 @@ theorem fetch_gzip (decomp : GzDecompSpec) (i : Nat) (h : Heap) (fs : Fs) (s : G
   have hw : Writable (putGz h i (gzipRec s (if room != 0 then room else 1))) s.out (if room != 0 then room else 1).toNat :=
     Or.inr ⟨.blk ob, 0, oa, hout', hob, hro, by omega⟩
   have hL0 : (if room != 0 then room else 1).toNat ≠ 0 := by omega
-  have D := decomp i ⟨s.out, (if room != 0 then room else 1).toNat⟩ _ fs _ hu1 hfs hm hg ⟨rfl, rfl, hL0, hw⟩
+  have D := decomp i ⟨s.out, (if room != 0 then room else 1).toNat⟩ _ fs _ hu1 hfs hm hg hml ⟨rfl, rfl, hL0, hw⟩
     (Or.inr rfl)
   refine RunSafe.bind D ?_
-  rintro r fs2 h2 ⟨hr, hk, post, rf, rb, s', hs', keep, hil, herr, hwin, hhow, hprog⟩
+  rintro r fs2 h2 ⟨hr, hk, post, rf, rb, s', hs', keep, hml', hil, herr, hwin, hhow, hprog⟩
   rw [if_pos rfl] at post
   have P1 : GzPost h i s [] fs (putGz h i (gzipRec s (if room != 0 then room else 1))) GzInvUpToOutput :=
     post_put (post_refl hu hfs) hs hu1 (owned_set_strm hs _ rfl) rfl rfl
@@ -579,7 +581,7 @@ theorem fetch_gzip (decomp : GzDecompSpec) (i : Nat) (h : Heap) (fs : Fs) (s : G
     omega
   have hcases : ∀ y, (y = some (-1) ∨ (y = none ∧ r = 0)) → BodyPost i h fs s y fs2 h2 := by
     intro y hy
-    refine ⟨by rcases hy with rfl | ⟨rfl, _⟩ <;> simp, hk, Pout, rf, rb, s', hs', keep, herr,
+    refine ⟨by rcases hy with rfl | ⟨rfl, _⟩ <;> simp, hk, Pout, rf, rb, s', hs', keep, hml', herr,
       fun hz => absurd (hz ▸ hsize'.symm) hsz, ?_, ?_⟩
     · intro e; rcases hy with rfl | ⟨rfl, _⟩ <;> exact absurd e (by decide)
     · intro hn hh' hcont
@@ -609,7 +611,7 @@ theorem fetch_gzip (decomp : GzDecompSpec) (i : Nat) (h : Heap) (fs : Fs) (s : G
 /-- **One run of the loop body** on a reader with no buffered output. -/
 theorem fetch_body (look : GzLookSpec) (decomp : GzDecompSpec) (i : Nat) (h : Heap) (fs : Fs) (s : GzState)
     (hu : GzInvUpToOutput h i s) (hh : s.x.«have» = 0) (hfs : FileSystem fs) (hm : s.mode = GZ_READ)
-    (hcopy : s.how = GZ_COPY → s.strm.avail_in = 0) :
+    (hcopy : s.how = GZ_COPY → s.strm.avail_in = 0) (hml : MsgLit s) :
     RunSafe (fetchBody i none) fs h (ReadsBounded fs s.fd) (BodyPost i h fs s) := by
   unfold fetchBody
   refine RunSafe.bind_lift (ldS_run hu.1) ?_
@@ -617,14 +619,14 @@ theorem fetch_body (look : GzLookSpec) (decomp : GzDecompSpec) (i : Nat) (h : He
   have hhow : s.how = LOOK ∨ s.how = GZ_COPY ∨ s.how = GZIP := (hu.2.reader hm).how
   rcases hhow with hl | hc | hg
   · rw [if_pos (show (s.how == LOOK) = true by rw [hl]; decide)]
-    exact fetch_look look i h fs s hu hh hfs hm hl
+    exact fetch_look look i h fs s hu hh hfs hm hl hml
   · rw [if_neg (show ¬ (s.how == LOOK) = true by rw [hc]; decide),
       if_pos (show (s.how == GZ_COPY) = true by rw [hc]; decide)]
-    exact fetch_copy i h fs s hu hfs hm hc (hcopy hc)
+    exact fetch_copy i h fs s hu hfs hm hc (hcopy hc) hml
   · rw [if_neg (show ¬ (s.how == LOOK) = true by rw [hg]; decide),
       if_neg (show ¬ (s.how == GZ_COPY) = true by rw [hg]; decide),
       if_pos (show (s.how == GZIP) = true by rw [hg]; decide)]
-    exact fetch_gzip decomp i h fs s hu hfs hm hg
+    exact fetch_gzip decomp i h fs s hu hfs hm hg hml
 
 /-! ## The loop -/
 
@@ -632,14 +634,14 @@ theorem fetch_body (look : GzLookSpec) (decomp : GzDecompSpec) (i : Nat) (h : He
 def FetchJ (i : Nat) (h0 : Heap) (fs0 : Fs) (s0 : GzState) (x : Option Int32) (fs : Fs) (h : Heap) : Prop :=
   x = none ∧ FdsKept fs0 fs ∧ GzPost h0 i s0 [] fs h GzInvOut ∧
   (ReadsFinite fs0 s0.fd → ReadsFinite fs s0.fd) ∧ (ReadsBounded fs0 s0.fd → ReadsBounded fs s0.fd) ∧
-  ∃ s, h.gzstates i = some s ∧ GzInvUpToOutput h i s ∧ s.x.«have» = 0 ∧ FetchKeeps s0 s ∧
+  ∃ s, h.gzstates i = some s ∧ GzInvUpToOutput h i s ∧ s.x.«have» = 0 ∧ FetchKeeps s0 s ∧ MsgLit s ∧
     s.err ≠ Z_STREAM_END ∧ (s.how = GZ_COPY → s.strm.avail_in = 0)
 
 /-- The post-condition of `GzFetchSafe` for the result `r`. -/
 def FetchPost (i : Nat) (h0 : Heap) (fs0 : Fs) (s0 : GzState) (r : Int32) (fs' : Fs) (after : Heap) : Prop :=
   (r = 0 ∨ r = -1) ∧ FdsKept fs0 fs' ∧ GzPost h0 i s0 [] fs' after GzInvOut ∧
   (ReadsFinite fs0 s0.fd → ReadsFinite fs' s0.fd) ∧ (ReadsBounded fs0 s0.fd → ReadsBounded fs' s0.fd) ∧
-  ∃ s', after.gzstates i = some s' ∧ FetchKeeps s0 s' ∧
+  ∃ s', after.gzstates i = some s' ∧ FetchKeeps s0 s' ∧ MsgLit s' ∧
     (s'.size = 0 → s'.err ≠ Z_OK ∧ s'.err ≠ Z_BUF_ERROR) ∧
     (r = 0 → s'.x.«have» ≠ 0 ∨ (s'.eof ≠ 0 ∧ s'.strm.avail_in = 0) ∨ s'.how = LOOK)
 
@@ -651,12 +653,12 @@ theorem fetch_step (look : GzLookSpec) (decomp : GzDecompSpec) (i : Nat) (h0 : H
         (cz.1 = true → FetchJ i h0 fs0 s0 cz.2 fs2 h2 ∧
           (ReadsBounded fs s0.fd → ReadsBounded fs2 s0.fd ∧ fetchMeasure i fs2 h2 < fetchMeasure i fs h)) ∧
         (cz.1 = false → FetchPost i h0 fs0 s0 (cz.2.getD 0) fs2 h2) := by
-  obtain ⟨rfl, hk0, post0, rf0, rb0, s, hs, hu, hh, keep0, herr, hcopy⟩ := hJ
+  obtain ⟨rfl, hk0, post0, rf0, rb0, s, hs, hu, hh, keep0, hml, herr, hcopy⟩ := hJ
   have hfd : s.fd = s0.fd := keep0.2.1
   have hm : s.mode = GZ_READ := keep0.1.trans hm0
-  have body := fetch_body look decomp i h fs s hu hh post0.1 hm hcopy
+  have body := fetch_body look decomp i h fs s hu hh post0.1 hm hcopy hml
   refine (body.fin_mono (fun hb => by rw [hfd]; exact hb)).mono ?_
-  rintro y fs1 h1 ⟨hy, hk, post1, rf1, rb1, s', hs', keep1, herr1, hsize1, hprog1, hcont1⟩
+  rintro y fs1 h1 ⟨hy, hk, post1, rf1, rb1, s', hs', keep1, hml1, herr1, hsize1, hprog1, hcont1⟩
   have hk' : FdsKept fs0 fs1 := fun j => (hk j).trans (hk0 j)
   have post' : GzPost h0 i s0 [] fs1 h1 GzInvOut := post_trans post0 (fun t ht => ht.1.1) hs post1
   have rf1' : ReadsFinite fs s0.fd → ReadsFinite fs1 s0.fd := by rw [← hfd]; exact rf1
@@ -673,13 +675,13 @@ theorem fetch_step (look : GzLookSpec) (decomp : GzDecompSpec) (i : Nat) (h0 : H
   have stop : ∀ r : Int32, (r = 0 ∨ r = -1) →
       (r = 0 → s'.x.«have» ≠ 0 ∨ (s'.eof ≠ 0 ∧ s'.strm.avail_in = 0) ∨ s'.how = LOOK) →
       FetchPost i h0 fs0 s0 r fs1 h1 := fun r hr hp =>
-    ⟨hr, hk', post', rf', rb', s', hs', keep', hsize1, hp⟩
+    ⟨hr, hk', post', rf', rb', s', hs', keep', hml1, hsize1, hp⟩
   have cont : y = none → s'.x.«have» = 0 → (s'.eof = 0 ∨ s'.strm.avail_in ≠ 0) →
       FetchJ i h0 fs0 s0 none fs1 h1 ∧
         (ReadsBounded fs s0.fd → ReadsBounded fs1 s0.fd ∧ fetchMeasure i fs1 h1 < fetchMeasure i fs h) := by
     intro hn hh' hc
     obtain ⟨hhow, hdrop⟩ := hcont1 hn hh' hc
-    refine ⟨⟨rfl, hk', post', rf', rb', s', hs', hu', hh', keep', herr', fun hcp => ?_⟩, fun hb => ⟨rb1' hb, ?_⟩⟩
+    refine ⟨⟨rfl, hk', post', rf', rb', s', hs', hu', hh', keep', hml1, herr', fun hcp => ?_⟩, fun hb => ⟨rb1' hb, ?_⟩⟩
     · rcases hhow with e | e <;> rw [e] at hcp <;> exact absurd hcp (by decide)
     · simp only [fetchMeasure, hs', hs]
       exact hdrop (by rw [hfd]; exact hb) herr
@@ -714,7 +716,7 @@ theorem keeps_refl (s : GzState) : FetchKeeps s s := ⟨rfl, rfl, rfl, rfl, fun 
 
 /-- **`gz_fetch` is safe**, given the statements of `gz_look` and `gz_decomp`. -/
 theorem gz_fetch_safe_of (look : GzLookSpec) (decomp : GzDecompSpec) : GzFetchSafe := by
-  intro i h fs s hu hh hfs hm herr hcopy
+  intro i h fs s hu hh hfs hm herr hcopy hml
   have hs : h.gzstates i = some s := hu.1
   have post0 : GzPost h i s [] fs h GzInvOut := GzPost.mono (post_refl hu hfs) (invOut_of_have0 hs hh)
   show RunSafe (Zlib.Gzread.gz_fetch (gzSt i)) fs h (ReadsBounded fs s.fd) (FetchPost i h fs s)
@@ -723,7 +725,7 @@ theorem gz_fetch_safe_of (look : GzLookSpec) (decomp : GzDecompSpec) : GzFetchSa
   try dsimp only
   refine RunSafe.ite (fun hc => ?_) (fun hc => ?_)
   · simp only [Bool.and_eq_true, bne_iff_ne, ne_eq, beq_iff_eq] at hc
-    exact RunSafe.pure' ⟨Or.inr rfl, fun _ => Iff.rfl, post0, id, id, s, hs, keeps_refl s,
+    exact RunSafe.pure' ⟨Or.inr rfl, fun _ => Iff.rfl, post0, id, id, s, hs, keeps_refl s, hml,
       fun _ => ⟨hc.1.1, hc.1.2⟩, fun e => absurd e (by decide)⟩
   · refine RunSafe.bind (P := fun z fs' h' => FetchPost i h fs s (z.getD 0) fs' h') ?_
       (fun z fs' h' hp => RunSafe.pure' hp)
@@ -731,7 +733,7 @@ theorem gz_fetch_safe_of (look : GzLookSpec) (decomp : GzDecompSpec) : GzFetchSa
     have L := go_runSafe (fetchBody i) (fetchCond i) (FetchJ i h fs s)
       (fun z fs' h' => FetchPost i h fs s (z.getD 0) fs' h') (fun fs1 _ => ReadsBounded fs1 s.fd)
       (fetchMeasure i) (fun x fs1 h1 hJ => fetch_step look decomp i h fs s hm x fs1 h1 hJ) C.fuel none fs h
-      ⟨rfl, fun _ => Iff.rfl, post0, id, id, s, hs, hu, hh, keeps_refl s, herr, hcopy⟩
+      ⟨rfl, fun _ => Iff.rfl, post0, id, id, s, hs, hu, hh, keeps_refl s, hml, herr, hcopy⟩
     refine L.fin_mono (fun hb => ⟨hb, ?_⟩)
     simp only [fetchMeasure, hs, C.fuel]
     have := inputLeft_lt hb

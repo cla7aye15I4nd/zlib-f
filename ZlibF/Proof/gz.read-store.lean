@@ -671,6 +671,15 @@ def LoadInv (i : Nat) (buf : BPtr) (len : UInt32) (s1 : GzState) (h1 : Heap) (fs
   (∀ r off, buf = .ref r off → LoadHeap h1 hk r off len.toNat) ∧ (buf = .null → hk = h1) ∧
   BudgetAcc s1.fd fs0 fsk l.«have».toNat
 
+/-- The loop leaves the decoder records alone. -/
+theorem LoadInv.istates {i : Nat} {buf : BPtr} {len : UInt32} {s1 : GzState} {h1 : Heap} {fs0 : Fs}
+    {l : Zlib.Gzread.LoadLoop} {fsk : Fs} {hk : Heap} (li : LoadInv i buf len s1 h1 fs0 l fsk hk) :
+    hk.istates = h1.istates := by
+  obtain ⟨-, -, -, -, -, -, -, hlh, hnull, -⟩ := li
+  cases hb : buf with
+  | null => rw [hnull hb]
+  | ref r off => exact (hlh r off hb).istates
+
 /-- **One trip of `gz_load`'s loop** with a request `g` that fits the rest of the buffer: it returns, keeps the loop
 invariant, and either stops (`brk`, nothing counted, `ret ≤ 0`) or counts `k ≥ 1` more bytes. -/
 theorem loadTrip_step (i : Nat) (buf : BPtr) (len : UInt32) (s1 : GzState) (h1 : Heap) (fs0 : Fs)
@@ -1032,7 +1041,7 @@ theorem gz_load_paths (i : Nat) (buf : BPtr) (len : UInt32) (h : Heap) (fs : Fs)
       l.«have».toNat ≤ len.toNat ∧
       (¬ (l.ret < 0 ∧ ¬ (BLOCKED fs'.errno = true ∧ l.«have» ≠ 0)) →
         ∃ fs'' after, loadTail i l fs' H = .ok (((0, l.«have»), fs''), after) ∧ fs'' = fs' ∧ FdsKept fs fs'' ∧
-          GzPost h i s [⟨buf, len.toNat⟩] fs'' after GzInvUpToOutput ∧
+          (∀ k, after.istates k = h.istates k) ∧ GzPost h i s [⟨buf, len.toNat⟩] fs'' after GzInvUpToOutput ∧
           ∃ ag ef : Int32, after.gzstates i = some { s with again := ag, eof := ef } ∧ (l.«have» = 0 → ef = 1)) := by
   obtain ⟨hs, inv⟩ := hu
   let s1 : GzState := { s with again := 0 }
@@ -1070,6 +1079,7 @@ theorem gz_load_paths (i : Nat) (buf : BPtr) (len : UInt32) (h : Heap) (fs : Fs)
       updS_run hs, hse, hloop']
   refine ⟨l, fs', H, hrun, linv, linv.1, fun hok => ?_⟩
   have linv0 := linv
+  have hist : ∀ k, H.istates k = h.istates k := fun k => by rw [linv.istates]; rfl
   obtain ⟨hle, hrecH, ginvH, -, -, hfsH, hkeptH, -, -⟩ := linv
   have huH : GzInvUpToOutput H i s1 := ⟨hrecH, ginvH⟩
   have hkept : FdsKept fs fs' := hkeptH
@@ -1103,13 +1113,13 @@ theorem gz_load_paths (i : Nat) (buf : BPtr) (len : UInt32) (h : Heap) (fs : Fs)
     have hge : getErrno fs' H = .ok ((fs'.errno, fs'), H) := rfl
     simp only [g_bind_app, g_lift_app, liftM, monadLift, MonadLift.monadLift,
       MonadLiftT.monadLift, hge, hb.1, updS_run hrecH, hne, g_pure_app, ite_true, if_true]
-    exact ⟨fs', _, rfl, rfl, hkept, post 1 s.eof (Or.inr rfl) heof, 1, s.eof, (by first | rfl | (simp only [Zlib.Gzlib.Spec.setS, putGz, upd_same]; rfl) | simp only [Zlib.Gzlib.Spec.setS, putGz, upd_same]),
+    exact ⟨fs', _, rfl, rfl, hkept, hist, post 1 s.eof (Or.inr rfl) heof, 1, s.eof, (by first | rfl | (simp only [Zlib.Gzlib.Spec.setS, putGz, upd_same]; rfl) | simp only [Zlib.Gzlib.Spec.setS, putGz, upd_same]),
       fun h0 => absurd h0 hb.2⟩
   · rw [if_neg hr]
     by_cases hz : (l.ret == 0) = true
     · simp only [hz, ite_true, g_bind_app, g_lift_app, liftM, monadLift, MonadLift.monadLift,
         MonadLiftT.monadLift, updS_run hrecH, g_pure_app]
-      exact ⟨fs', _, rfl, rfl, hkept, post 0 1 (Or.inl rfl) (Or.inr rfl), 0, 1, (by first | rfl | (simp only [Zlib.Gzlib.Spec.setS, putGz, upd_same]; rfl) | simp only [Zlib.Gzlib.Spec.setS, putGz, upd_same]),
+      exact ⟨fs', _, rfl, rfl, hkept, hist, post 0 1 (Or.inl rfl) (Or.inr rfl), 0, 1, (by first | rfl | (simp only [Zlib.Gzlib.Spec.setS, putGz, upd_same]; rfl) | simp only [Zlib.Gzlib.Spec.setS, putGz, upd_same]),
         fun _ => rfl⟩
     · simp only [hz, Bool.false_eq_true, ite_false, g_bind_app, g_pure_app]
       have hself : putGz H i { s1 with again := 0, eof := s.eof } = H := upd_self_heap hrecH
@@ -1128,7 +1138,7 @@ theorem gz_load_paths (i : Nat) (buf : BPtr) (len : UInt32) (h : Heap) (fs : Fs)
             simp only [Int32.toInt_zero] at hle0 hr ⊢
             omega
           rw [h0]; rfl
-      refine ⟨fs', H, rfl, rfl, hkept, ?_, 0, s.eof, hrecH, fun h0 => absurd h0 (hbrkhave hbf)⟩
+      refine ⟨fs', H, rfl, rfl, hkept, hist, ?_, 0, s.eof, hrecH, fun h0 => absurd h0 (hbrkhave hbf)⟩
       rw [← hself]
       exact post 0 s.eof (Or.inl rfl) heof
 

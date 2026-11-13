@@ -1694,6 +1694,7 @@ import ZlibF.Proof.«gz.read-budget»
 import ZlibF.Proof.«gz.read-fetch»
 import ZlibF.Proof.«gz.read-look»
 import ZlibF.Proof.«gz.read-close»
+import ZlibF.Proof.«gz.read-decomp»
 import ZlibF.Proof.«gzwrite.c.upto-input»
 import ZlibF.Proof.«gzwrite.c.comp»
 import ZlibF.Proof.«gzwrite.c.zero»

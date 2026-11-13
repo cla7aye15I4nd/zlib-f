@@ -180,6 +180,66 @@ theorem bufferFrame_extend {h X Y : Heap} {C D : Nat → Prop} {p : BPtr} {n : N
 
 #print axioms bufferFrame_extend
 
+/-! ## `gz_error` leaves the decoder records alone -/
+
+theorem istates_none_of_gz {h : Heap} (u : Zlib.Gzlib.Spec.Uniq h) {b : Nat} {g : GzState}
+    (e : h.gzstates b = some g) : h.istates b = none := by
+  have hb := u b
+  rw [e] at hb
+  cases hi : h.istates b with
+  | none => rfl
+  | some x => rw [hi] at hb; simp only [Zlib.Gzlib.Spec.cnt_some] at hb; omega
+
+theorem istates_none_of_bytes {h : Heap} (u : Zlib.Gzlib.Spec.Uniq h) {b : Nat} {a : Array UInt8}
+    (e : h.bytes b = some a) : h.istates b = none := by
+  have hb := u b
+  rw [e] at hb
+  cases hi : h.istates b with
+  | none => rfl
+  | some x => rw [hi] at hb; simp only [Zlib.Gzlib.Spec.cnt_some] at hb; omega
+
+/-- The message block of a handle in `GzInv` holds bytes. -/
+theorem GzInv.msg_bytes {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) {b : Nat}
+    (hb : blkOf s.msg = some b) : ∃ a, h.bytes b = some a := by
+  rcases inv.common.msg with hn | ⟨_, _, mb, a, hp, ha, _, _⟩
+  · rw [hn] at hb; cases hb
+  · rw [hp] at hb; cases hb; exact ⟨a, ha⟩
+
+/-- **`gz_error` writes no decoder record**, read from its post-condition. -/
+theorem errPost_istates {h after : Heap} {i : Nat} {s s' : GzState} {err : Int32} (inv : GzInv h i s)
+    (post : ErrPost h i s err after s') : ∀ b, after.istates b = h.istates b := by
+  obtain ⟨inv', -, -, fr, lc, -, -, -, -⟩ := post
+  intro b
+  have u := inv.common.uniq
+  have u' := inv'.common.uniq
+  have afterNone : ¬ (h.live b ∧ ¬ blkOf s.msg = some b) → after.istates b = none := by
+    intro hn
+    cases ha : after.istates b with
+    | none => rfl
+    | some x =>
+      exfalso
+      have hl : after.live b := Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inl (by rw [ha]; intro e; cases e))))))
+      rcases (lc b).1 hl with h1 | ⟨hm, _⟩
+      · exact hn h1
+      · obtain ⟨a, hab⟩ := GzInv.msg_bytes inv' hm
+        rw [istates_none_of_bytes u' hab] at ha
+        cases ha
+  by_cases hl : h.live b
+  · by_cases hc : b = i ∨ blkOf s.msg = some b
+    · rcases hc with e | hm
+      · subst e
+        rw [istates_none_of_gz u inv.common.record, istates_none_of_gz u' inv'.common.record]
+      · obtain ⟨a, hab⟩ := GzInv.msg_bytes inv hm
+        rw [istates_none_of_bytes u hab]
+        exact afterNone (fun h1 => h1.2 hm)
+    · exact (fr.2.2.2.2.2 b hl hc).2.2.2.2.2.1
+  · have h0 : h.istates b = none := by
+      cases hh : h.istates b with
+      | none => rfl
+      | some x => exact absurd (Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inl (by rw [hh]; intro e; cases e))))))) hl
+    rw [h0]
+    exact afterNone (fun h1 => hl h1.1)
+
 /-! ## The failure report -/
 
 /-- **`gz_load`'s failure report.** After the loop (`LoadInv`), when the last `read` failed and it was not a stall
@@ -195,12 +255,13 @@ theorem gz_load_error_tail (i : Nat) (buf : BPtr) (len : UInt32) (h : Heap) (fs 
     (linv : LoadInv i buf len { s with again := 0 } (putGz h i { s with again := 0 }) { fs with errno := 0 } l fs' H)
     (herr : l.ret < 0 ∧ ¬ (BLOCKED fs'.errno = true ∧ l.«have» ≠ 0)) :
     ∃ fs'' after, loadTail i l fs' H = .ok (((-1, l.«have»), fs''), after) ∧ fs'' = fs' ∧ FdsKept fs fs'' ∧
-      GzPost h i s [⟨buf, len.toNat⟩] fs'' after GzInvUpToOutput ∧
+      (∀ k, after.istates k = h.istates k) ∧ GzPost h i s [⟨buf, len.toNat⟩] fs'' after GzInvUpToOutput ∧
       ∃ ag ef e m, after.gzstates i = some { s with again := ag, eof := ef, err := e, msg := m } ∧
         (e = s.err ∨ e = Z_ERRNO ∨ e = Z_MEM_ERROR) ∧ e ≠ Z_OK := by
   have hs : h.gzstates i = some s := hu.1
   have inv : GzInv (putGz h i (clearOut s)) i (clearOut s) := hu.2
   have linv0 := linv
+  have histH : ∀ k, H.istates k = h.istates k := fun k => by rw [linv.istates]; rfl
   obtain ⟨hle, hrecH, ginvH, -, -, hfsH, hkeptH, -, -, -⟩ := linv
   let s1 : GzState := { s with again := 0 }
   have hm1 : s1.mode = GZ_READ := hm
@@ -228,6 +289,9 @@ theorem gz_load_error_tail (i : Nat) (buf : BPtr) (len : UInt32) (h : Heap) (fs 
   have hcs := Zlib.GzFs.Proofs.zstrerror_cstring hz3
   obtain ⟨after, s4, run4, hs4, shape4, post4⟩ := gz_error_upToOutput hu3 Z_ERRNO _
     (Or.inr ⟨_, hcs, fun b hb => by cases hb⟩)
+  have hist4 : ∀ k, after.istates k = h.istates k := fun k => by
+    have := errPost_istates hu3.2 post4 k
+    exact this.trans (histH k)
   obtain ⟨inv4, -, herr4, fr4, lc4, nolive4, -, ng4, keep4⟩ := post4
   -- the run of the tail
   have hrun : loadTail i l fs' H = .ok (((-1, l.«have»), fs'), after) := by
@@ -352,7 +416,7 @@ theorem gz_load_error_tail (i : Nat) (buf : BPtr) (len : UInt32) (h : Heap) (fs 
       rw [this] at hb; cases hb
     · have hpm' : s4.msg = .ref (.blk mb) 0 := hpm
       rw [hpm'] at hb; cases hb; exact Or.inr (Or.inr (Or.inl hpm'))
-  refine ⟨fs', after, hrun, rfl, hkeptH, ⟨hfsH, s4, ⟨hs4, inv4⟩, by rw [hsame4.2.2.2.2.2.1],
+  refine ⟨fs', after, hrun, rfl, hkeptH, hist4, ⟨hfsH, s4, ⟨hs4, inv4⟩, by rw [hsame4.2.2.2.2.2.1],
     by rw [shape4], bf, ?_, ?_⟩, ag, s.eof, s4.err, s4.msg, by rw [hs4, shape4],
     herr4.elim (fun e => Or.inr (Or.inl e)) (fun e => Or.inr (Or.inr e.1)),
     herr4.elim (fun e => by show (clearOut s4).err ≠ Z_OK; rw [e]; decide)
@@ -381,6 +445,42 @@ theorem gz_load_error_tail (i : Nat) (buf : BPtr) (len : UInt32) (h : Heap) (fs 
     · exact Or.inr (fun hl => h1 ((liveX3 b).2 ((hliveX b).2 hl)))
 
 
+/-- The run of `gz_load` and everything known of it. -/
+theorem gz_load_key (i : Nat) (buf : BPtr) (len : UInt32) (h : Heap) (fs : Fs) (s : GzState)
+    (hu : GzInvUpToOutput h i s) (hm : s.mode = GZ_READ) (hsz : s.size ≠ 0) (hfs : FileSystem fs)
+    (hw : Writable h buf len.toNat)
+    (hroot : (∃ b off, buf = .ref (.blk b) off ∧ DataBuf (clearOut s) b) ∨
+      (∀ b, ByteRoot buf b → ¬ GzOwned h i s b)) :
+    ∃ r fs'' after, Zlib.Gzread.gz_load (gzSt i) buf len fs h = .ok ((r, fs''), after) ∧ (∀ k, after.istates k = h.istates k) ∧
+      ((r.1 = 0 ∨ r.1 = -1) ∧ r.2.toNat ≤ len.toNat ∧ FdsKept fs fs'' ∧
+      GzPost h i s [⟨buf, len.toNat⟩] fs'' after GzInvUpToOutput ∧
+      (∃ ag ef e m, after.gzstates i = some { s with again := ag, eof := ef, err := e, msg := m } ∧
+        (e = s.err ∨ e = Z_ERRNO ∨ e = Z_MEM_ERROR) ∧
+        (r.1 = 0 → e = s.err) ∧ (r.1 = -1 → e ≠ Z_OK) ∧ (r.1 = 0 → r.2 = 0 → ef = 1)) ∧
+      BudgetAcc s.fd fs fs'' r.2.toNat) := by
+  obtain ⟨l, fs', H, hrun, linv, hle, hok⟩ := gz_load_paths i buf len h fs s hu hm hsz hfs hw hroot
+  have key : ∃ r fs'' after, Zlib.Gzread.gz_load (gzSt i) buf len fs h = .ok ((r, fs''), after) ∧ (∀ k, after.istates k = h.istates k) ∧
+      (r.1 = 0 ∨ r.1 = -1) ∧ r.2.toNat ≤ len.toNat ∧ FdsKept fs fs'' ∧
+      GzPost h i s [⟨buf, len.toNat⟩] fs'' after GzInvUpToOutput ∧
+      (∃ ag ef e m, after.gzstates i = some { s with again := ag, eof := ef, err := e, msg := m } ∧
+        (e = s.err ∨ e = Z_ERRNO ∨ e = Z_MEM_ERROR) ∧
+        (r.1 = 0 → e = s.err) ∧ (r.1 = -1 → e ≠ Z_OK) ∧ (r.1 = 0 → r.2 = 0 → ef = 1)) ∧
+      BudgetAcc s.fd fs fs'' r.2.toNat := by
+    have hbud : BudgetAcc s.fd fs fs' l.«have».toNat := linv.2.2.2.2.2.2.2.2.2
+    by_cases herr : l.ret < 0 ∧ ¬ (BLOCKED fs'.errno = true ∧ l.«have» ≠ 0)
+    · obtain ⟨fs'', after, ht, hfe, hk, hist, hp, ag, ef, e, m, hr, hdis, hok'⟩ :=
+        gz_load_error_tail i buf len h fs s hu hm hsz hw hroot l fs' H linv herr
+      subst hfe
+      exact ⟨_, fs'', after, hrun.trans ht, hist, Or.inr rfl, hle, hk, hp,
+        ⟨ag, ef, e, m, hr, hdis, (fun h0 => absurd (show (-1 : Int32) = 0 from h0) (by decide)), (fun _ => hok'),
+          (fun h0 => absurd (show (-1 : Int32) = 0 from h0) (by decide))⟩, hbud⟩
+    · obtain ⟨fs'', after, ht, hfe, hk, hist, hp, ag, ef, hr, hef⟩ := hok herr
+      subst hfe
+      exact ⟨_, fs'', after, hrun.trans ht, hist, Or.inl rfl, hle, hk, hp,
+        ⟨ag, ef, s.err, s.msg, hr, Or.inl rfl, (fun _ => rfl), (fun h0 => absurd (show (0 : Int32) = -1 from h0) (by decide)),
+          (fun _ h0 => hef h0)⟩, hbud⟩
+  exact key
+
 /-- **`gz_load(state, buf, len, &have)` is safe** (the skeleton statement `gz_load_safe`, with two premises found in
 the proof: the reader has its buffers, `size ≠ 0`, since only then can a stall set `again` within the invariant; and
 the buffer is a data buffer of the handle or memory the handle does not own). It does not fault, returns, and every
@@ -398,33 +498,25 @@ theorem gz_load_safe (i : Nat) (buf : BPtr) (len : UInt32) (h : Heap) (fs : Fs) 
         (e = s.err ∨ e = Z_ERRNO ∨ e = Z_MEM_ERROR) ∧
         (r.1 = 0 → e = s.err) ∧ (r.1 = -1 → e ≠ Z_OK) ∧ (r.1 = 0 → r.2 = 0 → ef = 1)) ∧
       BudgetAcc s.fd fs fs' r.2.toNat := by
-  obtain ⟨l, fs', H, hrun, linv, hle, hok⟩ := gz_load_paths i buf len h fs s hu hm hsz hfs hw hroot
-  have key : ∃ r fs'' after, Zlib.Gzread.gz_load (gzSt i) buf len fs h = .ok ((r, fs''), after) ∧
-      (r.1 = 0 ∨ r.1 = -1) ∧ r.2.toNat ≤ len.toNat ∧ FdsKept fs fs'' ∧
-      GzPost h i s [⟨buf, len.toNat⟩] fs'' after GzInvUpToOutput ∧
-      (∃ ag ef e m, after.gzstates i = some { s with again := ag, eof := ef, err := e, msg := m } ∧
-        (e = s.err ∨ e = Z_ERRNO ∨ e = Z_MEM_ERROR) ∧
-        (r.1 = 0 → e = s.err) ∧ (r.1 = -1 → e ≠ Z_OK) ∧ (r.1 = 0 → r.2 = 0 → ef = 1)) ∧
-      BudgetAcc s.fd fs fs'' r.2.toNat := by
-    have hbud : BudgetAcc s.fd fs fs' l.«have».toNat := linv.2.2.2.2.2.2.2.2.2
-    by_cases herr : l.ret < 0 ∧ ¬ (BLOCKED fs'.errno = true ∧ l.«have» ≠ 0)
-    · obtain ⟨fs'', after, ht, hfe, hk, hp, ag, ef, e, m, hr, hdis, hok'⟩ :=
-        gz_load_error_tail i buf len h fs s hu hm hsz hw hroot l fs' H linv herr
-      subst hfe
-      exact ⟨_, fs'', after, hrun.trans ht, Or.inr rfl, hle, hk, hp,
-        ⟨ag, ef, e, m, hr, hdis, (fun h0 => absurd (show (-1 : Int32) = 0 from h0) (by decide)), (fun _ => hok'),
-          (fun h0 => absurd (show (-1 : Int32) = 0 from h0) (by decide))⟩, hbud⟩
-    · obtain ⟨fs'', after, ht, hfe, hk, hp, ag, ef, hr, hef⟩ := hok herr
-      subst hfe
-      exact ⟨_, fs'', after, hrun.trans ht, Or.inl rfl, hle, hk, hp,
-        ⟨ag, ef, s.err, s.msg, hr, Or.inl rfl, (fun _ => rfl), (fun h0 => absurd (show (0 : Int32) = -1 from h0) (by decide)),
-          (fun _ h0 => hef h0)⟩, hbud⟩
-  obtain ⟨r, fs'', after, run, post⟩ := key
+  obtain ⟨r, fs'', after, run, -, post⟩ := gz_load_key i buf len h fs s hu hm hsz hfs hw hroot
   refine ⟨fun e he => ?_, fun _ => ⟨r, fs'', after, run⟩, fun r' fs3 after' he => ?_⟩
   · rw [run] at he; cases he
   · rw [run] at he
     cases he
     exact post
+
+/-- `gz_load` writes no decoder record. -/
+theorem gz_load_istates (i : Nat) (buf : BPtr) (len : UInt32) (h : Heap) (fs : Fs) (s : GzState)
+    (hu : GzInvUpToOutput h i s) (hm : s.mode = GZ_READ) (hsz : s.size ≠ 0) (hfs : FileSystem fs)
+    (hw : Writable h buf len.toNat)
+    (hroot : (∃ b off, buf = .ref (.blk b) off ∧ DataBuf (clearOut s) b) ∨
+      (∀ b, ByteRoot buf b → ¬ GzOwned h i s b))
+    {r : Int32 × UInt32} {fs' : Fs} {after : Heap}
+    (run : Zlib.Gzread.gz_load (gzSt i) buf len fs h = .ok ((r, fs'), after)) : ∀ k, after.istates k = h.istates k := by
+  obtain ⟨r2, fs2, after2, run2, hist, -⟩ := gz_load_key i buf len h fs s hu hm hsz hfs hw hroot
+  rw [run2] at run
+  cases run
+  exact hist
 
 #print axioms gz_load_error_tail
 #print axioms gz_load_safe

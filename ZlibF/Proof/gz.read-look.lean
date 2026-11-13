@@ -472,7 +472,8 @@ theorem lookGzip_run {H : Heap} {i : Nat} {t : GzState} (fs : Fs) (hu : GzInvUpT
     ∃ H' t', lookGzip i f fs H = .ok ((0, fs), H') ∧ H'.gzstates i = some t' ∧
       GzPost H i t [] fs H' GzInvUpToOutput ∧
       t' = { t with how := GZIP, junk := f t.junk, direct := 0, strm := t'.strm } ∧
-      t'.strm.avail_in = t.strm.avail_in ∧ t'.strm.next_in = t.strm.next_in ∧ InflateAtHead H' t' := by
+      t'.strm.avail_in = t.strm.avail_in ∧ t'.strm.next_in = t.strm.next_in ∧ InflateAtHead H' t' ∧
+      t'.strm.msg = .null := by
   have hs : H.gzstates i = some t := hu.1
   have inv : GzInv (putGz H i (clearOut t)) i (clearOut t) := hu.2
   have hmc : (clearOut t).mode = GZ_READ := hm
@@ -496,8 +497,10 @@ theorem lookGzip_run {H : Heap} {i : Nat} {t : GzState} (fs : Fs) (hu : GzInvUpT
   generalize hst1 : resetKeepState k (resetPre st) = st1 at hrun hrunW
   have z1in : z1.avail_in = t.strm.avail_in ∧ z1.next_in = t.strm.next_in ∧ z1.state = t.strm.state := by
     subst hz1; exact ⟨rfl, rfl, rfl⟩
-  have st1f : st1.head = none ∧ st1.mode = HEAD ∧ st1.bits = 0 ∧ st1.window = (resetPre st).window := by
-    subst hst1; exact ⟨rfl, rfl, rfl, rfl⟩
+  have z1msg : z1.msg = .null := by subst hz1; rfl
+  have st1f : st1.head = none ∧ st1.mode = HEAD ∧ st1.bits = 0 ∧ st1.last = 0 ∧
+      st1.window = (resetPre st).window := by
+    subst hst1; exact ⟨rfl, rfl, rfl, rfl, rfl⟩
   have hB : ∀ b, (resetHeap H st).bytes b =
       if st.wbits ≠ st.reqbits ∧ st.window = .ref (.blk b) 0 then none else H.bytes b := resetHeap_bytes H st
   have hBW : (resetHeap (putGz H i (clearOut t)) st).bytes = (resetHeap H st).bytes := by
@@ -553,7 +556,7 @@ theorem lookGzip_run {H : Heap} {i : Nat} {t : GzState} (fs : Fs) (hu : GzInvUpT
   have soV : ∀ b, StreamOwned V (gzStrm i) b ↔ b = k ∨ (st.wbits = st.reqbits ∧ st.window = .ref (.blk b) 0) := by
     intro b
     have hw1 : st1.window = if st.wbits = st.reqbits then st.window else .null := by
-      rw [st1f.2.2.2, look_resetPre_window]
+      rw [st1f.2.2.2.2, look_resetPre_window]
     constructor
     · rintro ⟨z, hz, ⟨k0, s0, hk0, hs0, ho⟩ | ⟨k0, d0, hk0, -, -⟩⟩
       · rw [gV] at hz; cases hz
@@ -812,7 +815,7 @@ theorem lookGzip_run {H : Heap} {i : Nat} {t : GzState} (fs : Fs) (hu : GzInvUpT
   have post : GzPost H i t [] fs Hx GzInvUpToOutput :=
     post_step (D := D) (C := fun _ => False) hu hu2 hfs rfl rfl frH hD (fun _ f => f.elim) own hlive
   exact ⟨Hx, t2, run, hHx, post, rfl, z1in.1, z1in.2.1,
-    ⟨k, st1, by rw [z1in.2.2]; exact hzst', by simp [Hx], st1f.2.1, st1f.2.2.1⟩⟩
+    ⟨k, st1, by rw [z1in.2.2]; exact hzst', by simp [Hx], st1f.2.1, st1f.2.2.1, st1f.2.2.2.1⟩, z1msg⟩
 
 end reset
 
@@ -1241,7 +1244,8 @@ def LookPost (h : Heap) (i : Nat) (s : GzState) (fs : Fs) (r : Int32) (fs' : Fs)
   (r = 0 ∨ r = -1) ∧ FdsKept fs fs' ∧ GzPost h i s [] fs' after GzInvOut ∧
     (ReadsFinite fs s.fd → ReadsFinite fs' s.fd) ∧
     (ReadsBounded fs s.fd → ReadsBounded fs' s.fd) ∧
-    ∃ s', after.gzstates i = some s' ∧ FetchKeeps s s' ∧ (ReadsFinite fs s.fd → inputLeft fs' s' ≤ inputLeft fs s) ∧
+    ∃ s', after.gzstates i = some s' ∧ FetchKeeps s s' ∧ MsgLit s' ∧
+      (ReadsFinite fs s.fd → inputLeft fs' s' ≤ inputLeft fs s) ∧
       (s.err ≠ Z_STREAM_END → s'.err ≠ Z_STREAM_END) ∧
       (s'.size = 0 → s'.err ≠ Z_OK ∧ s'.err ≠ Z_BUF_ERROR) ∧
       (r = 0 → (s'.how = LOOK ∧ s'.x.have = 0) ∨ (s'.how = GZIP ∧ s'.x.have = 0 ∧ InflateAtHead after s') ∨
@@ -1251,12 +1255,12 @@ theorem lookPost_of {H : Heap} {i : Nat} {t t' : GzState} {fs fs' : Fs} {r : Int
     (hr : r = 0 ∨ r = -1) (hk : FdsKept fs fs') (post : GzPost H i t [] fs' after GzInvUpToOutput)
     (hrec : after.gzstates i = some t') (hout : OutWindow t')
     (rf : ReadsFinite fs t.fd → ReadsFinite fs' t.fd) (rb : ReadsBounded fs t.fd → ReadsBounded fs' t.fd)
-    (keeps : FetchKeeps t t') (il : ReadsFinite fs t.fd → inputLeft fs' t' ≤ inputLeft fs t)
+    (keeps : FetchKeeps t t') (ml : MsgLit t') (il : ReadsFinite fs t.fd → inputLeft fs' t' ≤ inputLeft fs t)
     (er : t.err ≠ Z_STREAM_END → t'.err ≠ Z_STREAM_END) (sz : t'.size = 0 → t'.err ≠ Z_OK ∧ t'.err ≠ Z_BUF_ERROR)
     (res : r = 0 → (t'.how = LOOK ∧ t'.x.have = 0) ∨ (t'.how = GZIP ∧ t'.x.have = 0 ∧ InflateAtHead after t') ∨
         (t'.how = GZ_COPY ∧ t'.x.have ≠ 0)) :
     LookPost H i t fs r fs' after :=
-  ⟨hr, hk, post_out post (fun s' hs' => by rw [hrec] at hs'; cases hs'; exact hout), rf, rb, t', hrec, keeps, il,
+  ⟨hr, hk, post_out post (fun s' hs' => by rw [hrec] at hs'; cases hs'; exact hout), rf, rb, t', hrec, keeps, ml, il,
     er, sz, res⟩
 
 theorem AvailRec.fields {t t1 : GzState} (h : AvailRec t t1) :
@@ -1334,6 +1338,7 @@ structure LookPre (H : Heap) (i : Nat) (t : GzState) : Prop where
   size : t.size ≠ 0
   have0 : t.x.have = 0
   look : t.how = LOOK
+  msg : MsgLit t
 
 /-- The tail of a path through `gz_avail` and a final step: the post-condition from that of the final step. -/
 theorem lookPost_after_avail {H H1 Hf : Heap} {i : Nat} {t t1 tf : GzState} {fs fs1 : Fs} (P : LookPre H i t)
@@ -1342,6 +1347,7 @@ theorem lookPost_after_avail {H H1 Hf : Heap} {i : Nat} {t t1 tf : GzState} {fs 
     (bf1 : ReadsFinite fs t.fd → ReadsFinite fs1 t.fd ∧ inputLeft fs1 t1 ≤ inputLeft fs t)
     (bb1 : ReadsBounded fs t.fd → ReadsBounded fs1 t.fd) (be1 : t.err ≠ Z_STREAM_END → t1.err ≠ Z_STREAM_END)
     (post2 : GzPost H1 i t1 [] fs1 Hf GzInvUpToOutput) (htf : Hf.gzstates i = some tf) (hout : OutWindow tf)
+    (ml : MsgLit tf)
     (same : tf.mode = t1.mode ∧ tf.fd = t1.fd ∧ tf.skip = t1.skip ∧ tf.x.pos = t1.x.pos ∧ tf.size = t1.size ∧
       tf.out = t1.out ∧ tf.«in» = t1.«in» ∧ tf.err = t1.err)
     (hav : tf.strm.avail_in.toNat ≤ t1.strm.avail_in.toNat) {r : Int32} (hr : r = 0 ∨ r = -1)
@@ -1352,7 +1358,7 @@ theorem lookPost_after_avail {H H1 Hf : Heap} {i : Nat} {t t1 tf : GzState} {fs 
   obtain ⟨sm, sfd, ssk, spos, ssz, sout, sin, serr⟩ := same
   refine lookPost_of hr hk1 (post_trans post1 ht1 post2) htf hout (fun h => (bf1 h).1) bb1
     ⟨sm.trans fm, sfd.trans ffd, ssk.trans fsk, by rw [spos, fx], fun _ => ⟨ssz.trans fsz, sout.trans fout,
-      sin.trans fin⟩⟩ (fun h => Nat.le_trans (inputLeft_le sfd hav) (bf1 h).2) (by rw [serr]; exact be1) ?_ res
+      sin.trans fin⟩⟩ ml (fun h => Nat.le_trans (inputLeft_le sfd hav) (bf1 h).2) (by rw [serr]; exact be1) ?_ res
   intro hz
   exact absurd (by rw [← fsz, ← ssz]; exact hz) P.size
 
@@ -1374,12 +1380,17 @@ theorem lookAuto_run {H : Heap} {i : Nat} {t : GzState} (fs : Fs) (P : LookPre H
   have same1 : t1.mode = t1.mode ∧ t1.fd = t1.fd ∧ t1.skip = t1.skip ∧ t1.x.pos = t1.x.pos ∧ t1.size = t1.size ∧
       t1.out = t1.out ∧ t1.«in» = t1.«in» ∧ t1.err = t1.err := ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
   have out1 : OutWindow t1 := fun hh => absurd hx1 hh
+  have ml1 : MsgLit t1 := fun _ => by
+    have e := hrec1
+    simp only [AvailRec] at e
+    rw [e]
+    exact P.msg P.size
   unfold lookAuto
   simp only [g_bind_app, run1]
   by_cases e1 : r1 = -1
   · subst e1
     simp only [beq_self_eq_true, ite_true]
-    exact ⟨-1, fs1, H1, rfl, lookPost_after_avail P hk1 post1 ht1 hrec1 bf1 bb1 be1 refl1 ht1 out1 same1
+    exact ⟨-1, fs1, H1, rfl, lookPost_after_avail P hk1 post1 ht1 hrec1 bf1 bb1 be1 refl1 ht1 out1 ml1 same1
       (Nat.le_refl _) (Or.inr rfl) (fun e => absurd e (by decide))⟩
   have e0 : r1 = 0 := hr1.resolve_right e1
   subst e0
@@ -1390,7 +1401,7 @@ theorem lookAuto_run {H : Heap} {i : Nat} {t : GzState} (fs : Fs) (P : LookPre H
   simp only [show ((0 : Int32) == -1) = false from rfl, Bool.false_eq_true, ite_false, g_bind_app, hz1, hs1]
   by_cases c : (t1.strm.avail_in == 0 || (t1.again != 0 && t1.strm.avail_in < 4)) = true
   · rw [if_pos c]
-    exact ⟨0, fs1, H1, rfl, lookPost_after_avail P hk1 post1 ht1 hrec1 bf1 bb1 be1 refl1 ht1 out1 same1
+    exact ⟨0, fs1, H1, rfl, lookPost_after_avail P hk1 post1 ht1 hrec1 bf1 bb1 be1 refl1 ht1 out1 ml1 same1
       (Nat.le_refl _) (Or.inl rfl) (fun _ => Or.inl ⟨by rw [fhow]; exact P.look, hx1⟩)⟩
   rw [if_neg c]
   have hav : t1.strm.avail_in ≠ 0 := by
@@ -1411,7 +1422,7 @@ theorem lookAuto_run {H : Heap} {i : Nat} {t : GzState} (fs : Fs) (P : LookPre H
   rw [hg]
   cases g with
   | true =>
-    obtain ⟨Hf, tf, run2, htf, post2, eqf, avf, -, head⟩ :=
+    obtain ⟨Hf, tf, run2, htf, post2, eqf, avf, -, head, hmsg⟩ :=
       lookGzip_run fs1 hu1 hm1 hsz1 post1.1 (fun _ => 0) (fun _ => Or.inl rfl)
     refine ⟨0, fs1, Hf, by unfold lookFinal; exact run2, ?_⟩
     have same : tf.mode = t1.mode ∧ tf.fd = t1.fd ∧ tf.skip = t1.skip ∧ tf.x.pos = t1.x.pos ∧ tf.size = t1.size ∧
@@ -1419,12 +1430,12 @@ theorem lookAuto_run {H : Heap} {i : Nat} {t : GzState} (fs : Fs) (P : LookPre H
       rw [eqf]; exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
     have hxf : tf.x.have = 0 := by rw [eqf]; exact hx1
     have hhow : tf.how = GZIP := by rw [eqf]
-    exact lookPost_after_avail P hk1 post1 ht1 hrec1 bf1 bb1 be1 post2 htf (fun hh => absurd hxf hh) same
+    exact lookPost_after_avail P hk1 post1 ht1 hrec1 bf1 bb1 be1 post2 htf (fun hh => absurd hxf hh) (fun _ => Or.inl hmsg) same
       (by rw [avf]; exact Nat.le_refl _) (Or.inl rfl) (fun _ => Or.inr (Or.inl ⟨hhow, hxf, head⟩))
   | false =>
     obtain ⟨Hf, run2, htf, post2⟩ := lookCopy_run fs1 hu1 hm1 hsz1 post1.1 hav (by rw [fdir]; exact hd)
     refine ⟨0, fs1, Hf, by unfold lookFinal; exact run2, ?_⟩
-    refine lookPost_after_avail P hk1 post1 ht1 hrec1 bf1 bb1 be1 post2 htf ?_
+    refine lookPost_after_avail P hk1 post1 ht1 hrec1 bf1 bb1 be1 post2 htf ?_ (fun _ => ml1 hsz1)
       ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩ (by simp) (Or.inl rfl) (fun _ => Or.inr (Or.inr ⟨rfl, hav⟩))
     intro _
     refine ⟨0, look_padv_zero t1.out |>.symm, ?_⟩
@@ -1456,13 +1467,13 @@ theorem lookMain_run {H : Heap} {i : Nat} {t : GzState} (fs : Fs) (P : LookPre H
   rotate_left
   · rw [if_neg c2]
     -- straight to a gzip member
-    obtain ⟨Hf, tf, run2, htf, post2, eqf, avf, -, head⟩ :=
+    obtain ⟨Hf, tf, run2, htf, post2, eqf, avf, -, head, hmsg⟩ :=
       lookGzip_run fs P.hu P.mode P.size hfs _ hf
     refine ⟨0, fs, Hf, run2, ?_⟩
     have hxf : tf.x.have = 0 := by rw [eqf]; exact P.have0
     have keeps : FetchKeeps t tf := by
       rw [eqf]; exact ⟨rfl, rfl, rfl, rfl, fun _ => ⟨rfl, rfl, rfl⟩⟩
-    refine lookPost_of (Or.inl rfl) (fun _ => Iff.rfl) post2 htf (fun hh => absurd hxf hh) id id keeps
+    refine lookPost_of (Or.inl rfl) (fun _ => Iff.rfl) post2 htf (fun hh => absurd hxf hh) id id keeps (fun _ => Or.inl hmsg)
       (fun _ => inputLeft_le (by rw [eqf]) (by rw [avf]; exact Nat.le_refl _)) (by rw [eqf]; exact id) ?_
       (fun _ => Or.inr (Or.inl ⟨by rw [eqf], hxf, head⟩))
     intro hz
@@ -1482,11 +1493,16 @@ theorem lookMain_run {H : Heap} {i : Nat} {t : GzState} (fs : Fs) (P : LookPre H
   have same1 : t1.mode = t1.mode ∧ t1.fd = t1.fd ∧ t1.skip = t1.skip ∧ t1.x.pos = t1.x.pos ∧ t1.size = t1.size ∧
       t1.out = t1.out ∧ t1.«in» = t1.«in» ∧ t1.err = t1.err := ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
   have out1 : OutWindow t1 := fun hh => absurd hx1 hh
+  have ml1 : MsgLit t1 := fun _ => by
+    have e := hrec1
+    simp only [AvailRec] at e
+    rw [e]
+    exact P.msg P.size
   simp only [g_bind_app, run1]
   by_cases e1 : r1 = -1
   · subst e1
     simp only [beq_self_eq_true, ite_true]
-    exact ⟨-1, fs1, H1, rfl, lookPost_after_avail P hk1 post1 ht1 hrec1 bf1 bb1 be1 refl1 ht1 out1 same1
+    exact ⟨-1, fs1, H1, rfl, lookPost_after_avail P hk1 post1 ht1 hrec1 bf1 bb1 be1 refl1 ht1 out1 ml1 same1
       (Nat.le_refl _) (Or.inr rfl) (fun e => absurd e (by decide))⟩
   have e0 : r1 = 0 := hr1.resolve_right e1
   subst e0
@@ -1495,16 +1511,16 @@ theorem lookMain_run {H : Heap} {i : Nat} {t : GzState} (fs : Fs) (P : LookPre H
   simp only [show ((0 : Int32) == -1) = false from rfl, Bool.false_eq_true, ite_false, g_bind_app, hz1]
   by_cases c3 : (t1.strm.avail_in == 0) = true
   · rw [if_pos c3]
-    exact ⟨0, fs1, H1, rfl, lookPost_after_avail P hk1 post1 ht1 hrec1 bf1 bb1 be1 refl1 ht1 out1 same1
+    exact ⟨0, fs1, H1, rfl, lookPost_after_avail P hk1 post1 ht1 hrec1 bf1 bb1 be1 refl1 ht1 out1 ml1 same1
       (Nat.le_refl _) (Or.inl rfl) (fun _ => Or.inl ⟨by rw [fhow]; exact P.look, hx1⟩)⟩
   rw [if_neg c3]
-  obtain ⟨Hf, tf, run2, htf, post2, eqf, avf, -, head⟩ := lookGzip_run fs1 hu1 hm1 hsz1 post1.1 _ hf
+  obtain ⟨Hf, tf, run2, htf, post2, eqf, avf, -, head, hmsg⟩ := lookGzip_run fs1 hu1 hm1 hsz1 post1.1 _ hf
   refine ⟨0, fs1, Hf, run2, ?_⟩
   have same : tf.mode = t1.mode ∧ tf.fd = t1.fd ∧ tf.skip = t1.skip ∧ tf.x.pos = t1.x.pos ∧ tf.size = t1.size ∧
       tf.out = t1.out ∧ tf.«in» = t1.«in» ∧ tf.err = t1.err := by
     rw [eqf]; exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
   have hxf : tf.x.have = 0 := by rw [eqf]; exact hx1
-  exact lookPost_after_avail P hk1 post1 ht1 hrec1 bf1 bb1 be1 post2 htf (fun hh => absurd hxf hh) same
+  exact lookPost_after_avail P hk1 post1 ht1 hrec1 bf1 bb1 be1 post2 htf (fun hh => absurd hxf hh) (fun _ => Or.inl hmsg) same
     (by rw [avf]; exact Nat.le_refl _) (Or.inl rfl) (fun _ => Or.inr (Or.inl ⟨by rw [eqf], hxf, head⟩))
 
 /-! ## The allocation -/
@@ -1617,12 +1633,15 @@ theorem fail_err {H Hq : Heap} {i : Nat} {s sq : GzState} (fs : Fs) (hfs : FileS
       rw [g_lift_app, run']
     simp only [g_bind_app, r1, r2, g_pure_app]
   have hmem : s'.err = Z_MEM_ERROR := herr.elim id id
-  refine lookPost_of (Or.inr rfl) (fun _ => Iff.rfl) (post_trans post0 hq post1) hs' ?_ id id ?_ ?_ ?_ ?_
+  refine lookPost_of (Or.inr rfl) (fun _ => Iff.rfl) (post_trans post0 hq post1) hs' ?_ id id ?_ ?_ ?_ ?_ ?_
     (fun e => absurd e (by decide))
   · intro hh
     exfalso; apply hh
     rw [shape]; exact hx0
   · rw [shape]; exact ⟨rfl, rfl, rfl, rfl, fun h => absurd hsz h⟩
+  · intro hz
+    exfalso; apply hz
+    rw [shape]
   · intro _
     exact inputLeft_le (by rw [shape]) (by rw [shape]; show zq.avail_in.toNat ≤ _; rw [hav]; exact Nat.zero_le _)
   · intro _; rw [hmem]; decide
@@ -1958,7 +1977,7 @@ theorem init_success {H H5 : Heap} {i : Nat} {s : GzState} (fs : Fs) (hfs : File
     · intro b
       simp only [not_false_eq_true, and_true]
       exact live6 b
-  refine ⟨H6, ?_, s6, hs6, ⟨hu6, hm, hw0, hx0, hlook⟩, post, rfl, rfl, rfl, rfl, rfl, rfl⟩
+  refine ⟨H6, ?_, s6, hs6, ⟨hu6, hm, hw0, hx0, hlook, fun _ => Or.inl rfl⟩, post, rfl, rfl, rfl, rfl, rfl, rfl⟩
   unfold C.run at run6
   exact run6
 
@@ -1969,9 +1988,9 @@ theorem lookPost_transfer {H H6 : Heap} {i : Nat} {s s6 : GzState} {fs fs' : Fs}
       s6.strm.avail_in = s.strm.avail_in ∧ s6.err = s.err)
     (L : LookPost H6 i s6 fs r fs' after) : LookPost H i s fs r fs' after := by
   obtain ⟨m, fd, sk, x, av, er⟩ := same
-  obtain ⟨hr, hk, post, rf, rb, s', hs', ⟨k1, k2, k3, k4, -⟩, il, er', sz, res⟩ := L
+  obtain ⟨hr, hk, post, rf, rb, s', hs', ⟨k1, k2, k3, k4, -⟩, ml, il, er', sz, res⟩ := L
   refine ⟨hr, hk, post_trans p0 hs6 post, by rw [← fd]; exact rf, by rw [← fd]; exact rb, s', hs',
-    ⟨k1.trans m, k2.trans fd, k3.trans sk, by rw [k4, x], fun h => absurd hsz h⟩, ?_, by rw [← er]; exact er', sz,
+    ⟨k1.trans m, k2.trans fd, k3.trans sk, by rw [k4, x], fun h => absurd hsz h⟩, ml, ?_, by rw [← er]; exact er', sz,
     res⟩
   intro h
   have e : inputLeft fs s6 = inputLeft fs s := by unfold inputLeft; rw [fd, av]
@@ -2251,7 +2270,7 @@ open Look in
 
 /-- **`gz_look(state)` is safe** (`GzLookSpec`). -/
 theorem gz_look_safe : GzLookSpec := by
-  intro i h fs s hu hx hfs hm hlook
+  intro i h fs s hu hx hfs hm hlook hml
   have key : ∃ r fs' after, Zlib.Gzread.gz_look (gzSt i) fs h = .ok ((r, fs'), after) ∧
       LookPost h i s fs r fs' after := by
     rw [gz_look_source]
@@ -2262,7 +2281,7 @@ theorem gz_look_safe : GzLookSpec := by
     · rw [if_pos (by simp [hz])]
       exact lookAlloc_run fs hu hm hz hx hfs
     · rw [if_neg (by simpa using hz)]
-      exact lookMain_run fs ⟨hu, hm, hz, hx, hlook⟩ hfs
+      exact lookMain_run fs ⟨hu, hm, hz, hx, hlook, hml⟩ hfs
   obtain ⟨r, fs', after, run, post⟩ := key
   refine ⟨fun e he => ?_, fun _ => ⟨r, fs', after, run⟩, fun r' fs3 after' he => ?_⟩
   · rw [run] at he; cases he
