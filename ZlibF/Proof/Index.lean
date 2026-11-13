@@ -1673,6 +1673,7 @@ import ZlibF.Proof.«gz.inv-frame»
 import ZlibF.Proof.«gz.record-free»
 import ZlibF.Proof.«gz.inv-clearerr»
 import ZlibF.Proof.«gz.inv-reset»
+import ZlibF.Proof.«gzwrite.c.init»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
