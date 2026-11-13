@@ -5,13 +5,13 @@ import ZlibF.Spec.PlatformMemory
 # gz file interface, safety: the representation invariant `GzInv` and the shape of a safe call
 
 The shared definitions of the gz safety proof (skeleton branch `skeleton/gz`, file `gz.skeleton-model.lean`),
-without the proposed OS-call oracle, which is still in review:
+over the OS-call oracle of `ZlibF/Zlib/gzfs.lean`:
 
 1. `GzInv` (`GzCommon`, `GzReadInv`, `GzWriteInv`): the representation invariant of an open handle, with batch
    C's W1–W10 folded into the write part. Other modules use its interface lemmas, not the definition.
 2. `GzCallSafe`: safety of one public call on a handle in `GzInv`, for every world.
-3. `ReadsFinite`: the M7 premise of the termination half of the reading calls. It is `True` over today's
-   deterministic `Fs`; it becomes a bound read from the oracle fields of `Fs` once the oracle lands.
+3. `ReadsFinite`: the M7 premise of the termination half of the reading calls: the descriptor is non-negative and
+   has a finite read budget in the OS-call oracle (`Fs.readBudget`).
 
 Corrections against the skeleton at `7d896179` (strengthenings):
 - `GzCommon.next` also excludes the message block (`blkOf s.msg ≠ some b`), as `NextOk` does. Without it `x.next`
@@ -42,12 +42,11 @@ def FdOpen (fs : Fs) (j : Nat) : Prop := ∃ f, fs.fds[j]? = some (some f)
 
 end GzOracle
 
-/-- **M7, the finiteness premise, as the goal states it today.** On today's deterministic `Fs` every read
-source is a finite array that does not grow during one call, so the premise holds of every world: it is `True`.
-After the oracle change this definition becomes `fs.readBudget fd.toInt.toNat ≠ none` (`GzOracle.ReadsFiniteO`
-read from the fields of `Fs`); only this definition changes. It is a premise of the termination half only, and
-only for the calls of `NeedsReadBound`. -/
-def ReadsFinite (_fs : Fs) (_fd : Int32) : Prop := True
+/-- **M7, the finiteness premise.** The handle's descriptor is non-negative and has a finite read budget, so every
+later read is cut to a bound. A premise of the termination half only, and only for the calls of `NeedsReadBound`;
+`docs/deviations.md`, "Gz reading termination". A negative descriptor is unbudgeted (`readCap` does not cut its
+reads), hence the first conjunct. -/
+def ReadsFinite (fs : Fs) (fd : Int32) : Prop := 0 ≤ fd.toInt ∧ fs.readBudget fd.toInt.toNat ≠ none
 
 /-- The calls whose termination needs M7: the loops of `gz_fetch` (over empty gzip members), `gz_skip` and
 `gz_read` read until the input ends. `gzread`, `gzfread`, `gzgetc`, `gzgetc_`, `gzgets` reach them, `gzungetc`
