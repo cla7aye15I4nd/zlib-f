@@ -1,4 +1,4 @@
-<!-- source-sha256: 853aa74d41c58086e037386ec7d52993b8ed579fa2e0dbc97503353def300baf -->
+<!-- source-sha256: 1b01e0fa16dbe122373cb707eaa5a579f606898e15b3138d1ef3400e07620523 -->
 # 直接读取之后 x.next 留在调用者的缓冲区中
 
 状态：按 C 标准的字面规定是未定义的。没有任何 sanitizer 报告它，也没有观察到错误行为。验证对象中由本地补丁
@@ -29,7 +29,7 @@ gzseek(f, 1, SEEK_CUR);                  /* 对悬空指针执行 x.next += 0 */
 
 ## 证据
 
-强度：仅按 C 标准的字面规定。没有 sanitizer 报告它：没有访问，`p + 0` 也不溢出。Lean 模型会报告它：在模型中，对指向已释放块的指针做运算是故障，定理 `gzseek64_dangling_next_ub`（`ZlibF/Proof/gzlib.c.seek.lean`）证明了不含本补丁的 `gzseek64` 翻译会到达它。复现使用 [../gz-reset-next-uninitialised/probe.h](../gz-reset-next-uninitialised/probe.h) 中的探针：
+强度：仅按 C 标准的字面规定。没有 sanitizer 报告它：没有访问，`p + 0` 也不溢出。Lean 模型会报告它：在模型中，对指向已释放块的指针做运算是故障。在翻译跟上本补丁之前，定理 `gzseek64_dangling_next_ub` 证明了 `gzseek64` 的翻译会到达它；打补丁后，`gzseek64_dangling_next_ok`（`ZlibF/Proof/gzlib.c.seek.lean`）证明在没有缓冲数据时向前定位不会故障，无论 `x.next` 持有什么。复现使用 [../gz-reset-next-uninitialised/probe.h](../gz-reset-next-uninitialised/probe.h) 中的探针：
 
 ```
 x.next + 0 at gzread.c:313, x.next = inside the freed caller buffer

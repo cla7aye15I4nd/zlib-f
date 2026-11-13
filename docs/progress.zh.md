@@ -1,4 +1,4 @@
-<!-- source-sha256: 821a307bf3bf260ce170e7a4fb0095aed6c7ae16ad5bb5005401606353b49733 -->
+<!-- source-sha256: a9dbc764e0a0d6e7a03bda4f51ba0306e7cf3f0db7604d197ac92d8260dc2df1 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1951,7 +1951,7 @@ deflate 安全性目标尚未完成的工作（2026-11-12）。调用之间的�
 - R-3，[x.next 从未写入](findings/gz-reset-next-uninitialised/README.md)：`gzopen` 之后立即调用的 `gzseek` 和 `gzdirect` 把从未写入的 `x.next` 前进零。按 C 标准的字面规定未定义；没有 sanitizer 报告。补丁 0005。
 - R-4，[直接读取之后 x.next 悬空](findings/gz-next-dangling-after-direct-read/README.md)：大块 `gzread` 读入调用者随后释放的缓冲区之后，`gzseek` 和 `gzdirect` 在已释放的缓冲区内把 `x.next` 前进零。按 C 标准的字面规定未定义；没有 sanitizer 报告。补丁 0005。
 
-只有当翻译提交合入之后，`gzread.c`、`gzwrite.c` 和 `gzlib.c` 的翻译才会跟上这些补丁。
+`gzread.c`、`gzwrite.c` 和 `gzlib.c` 的翻译跟上了两个补丁。只有 0005 有差分测试行（直接读入已释放的缓冲区，然后 `gzdirect` 和 `gzseek`）；0004 需要设备，文件模型无法表达。`tests/audit/theorems.txt` 仍列出已不存在的 `seekTail_dangling_ub` 和 `gzseek64_dangling_next_ub`；删除它们需由人来做。
 
 ### 翻译审查
 

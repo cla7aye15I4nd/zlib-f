@@ -1,4 +1,4 @@
-<!-- source-sha256: e4cb5dd17f087b4a79fbd9f9d15165a7dbbd87a91517904d8210b3865f8ff172 -->
+<!-- source-sha256: 20cc30678bed1e0f187cd30d7c0cd401ff64a1706c90a93763c73222e6ab1379 -->
 # Gzip 文件：源代码流程、所有权与清理
 
 源文件为 `gzlib.c`、`gzread.c`、`gzwrite.c`、`gzclose.c` 和 `gzguts.h`。[API](../spec/api/gz-file.md)定义调用者可见行为，独立的[外部 I/O 模型](../design/external-io.md)定义已表示的文件与格式化操作。下文沿源代码展开执行与调用历史的证明义务；[进度](../progress.md)负责状态与剩余工作。
@@ -80,14 +80,16 @@ flowchart LR
 
 ## 历史报告与当前行为
 
-这些报告仍可反驳拟议不变量。R-1 和 R-2 已在 sanitizer 下复现，其上游修复作为补丁 0002 和 0003 应用；其余各行没有重新执行，其拟议修复也未应用。跟踪状态属于[进度](../progress.md)，已应用补丁清单仍具有权威性。
+这些报告仍可反驳拟议不变量。R-1 和 R-2 已在 sanitizer 下复现，其上游修复作为补丁 0002 和 0003 应用。F-1 和 W7 已在 sanitizer 下复现，R-3 和 R-4 按 C 标准的字面规定未定义；它们的修复是本地补丁 0004 和 0005，经所有者批准，尚未提交上游。跟踪状态属于[进度](../progress.md)，已应用补丁清单仍具有权威性。
 
 | 情形 | 源行为与后果 | 历史修复或证据 |
 | --- | --- | --- |
 | R-1：负定位位置 | 初始 `gzungetc` 之后，未打补丁的 C 在 `GZ_OFF_MAX - pos` 或后续位置差处发生有符号 64 位算术溢出。翻译遵循打补丁后的 C；`gzseek64_head_any` 证明其检查从负位置出发不会故障。 | 已复现：[gzseek-pushback-overflow](../../tests/regression/gzseek-pushback-overflow/README.md)。上游 [PR 1361](https://github.com/madler/zlib/pull/1361)，作为补丁 0002 应用：第一项检查只在 `pos` 为正时执行，从负 `x.pos` 出发位移不可表示的目标被拒绝。维护者尚未确认。 |
 | R-2：部分读取后错误 | 在未打补丁的 `gz_fetch` COPY 分支中，`gz_load` 可能在 `x.next = out` 执行前出错，留下非零 `x.have`；`gz_read` 随后从旧指针复制。翻译遵循打补丁后的 C。文件模型不能在普通文件上产生这种部分成功再失败序列。 | 已复现：[gzread-transparent-stale-next](../../tests/regression/gzread-transparent-stale-next/README.md)。上游 [PR 1363](https://github.com/madler/zlib/pull/1363)，作为补丁 0003 应用：指针赋值移到加载之前。维护者尚未确认。 |
-| R-3：未写入指针 | `gz_reset` 未写 `x.next`；定位或跳过代码可能对它加零。新鲜空指针使模型隐藏了缺失写入。 | 历史 `ub.patch` 建议 `x.next = NULL`，但并未包含。模型运行通过不能解决 C 初始化问题。 |
-| R-4：调用者缓冲区生命周期 | 直接解压使 `x.next` 指向调用者缓冲区。`gz_read` 清除 `x.have` 但保留指针。调用者释放缓冲区后，后续零偏移指针算术可能故障。 | 源层面的疑虑及重设为空的提议；此处未建立复现，也未应用补丁。嵌入 `strm` 的输入／输出字段也可能保留调用者指针，因此须区分仅存储指针与之后使用它。 |
+| R-3：未写入指针 | `gz_reset` 未写 `x.next`；在补丁 0005 之前的 C 中，`gzseek64` 和 `gz_skip_have` 会对它加零。新鲜空指针使模型隐藏了缺失写入。 | [发现](../findings/gz-reset-next-uninitialised/README.md)，用探针显示；没有 sanitizer 报告它。本地补丁 0005 只在前进量不为零时移动 `x.next`，而只有这种情况下它已被写入。初始化为 `NULL` 不行：`NULL + 0` 在 C 中未定义。 |
+| R-4：调用者缓冲区生命周期 | 直接解压使 `x.next` 指向调用者缓冲区。`gz_read` 清除 `x.have` 但保留指针。调用者释放缓冲区后，补丁 0005 之前的 C 在 `gzseek64` 和 `gz_skip_have` 中对它加零，这在模型中是故障。 | [发现](../findings/gz-next-dangling-after-direct-read/README.md)，用探针显示；没有 sanitizer 报告它。本地补丁 0005；`gzseek64_dangling_next_ok` 表明打补丁后的定位不使用该指针。嵌入 `strm` 的输入／输出字段也可能保留调用者指针，因此须区分仅存储指针与之后使用它。 |
+| F-1：读取位置溢出 | 在 `lseek` 成功却不移动的设备（Linux 的 `/dev/zero`）上透明定位，把 `x.pos` 设为 `GZ_OFF_MAX`；下一次读取使它溢出。文件模型无法表达这样的设备。 | 已复现：[gzread-pos-overflow](../../tests/regression/gzread-pos-overflow/README.md)。本地补丁 0004 使每个调用返回时 `x.pos + x.have <= GZ_OFF_MAX`。 |
+| W7：写入位置溢出 | `/dev/null` 上的透明写入者向前定位到接近 `GZ_OFF_MAX` 再写入，在 `gz_write` 或 `gzputc` 中使 `x.pos` 溢出。 | 已复现：[gzwrite-pos-overflow](../../tests/regression/gzwrite-pos-overflow/README.md)。本地补丁 0004 拒绝会超过 `GZ_OFF_MAX` 的写入。 |
 
 另一项历史实验报告：输出缓冲区接近满时，`gzsetparams` 返回成功，却没有应用级别 0。实验在级别 6 写入长度变化的伪随机前缀，请求级别 0，再写 200,000 个零字节。有些结果文件仍远小于第二段直接存储的大小。拟议机制是忽略了 `deflateParams` 的 `Z_BUF_ERROR`；数据仍有效，影响的是压缩参数。源代码确实忽略该结果，但本工作区未独立复现该实验。它仍是未确认报告，不是新发现或补丁理由。
 

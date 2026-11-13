@@ -40,8 +40,10 @@ gzseek(f, 1, SEEK_CUR);                  /* x.next += 0 on the dangling pointer 
 
 Strength: by the letter of C only. No sanitizer reports it: there is no access, and `p + 0` does
 not overflow. The Lean model does report it: there the arithmetic on a pointer into a freed block
-is a fault, and the theorem `gzseek64_dangling_next_ub` (`ZlibF/Proof/gzlib.c.seek.lean`) proves
-that the translation of `gzseek64` without this patch reaches it. The reproduction uses the probe of
+is a fault. Before the translation followed this patch, the theorem `gzseek64_dangling_next_ub`
+proved that the translation of `gzseek64` reaches it; with the patch, `gzseek64_dangling_next_ok`
+(`ZlibF/Proof/gzlib.c.seek.lean`) proves that a forward seek with nothing buffered does not fault,
+whatever `x.next` holds. The reproduction uses the probe of
 [../gz-reset-next-uninitialised/probe.h](../gz-reset-next-uninitialised/probe.h):
 
 ```

@@ -102,9 +102,10 @@ def seekTail (file : GzFilePtr) (s : GzState) (pos : Int64) : G Int64 := do
     let n : UInt32 ← if (← GT_OFF s.x.«have») || u32ToI64 s.x.«have» > offset then pure offset.toUInt64.toUInt32
       else pure s.x.«have»
     updX state fun x => { x with «have» := x.«have» - n }
-    let s ← ldS state
-    let nx ← s.x.next.add n.toNat
-    updX state fun x => { x with next := nx }
+    if n != 0 then
+      let s ← ldS state
+      let nx ← s.x.next.add n.toNat
+      updX state fun x => { x with next := nx }
     let s ← ldS state
     let np ← i64add s.x.pos (u32ToI64 n)
     updX state fun x => { x with pos := np }
@@ -428,6 +429,8 @@ theorem i64_toU32_toNat (x : Int64) (hx : 0 ≤ x.toInt) : x.toUInt64.toUInt32.t
   have h0 : (0 : Int64) ≤ x := by rw [Int64.le_iff_toInt_le]; simpa using hx
   rw [UInt64.toNat_toUInt32, Int64.toNat_toUInt64_of_le h0, Int64.toNat_toInt]
 
+theorem padv_zero (p : BPtr) : padv p 0 = p := by cases p <;> rfl
+
 /-- `x.next + n` for `n ≤ x.have`: the pointer advanced by `n`. -/
 theorem next_add_run {h : Heap} {s : GzState} (hN : NextOk h s) {n : Nat} (hn : n ≤ s.x.«have».toNat) (gs : Nat) (s' : GzState) :
     Ptr.add s.x.next (n : Int) (setS h gs s') = .ok (padv s.x.next n, setS h gs s') := by
@@ -496,9 +499,15 @@ theorem seekTail_fwd {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (h
   ggsimp [hs, hm, hhow, fa, c6, GT_OFF_run]
   by_cases hc : q2 < u32ToI64 s.x.«have»
   · rw [ite_eq_left hc, ← hA hc]
-    ggsimp [hs, fn, fpos, fsk, skipFwd, ← hnU]
+    by_cases hz : nU = 0
+    · subst hz
+      ggsimp [hs, fpos, fsk, skipFwd, ← hnU, padv_zero]
+    · ggsimp [hs, hz, fn, fpos, fsk, skipFwd, ← hnU]
   · rw [ite_eq_right hc, ← hB hc]
-    ggsimp [hs, fn, fpos, fsk, skipFwd, ← hnU]
+    by_cases hz : nU = 0
+    · subst hz
+      ggsimp [hs, fpos, fsk, skipFwd, ← hnU, padv_zero]
+    · ggsimp [hs, hz, fn, fpos, fsk, skipFwd, ← hnU]
 
 
 theorem freeStr_get_other (h : Heap) (p : BPtr) (r : BRef) (hr : ∀ b, r ≠ .blk b) :
@@ -538,8 +547,6 @@ theorem next_add_run_reset {h : Heap} {s : GzState} (hN : NextOk h s) {n : Nat} 
       | st_length_code => rw [freeStr_get_other _ _ _ (by intro b; simp)]; exact hg
     exact Ptr.add_nat_ok (R := BRef) (h := setS (freeStr h s.msg) gs s') hg' (n := n) (off := off) (by omega)
 
-
-theorem padv_zero (p : BPtr) : padv p 0 = p := by cases p <;> rfl
 
 /-- The part of `gzseek64` after the checks, for a reader that is not in the raw area, with the target before `x.pos` and `NextOk`: `gzrewind`, which fails with -1 and no change of the heap if `lseek` fails, otherwise the state is reset and the whole distance becomes `skip`; no fault. -/
 theorem seekTail_back {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (hm : s.mode = GZ_READ)
@@ -948,50 +955,66 @@ theorem gzseek64_set_negpos_refuse {h : Heap} {gs : Nat} {s : GzState} (hG : GzG
   omega
 
 
-/-- **The dangling `x.next` (R-4).** A reader that is not in the raw area executes `x.next += n` on every forward seek;
-when `x.next` points to an object that no longer exists (the caller's buffer after a direct decompression, freed by the
-caller), the translation faults, although `n` is 0 and nothing is read through the pointer. Every other fault of the
-translation is excluded by the hypotheses. -/
-theorem seekTail_dangling_ub {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (hm : s.mode = GZ_READ)
+/-- **The dangling `x.next` (R-4, patch 0005).** A reader outside the raw area with nothing buffered (`x.have = 0`),
+whose `x.next` may point to an object that no longer exists (the caller's buffer after a direct decompression, freed by
+the caller) or may never have been written (R-3): a forward seek does not fault. Without patch 0005 the translation
+computed `x.next + 0` here and faulted on a dangling `x.next`. No hypothesis on `x.next`. -/
+theorem seekTail_fwd_empty {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (hm : s.mode = GZ_READ)
     (hhow : s.how ≠ GZ_COPY) (hnn : 0 ≤ s.x.pos.toInt) {t : Int} (ht : SeekOk t) (hfw : s.x.pos.toInt ≤ t)
-    {r : BRef} {off : Nat} (hr : s.x.next = .ref r off) (hd : Space.get h r = none) (fs : Fs) :
-    seekTail (hnd gs) s (Int64.ofInt t) fs h = .error (.ub "arithmetic on a dangling pointer") := by
+    (h0 : s.x.«have» = 0) (fs : Fs) :
+    seekTail (hnd gs) s (Int64.ofInt t) fs h = Except.ok ((Int64.ofInt t, fs), setS h gs (skipFwd s t)) := by
   have hs := hG.hs
   have hOM := OffMax_val
   have ht1 := ht.1
   have ht2 := ht.2
-  have hqi : (Int64.ofInt t).toInt = t := i64_toInt_ofInt (by omega) (by omega)
+  have hhv := s.x.«have».toNat_lt
+  have hlt := s.x.pos.toInt_lt
+  have hqi : (Int64.ofInt t).toInt = t := i64_toInt_ofInt (by have := ht.1; omega) (by have := ht.2; omega)
   obtain ⟨q, hqd⟩ : ∃ q : Int64, q = Int64.ofInt t := ⟨_, rfl⟩
   have hqi' : q.toInt = t := by rw [hqd]; exact hqi
   obtain ⟨q2, hq2d⟩ : ∃ q2 : Int64, q2 = Int64.ofInt (t - s.x.pos.toInt) := ⟨_, rfl⟩
-  have hlt := s.x.pos.toInt_lt
   have hq2 : q2.toInt = t - s.x.pos.toInt := by
-    rw [hq2d]; exact i64_toInt_ofInt (by omega) (by omega)
+    rw [hq2d]; exact i64_toInt_ofInt (by have := ht.1; omega) (by have := ht.2; omega)
   have fa : ∀ h', i64sub q s.x.pos h' = .ok (q2, h') := fun h' => by
-    have := i64sub_run q s.x.pos (by rw [hqi']; omega) (by rw [hqi']; omega) h'
+    have := i64sub_run q s.x.pos (by rw [hqi']; have := ht.1; omega) (by rw [hqi']; have := ht.2; omega) h'
     rw [hqi', ← hq2d] at this; exact this
   have c6 : ¬ (q < s.x.pos) := by rw [i64_lt_iff, hqi']; omega
-  have fn : ∀ (k : Int) (z : GzState), Ptr.add s.x.next k (setS h gs z) = .error (.ub "arithmetic on a dangling pointer") := by
-    intro k z
-    rw [hr]
-    have : Space.get (setS h gs z) r = none := by rw [space_get_setS]; exact hd
-    simp [Ptr.add, this]
+  have c : q2 < u32ToI64 s.x.«have» ↔ t - s.x.pos.toInt < s.x.«have».toNat := by
+    rw [i64_lt_iff, hq2, u32ToI64_toInt]
+  have hc : ¬ q2 < u32ToI64 s.x.«have» := by rw [c, h0]; simp; omega
+  have hnU : s.x.«have».toNat = fwdN s (t - s.x.pos.toInt) := by
+    unfold fwdN; rw [ite_eq_right (by rw [h0]; simp; omega)]
+  have fpos : ∀ h', i64add s.x.pos (u32ToI64 s.x.«have») h' =
+      .ok (Int64.ofInt (s.x.pos.toInt + s.x.«have».toNat), h') := fun h' => by
+    have := i64add_run s.x.pos (u32ToI64 s.x.«have») (by rw [u32ToI64_toInt]; omega)
+      (by rw [u32ToI64_toInt, h0]; simp; omega) h'
+    rw [u32ToI64_toInt] at this; exact this
+  have fsk : ∀ h', i64sub q2 (u32ToI64 s.x.«have») h' =
+      .ok (Int64.ofInt ((t - s.x.pos.toInt) - s.x.«have».toNat), h') := fun h' => by
+    have := i64sub_run q2 (u32ToI64 s.x.«have») (by rw [hq2, u32ToI64_toInt, h0]; simp; omega)
+      (by rw [hq2, u32ToI64_toInt, h0]; simp; omega) h'
+    rw [hq2, u32ToI64_toInt] at this; exact this
+  obtain ⟨nU, hnUd⟩ : ∃ nU : UInt32, nU = s.x.«have» := ⟨_, rfl⟩
+  rw [← hnUd] at hc hnU fpos fsk
+  have hz : nU = 0 := by rw [hnUd, h0]
   rw [← hqd]
   unfold seekTail
-  ggsimp [hs, hm, hhow, fa, c6, GT_OFF_run, fn]
-  by_cases hc : q2 < u32ToI64 s.x.«have»
-  · ggsimp [hs, hc, fn]
-  · ggsimp [hs, hc, fn]
+  ggsimp [hs, hm, hhow, fa, c6, GT_OFF_run]
+  rw [← hnUd, ite_eq_right hc]
+  subst hz
+  ggsimp [hs, fpos, fsk, skipFwd, ← hnU, padv_zero]
 
-
-/-- The dangling `x.next` (the borrowed seek-pointer report in `docs/findings.md`): a forward seek of a reader outside the raw area executes `x.next += n` on a pointer to an object that no longer exists: `Fault.ub`, although nothing is read through it. -/
-theorem gzseek64_dangling_next_ub {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (hP : PosInv s)
+/-- `gzseek64` forward on a reader outside the raw area with nothing buffered: no fault, whatever `x.next` holds
+(dangling after a direct read and a `free` by the caller, R-4, or never written, R-3). With patch 0005; before it,
+the translation faulted on a dangling `x.next`. -/
+theorem gzseek64_dangling_next_ok {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (hP : PosInv s)
     (hnn : 0 ≤ s.x.pos.toInt) (he : s.err = Z_OK ∨ s.err = Z_BUF_ERROR) {whence : Int32}
     (hw : whence = SEEK_SET ∨ whence = SEEK_CUR) (hm : s.mode = GZ_READ) (hhow : s.how ≠ GZ_COPY)
     (offset : Int64) (fs : Fs) (ht : SeekOk (seekT s offset whence)) (hfw : s.x.pos.toInt ≤ seekT s offset whence)
-    {r : BRef} {off : Nat} (hr : s.x.next = .ref r off) (hd : Space.get h r = none) :
-    gzseek64 (hnd gs) offset whence fs h = .error (.ub "arithmetic on a dangling pointer") := by
-  rw [gzseek64_head hG hP hnn he hw offset fs, ite_eq_left ht, seekTail_dangling_ub hG hm hhow hnn ht hfw hr hd fs]
+    (h0 : s.x.«have» = 0) :
+    gzseek64 (hnd gs) offset whence fs h =
+      .ok ((Int64.ofInt (seekT s offset whence), fs), setS h gs (skipFwd s (seekT s offset whence))) := by
+  rw [gzseek64_head hG hP hnn he hw offset fs, ite_eq_left ht, seekTail_fwd_empty hG hm hhow hnn ht hfw h0 fs]
 
 /-- A seek inside the raw area faults exactly when `hraw` of `seekTail_copy` fails: the C expression
 `pos - x.pos - have` overflows (positions within `2^32` of `2^63`). -/

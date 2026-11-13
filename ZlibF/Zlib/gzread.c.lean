@@ -14,10 +14,9 @@ Patch 0004 (local, F-1): `gz_room` bounds what `gz_fetch` loads and what `gz_rea
 `gz_fetch`, `case COPY` follows the patched C (R-2, upstream PR 1363, applied as patch 0003): `x.next = out` is set
 before `gz_load`, so a failing `read` that returned some bytes leaves `x.have != 0` with `x.next` at the new bytes.
 
-Patches that the earlier repository applied and that this translation does NOT contain (the faults are kept):
-* **`gz_read` L406** (R-4, proposed): `x.next` is left pointing into the user's buffer after a direct decompression;
-  a later `gzseek`/`gzdirect` computes `x.next + 0` on it. If the user freed that buffer, `Ptr.add` faults.
-* **`gz_skip_have`** (R-3): `x.next += n` is `NULL + 0` on a fresh state (the model allows it).
+`gz_read` leaves `x.next` pointing into the user's buffer after a direct decompression (R-4), and `gz_reset` never
+writes it (R-3). With patch 0005 (local), `gz_skip_have` and `gzseek64` advance `x.next` only by a nonzero count, so
+neither value is used.
 
 Decisions: `unsigned *have` of `gz_load` is returned (the caller stores it right after the call; nothing in `gz_load`
 observes the aliased cell); `unsigned char buf[1]` of `gzgetc` is a local block; `memchr` is `memchrB`.
@@ -295,17 +294,21 @@ def gz_fetch (state : GzStatePtr) : G Int32 := do
     none
   return r.getD 0
 
-/-- `local void gz_skip_have(gz_statep state)` (R-3/R-4: `x.next += n` also with `n == 0`) -/
+/-- `local void gz_skip_have(gz_statep state)`. With patch 0005: `x.next` is advanced only when `n != 0` (R-3,
+R-4). -/
 def gz_skip_have (state : GzStatePtr) : M Unit := do
   let s ← ldS state
   -- n = GT_OFF(state->x.have) || (z_off64_t)state->x.have > state->skip ? (unsigned)state->skip : state->x.have;
   let n : UInt32 ← if (← GT_OFF s.x.«have») || u32ToI64 s.x.«have» > s.skip then pure s.skip.toUInt64.toUInt32
     else pure s.x.«have»
-  -- state->x.have -= n; state->x.next += n; state->x.pos += n; state->skip -= n;
+  -- state->x.have -= n;
   updX state fun x => { x with «have» := x.«have» - n }
-  let s ← ldS state
-  let nx ← s.x.next.add n.toNat
-  updX state fun x => { x with next := nx }
+  -- if (n) state->x.next += n;   (patch 0005)
+  if n != 0 then
+    let s ← ldS state
+    let nx ← s.x.next.add n.toNat
+    updX state fun x => { x with next := nx }
+  -- state->x.pos += n; state->skip -= n;
   let s ← ldS state
   let np ← i64add s.x.pos (u32ToI64 n)
   updX state fun x => { x with pos := np }
@@ -347,8 +350,8 @@ structure ReadLoop where
   err : Int32
   brk : Bool
 
-/-- `local z_size_t gz_read(gz_statep state, voidp buf, z_size_t len)`. Unpatched: R-4 (the direct decompression
-into the user's buffer leaves `x.next` pointing into it). -/
+/-- `local z_size_t gz_read(gz_statep state, voidp buf, z_size_t len)`. The direct decompression into the user's
+buffer leaves `x.next` pointing into it (R-4; harmless with patch 0005). -/
 def gz_read (state : GzStatePtr) (buf : BPtr) (len : UInt64) : G UInt64 := do
   let strm := strmOf state
   -- if (len == 0) return 0;

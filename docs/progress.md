@@ -2447,8 +2447,11 @@ not yet submitted upstream ([patches](../patches/README.md)).
   `x.next` by zero inside the freed buffer. Undefined by the letter of C; no sanitizer report.
   Patch 0005.
 
-The translations of `gzread.c`, `gzwrite.c` and `gzlib.c` follow these patches only once the
-translation commits land.
+The translations of `gzread.c`, `gzwrite.c` and `gzlib.c` follow both patches. Only 0005 has a
+differential row (a direct read into a freed buffer, then `gzdirect` and `gzseek`); 0004 needs a
+device, which the file model cannot express. `tests/audit/theorems.txt` still lists
+`seekTail_dangling_ub` and `gzseek64_dangling_next_ub`, which no longer exist; their removal is for
+a human.
 
 ### Translation review
 

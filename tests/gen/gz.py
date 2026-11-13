@@ -9,7 +9,11 @@ Lines: "gz OP OP ..." (a scenario on temporary files; the output is one token pe
   read:H:N fread:H:SIZE:N gets:H:LEN getc:H ungetc:H:C seek:H:OFF:WHENCE tell:H offset:H rewind:H eof:H
   direct:H error:H clearerr:H
 Handles H are 0..3; a handle that was never opened (or whose open failed) is the NULL gzFile.
-Inputs avoid the known bug of zlib that no patch fixes (x.next left dangling, docs/design/external-io.md). Section 6
+Both drivers free the buffer of a read or fread right after the call. A large read on a gzip file decompresses
+straight into that buffer and leaves x.next pointing into it; a later gzseek or gzdirect advanced it by zero, which the
+translation of the C without patch 0005 faults on (R-4). Section 6 has lines for it. The position overflows that patch
+0004 removes need a device (/dev/zero, /dev/null), which the file model cannot express; tests/regression/
+gzread-pos-overflow and gzwrite-pos-overflow cover them on the C side. Section 6
 seeks right after a gzungetc at position 0, which the unpatched gzseek64 overflowed on (patch 0002); the translation of
 the unpatched C faults there, so those lines tell the two apart. The gz_fetch overread after a partial read that then
 fails (patch 0003) needs a read() the file model cannot produce; tests/regression/gzread-transparent-stale-next
@@ -242,6 +246,11 @@ for src in (gzbig, big):
     line(p, "open:0:f:rb", "ungetc:0:81", "seek:0:100:0", "tell:0", "read:0:5", "close:0")
 p = "put:f:" + hx(gzbig)
 line(p, "open:0:f:rb", "ungetc:0:81", "seek:0:9223372036854775806:0", "tell:0", "close:0")
+# a direct read into the (then freed) caller buffer, then gzdirect and gzseek with an empty output buffer: x.next
+# was advanced by zero inside the freed buffer before patch 0005 (R-4)
+line(p, "open:0:f:rb", "buffer:0:8", "read:0:20000", "direct:0", "seek:0:1:1", "tell:0", "read:0:5", "eof:0", "close:0")
+line(p, "open:0:f:rb", "buffer:0:8", "fread:0:4:5000", "seek:0:-10:1", "tell:0", "read:0:10", "close:0")
+line(p, "open:0:f:rb", "read:0:1", "read:0:40000", "seek:0:0:1", "tell:0", "direct:0", "close:0")
 line(p, "open:0:f:rb", "ungetc:0:81", "seek:0:9223372036854775807:1", "tell:0", "seek:0:5:0", "tell:0", "read:0:3", "close:0")
 
 # gzseek on write handles (zero fill), tell, backward seeks

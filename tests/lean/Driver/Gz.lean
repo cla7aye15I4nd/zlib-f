@@ -164,13 +164,17 @@ def doOp (e : Env) (op : String) : Except Fault (String × Env) := do
     let (p, e) ← runM e (allocBytes (Array.replicate (max n 1) 0))
     let (r, e) ← runG e (gzread g p (UInt32.ofNat n))
     let out := if r.toInt > 0 then (blockBytes e p).extract 0 r.toInt.toNat else #[]
+    -- free(b), as the C driver does: a later call must not depend on this buffer (R-4)
+    let ((), e) ← runM e (freeB p)
     return (s!"r{r.toInt}:{toHex out}", e)
   | "fread" =>
     let sz ← pn 2
     let ni ← pn 3
     let (p, e) ← runM e (allocBytes (Array.replicate (max ((sz * ni) % 2 ^ 64) 1) 0))
     let (r, e) ← runG e (gzfread p (UInt64.ofNat sz) (UInt64.ofNat ni) g)
-    return (s!"R{r.toNat}:{toHex ((blockBytes e p).extract 0 (r.toNat * sz))}", e)
+    let out := (blockBytes e p).extract 0 (r.toNat * sz)
+    let ((), e) ← runM e (freeB p)
+    return (s!"R{r.toNat}:{toHex out}", e)
   | "gets" =>
     let len ← pi 2
     let (p, e) ← runM e (allocBytes (Array.replicate (if len > 0 then len.toNat else 1) 0))
