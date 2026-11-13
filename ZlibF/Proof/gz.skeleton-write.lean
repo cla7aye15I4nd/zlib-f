@@ -34,8 +34,8 @@ def GzInvUpToInput (h : Heap) (i : Nat) (s : GzState) (src : Region) : Prop :=
 
 /-! ## Deflate quiescence (a functional fact of deflate a safety proof needs: in scope) -/
 
-/-- **`DeflateQuiet`** (statement corrected 2026-11-12, agreed with batch 1): a potential `Φ` and a predicate `Quiet`,
-per flush value, for `deflate` calls with no input.
+/-- **`DeflateQuiet`** (statement corrected 2026-11-12, agreed with batch 1 and batch C): a potential `Φ` and a
+predicate `Quiet`, per flush value, for `deflate` calls with no input.
 1. A call with at least 8 bytes of room that fills the output lowers `Φ`.
 2. A call that ends with room leaves the stream `Quiet`.
 3. From `Quiet`, a call produces nothing.
@@ -43,28 +43,45 @@ per flush value, for `deflate` calls with no input.
 So `gz_comp`'s `do { deflate } while (have)` ends when its buffer has at least 8 bytes (`GzCommon.want`: `gzbuffer`
 clamps to 8; zlib.h: `avail_out` should exceed six when a flush marker begins): the calls that fill are bounded by
 `Φ`, and a call that ends with room is followed by at most one call, which produces nothing.
-The earlier form (every output-producing call with any room lowers `Φ`) is false: with an output buffer of 1..7
-bytes the real C cycles (a marker fills the output, `last_flush = -1`, the next call emits the marker again);
-batch C's harness, `batchc-deflate-quiet.md`. A fact of `deflate.c`/`trees.c` (lookahead, symbols, the flush
-marker of at most 6 bytes, pending); owner: batch 3. -/
+
+Clauses 1–3 assume the deflate arguments of the history (`StreamBuffers`, `ActiveHeader`) and a non-NULL `next_out`:
+with `next_out = NULL` the call is refused with the state and the room unchanged, so clause 2 would fail, and
+`CallerRange` allows NULL. Clause 4 assumes reachability: `Φ` and `Quiet` read the deflate state, which a rebuffer
+keeps only for a stream that owns it. `gz_comp` has all of them (`GzWriteInv` W4, W5, W6).
+
+The intended witnesses (batch 3): `Φ` is lexicographic, encoded in `Nat`: (2 before `FINISH_STATE`, 1 while the
+trailer is due, 0 after; the header rank, INIT/GZIP 6, EXTRA 5, NAME 4, COMMENT 3, HCRC 2, else 0; 2^64 − `gzindex`;
+the work 3·`lookahead` + 2·`match_available` + [`sym_next` ≠ 0] + at level 0 `strstart` − `block_start`; `pending`).
+`Quiet flush`: `pending` = 0 with `last_flush` = flush ≠ `Z_FINISH` or a finished stream with `wrap` ≤ 0, or
+`FINISH_STATE` with flush ≠ `Z_FINISH`. On the real C (1.3M configurations, 86.5M calls: levels 0–9, strategies 0–4,
+memLevel 1/8/9, raw/zlib/gzip and `windowBits` 9, a gzip header with long extra, name and comment, `deflatePrime`;
+buffers of at least 8 bytes) no clause is violated. The earlier form (every output-producing call with any room
+lowers `Φ`) is false: with an output buffer of 1..7 bytes the real C cycles (a marker fills the output,
+`last_flush = -1`, the next call emits the marker again); batch C's harness, `batchc-deflate-quiet.md`. A "flush
+owed" component (`last_flush` ≠ flush) before `pending` is also false: the call that flushes a pending gzip trailer
+lowers `pending` and sets `last_flush = -1`. Owner: batch 3. -/
 def DeflateQuiet : Prop :=
   ∃ (Φ : Int32 → Heap → ZStreamRef → Nat) (Quiet : Int32 → Heap → ZStreamRef → Prop),
     (∀ (flush : Int32) (h : Heap) (r : ZStreamRef) (z : ZStream) (value : Int32) (after : Heap) (z' : ZStream),
       0 ≤ flush.toInt → flush.toInt ≤ 4 →
-      StreamReachable .deflate h r → r.get h = some z → z.avail_in = 0 → 8 ≤ z.avail_out.toNat →
+      StreamReachable .deflate h r → StreamBuffers h r → ActiveHeader h r →
+      r.get h = some z → z.next_out ≠ .null → z.avail_in = 0 → 8 ≤ z.avail_out.toNat →
       Call.execute (.deflate (some r) flush) default h = .ok ((value, default), after) → r.get after = some z' →
       z'.avail_out = 0 → Φ flush after r < Φ flush h r) ∧
     (∀ (flush : Int32) (h : Heap) (r : ZStreamRef) (z : ZStream) (value : Int32) (after : Heap) (z' : ZStream),
       0 ≤ flush.toInt → flush.toInt ≤ 4 →
-      StreamReachable .deflate h r → r.get h = some z → z.avail_in = 0 → z.avail_out ≠ 0 →
+      StreamReachable .deflate h r → StreamBuffers h r → ActiveHeader h r →
+      r.get h = some z → z.next_out ≠ .null → z.avail_in = 0 → z.avail_out ≠ 0 →
       Call.execute (.deflate (some r) flush) default h = .ok ((value, default), after) → r.get after = some z' →
       z'.avail_out ≠ 0 → Quiet flush after r) ∧
     (∀ (flush : Int32) (h : Heap) (r : ZStreamRef) (z : ZStream) (value : Int32) (after : Heap) (z' : ZStream),
       Quiet flush h r → 0 ≤ flush.toInt → flush.toInt ≤ 4 →
-      StreamReachable .deflate h r → r.get h = some z → z.avail_in = 0 →
+      StreamReachable .deflate h r → StreamBuffers h r → ActiveHeader h r →
+      r.get h = some z → z.next_out ≠ .null → z.avail_in = 0 →
       Call.execute (.deflate (some r) flush) default h = .ok ((value, default), after) → r.get after = some z' →
       z'.avail_out = z.avail_out) ∧
-    (∀ (flush : Int32) (h after : Heap) (r : ZStreamRef) (z z' : ZStream), Rebuffer h after r → r.get h = some z →
+    (∀ (flush : Int32) (h after : Heap) (r : ZStreamRef) (z z' : ZStream), StreamReachable .deflate h r →
+      Rebuffer h after r → r.get h = some z →
       r.get after = some z' → z'.next_in = z.next_in → z'.avail_in = z.avail_in →
       Φ flush after r = Φ flush h r ∧ (Quiet flush h r → Quiet flush after r))
 
