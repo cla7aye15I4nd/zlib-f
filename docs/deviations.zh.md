@@ -1,4 +1,4 @@
-<!-- source-sha256: 62a1c27e6a58efbba29ce0e9a9a1b49df7f8eb636d2a9b012e2d91678cf31e53 -->
+<!-- source-sha256: a6f71550408e0767c674a9b2b5838706a266b5009946c751ce4a17c10aa7e89d -->
 # 调用者定义域与表示限制
 
 超出模型能力的定理不是 C 正确性结果。本登记记录 API 适配器的受限定义域和缺口。每个强于 `zlib.h` 的前置条件，也必须写入定理文档字符串。聚焦手册中的狭窄例子不改变固定公开目标，也不把排除调用判为未定义。见[契约约定](spec/api/contracts.md)。[Sanitizer 报告](sanitizer-reports.md)列出 sanitizer 在真实 C 上报告的每种调用者布局，以及排除它的前提。
@@ -13,7 +13,7 @@
 | --- | --- | --- |
 | 初始配置 | 默认 x86_64 Linux、LP64、静态构建和默认分配器 | 其他上游配置和自定义分配器需要独立覆盖。默认分配失败仍在范围内。 |
 | 平台字节对象范围 | 每个表示出的字节对象小于 `2^63` 字节，包括调用者、静态和内嵌存储 | 这是接受的[系统环境前提](spec/platform.md)，由 `Goal.inflate`、内部快速入口，以及通过共享契约定义的八个压缩／解压便利入口显式使用。限制逐对象成立，没有总内存或总流长度限制。它也在调用历史的每个堆上成立：对 inflate 流，`StreamReachable` 在每次流调用前的堆上、以及调用者修改后的堆上假设它（deflate 一侧在证明 deflate 调用保持它之后再加入），`StreamSequenceSafety` 的单次调用条款也假设它。`Goal.inflate_sequence` 的 inflate 协议历史（`InflateDataTrace`、`InflateProtocolTrace`）在相同位置带有它，`InflateCompletes` 在调用所在的堆上假设它。该前提可满足：公开调用者见证堆满足它（`inflate_default_witness_platform`）。执行证明保持它，因此以它开始的历史只在调用者提供新存储时需要再次满足它。证明操作系统限制不属于 zlib 证明。 |
-| Adler 初始化查询 | `AdlerBufferBytes` 只允许零长度时为 NULL；非空可读对象保留原定义域 | 该显式限制窄于固定头文件对 NULL 不加限定的表述。它适用于 `Goal.adler32_z` 和 `Goal.adler32`；CRC 契约保留 `BufferBytes` 不变。 |
+| Adler 初始化查询 | `AdlerBufferBytes` 只允许零长度时为 NULL；非空可读对象保留原定义域 | 该显式限制窄于固定头文件对 NULL 不加限定的表述。它适用于 `Goal.adler32_z` 和 `Goal.adler32`；CRC 契约保留 `BufferBytes` 不变。上游 [PR #1364](https://github.com/madler/zlib/pull/1364) 报告了对 NULL `buf` 的单字节读取；维护者于 2026 年 11 月 6 日关闭该请求，保留代码，并宣布将在 zlib.h 中加入对 `len` 的限制。`develop` 头 `99623ef7097352da7993ba614161fd6a311e046e` 尚未包含该文字；文字合入后需按其复核本行。 |
 | 聚焦函数手册 | 条目可能要求有效句柄、分离缓冲区、实际字符串的校验和、生成的操作符或特定调用顺序 | 这些是明确的文字范围，不缩小更广泛 Lean 公开目标。 |
 | 压缩器长度单元 | `Concrete.compress2_z` 和 `Concrete.compress2` 使用可选标量输入及返回的存储值 | 不表示该单元与输入或输出的别名。若 C API 允许，完整指针定义域结论需要解决它。`_z` 与兼容包装的空单元效果仍不同。 |
 | 计数解压单元 | 草案适配器保持输入长度、输出长度和数据范围分离 | 单元与数据或彼此的别名在适配器之外。早期和后期内存失败保留不同标量效果。 |

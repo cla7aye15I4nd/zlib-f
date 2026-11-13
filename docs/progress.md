@@ -1532,13 +1532,13 @@ They are not additional fixed targets and do not grant a caller coverage colour.
 | [Zlib.Gzlib.Proofs.gzopen_null](../ZlibF/Proof/gzlib.c.open.lean#L24) | No fixed-target composition recorded |
 | [Zlib.Gzlib.Proofs.gzrewind_null](../ZlibF/Proof/gzlib.c.rewind.lean#L80) | No fixed-target composition recorded |
 | [Zlib.Gzlib.Proofs.gzrewind_spec](../ZlibF/Proof/gzlib.c.rewind.lean#L85) | No fixed-target composition recorded |
-| [Zlib.Gzlib.Proofs.gzseek64_cur_negpos_ub](../ZlibF/Proof/gzlib.c.seek.lean#L867) | No fixed-target composition recorded |
-| [Zlib.Gzlib.Proofs.gzseek64_dangling_next_ub](../ZlibF/Proof/gzlib.c.seek.lean#L952) | No fixed-target composition recorded |
+| [Zlib.Gzlib.Proofs.gzseek64_head_any](../ZlibF/Proof/gzlib.c.seek.lean#L189) | No fixed-target composition recorded |
+| [Zlib.Gzlib.Proofs.gzseek64_dangling_next_ok](../ZlibF/Proof/gzlib.c.seek.lean#L1010) | No fixed-target composition recorded |
 | [Zlib.Gzlib.Proofs.gzseek64_head](../ZlibF/Proof/gzlib.c.seek.lean#L177) | No fixed-target composition recorded |
 | [Zlib.Gzlib.Proofs.gzseek64_null](../ZlibF/Proof/gzlib.c.seek.lean#L805) | No fixed-target composition recorded |
 | [Zlib.Gzlib.Proofs.gzseek64_refuse](../ZlibF/Proof/gzlib.c.seek.lean#L837) | No fixed-target composition recorded |
 | [Zlib.Gzlib.Proofs.gzseek64_safe](../ZlibF/Proof/gzlib.c.seek.lean#L812) | No fixed-target composition recorded |
-| [Zlib.Gzlib.Proofs.gzseek64_set_negpos_ub](../ZlibF/Proof/gzlib.c.seek.lean#L889) | No fixed-target composition recorded |
+| [Zlib.Gzlib.Proofs.gzseek64_set_negpos_refuse](../ZlibF/Proof/gzlib.c.seek.lean#L945) | No fixed-target composition recorded |
 | [Zlib.Gzlib.Proofs.gzseek64_write_run](../ZlibF/Proof/gzlib.c.seek.lean#L232) | No fixed-target composition recorded |
 | [Zlib.Gzlib.Proofs.gzseek_eq](../ZlibF/Proof/gzlib.c.seek.lean#L850) | No fixed-target composition recorded |
 | [Zlib.Gzlib.Proofs.gztell64_null](../ZlibF/Proof/gzlib.c.simple.lean#L122) | No fixed-target composition recorded |
@@ -1548,7 +1548,7 @@ They are not additional fixed targets and do not grant a caller coverage colour.
 | [Zlib.Gzlib.Proofs.seekTail_back](../ZlibF/Proof/gzlib.c.seek.lean#L475) | No fixed-target composition recorded |
 | [Zlib.Gzlib.Proofs.seekTail_copy](../ZlibF/Proof/gzlib.c.seek.lean#L315) | No fixed-target composition recorded |
 | [Zlib.Gzlib.Proofs.seekTail_copy_ub](../ZlibF/Proof/gzlib.c.seek.lean#L962) | No fixed-target composition recorded |
-| [Zlib.Gzlib.Proofs.seekTail_dangling_ub](../ZlibF/Proof/gzlib.c.seek.lean#L919) | No fixed-target composition recorded |
+| [Zlib.Gzlib.Proofs.seekTail_fwd_empty](../ZlibF/Proof/gzlib.c.seek.lean#L962) | No fixed-target composition recorded |
 | [Zlib.Gzlib.Proofs.seekTail_fwd](../ZlibF/Proof/gzlib.c.seek.lean#L376) | No fixed-target composition recorded |
 | [Zlib.Gzread.Proofs.gzclose_r_null](../ZlibF/Proof/gzread.c.close.lean#L43) | No fixed-target composition recorded |
 | [Zlib.Gzread.Proofs.gzclose_r_unbuffered](../ZlibF/Proof/gzread.c.close.lean#L56) | No fixed-target composition recorded |
@@ -2255,8 +2255,8 @@ Pending inputs that change the skeleton:
 | `gzvprintf_step` | `vsnprintf` (M6), sentinel, stall paths (`gzprintf_step` checked in the skeleton). | open | 9 | batch C |
 | `gzflush_step`, `gzsetparams_step` | `gz_zero` and `gz_comp`; the `deflateParams` step. | open | 7 | batch C |
 | `gzclose_w_step` | Finish, `deflateEnd`, frees, descriptor released (also O-1). | open | 8 | batch C |
-| `deflate_quiet` | `deflate` with no input and output room lowers a potential when it produces output. | open | 15–25 | batch C |
-| **Total remaining** | batch 1 61–67; read side 82; write side 72; `deflate_quiet` 15–25 | | **230–246** | |
+| `deflate_quiet` | `deflate` with no input: a call from at least 8 bytes of room that fills the output lowers `Φ`; a call that ends with room leaves `Quiet`; from `Quiet` nothing is produced; a rebuffer keeps both. Proved on dev as `Zlib.Deflate.Universal.Quiet.deflate_quiet_holds` (`dde03ce6`), the skeleton's `DeflateQuiet` written out, with no hypothesis; on `skeleton/gz`, `deflate_quiet := deflate_quiet_holds` once it has that commit. Pieces: `quiet_silent`, `stateOf_rebuffer`, `phiD_lt`, `strat_quiet`, `marker_quiet`, `header_quiet`, `trailer_quiet`, `tail_quiet`, `call_quiet_of` (files `deflate.c.quiet-*`). | checked | 0 | batch 3 |
+| **Total remaining** | batch 1 61–67; read side 82; write side 72 | | **215–221** | |
 
 
 ### Ordered next work
@@ -2366,6 +2366,13 @@ no report). Skeleton: branch `skeleton/inflate-back`, `ZlibF/Proof/infback.c.saf
 protocol, so the call-back lemmas are restated over `PInv`; their bit algebra is reused.
 Issue (not planned, functional goal): `Goal.inflateBack` has no bound on `inputBound`, so a
 protocol whose input exceeds the loop fuel makes it false in the model.
+Needed invariant: `inflate_fast` assumes `state->bits < 8` on entry. `inflate.c` checks it before the
+fast path (upstream e7bb978); `infback.c` does not, so the proof shows that fewer than 8 bits are
+held when a round starts in `TYPE`, `TABLE` or `LEN` (row `BitsShort`). With 8 or more bits held,
+`inflate_fast` could move `next` back before the chunk `in` gave. Evidence:
+`tests/goals/infback-callbacks/bits8.sh` (60000 cases, no trap). The window premise
+`window = .ref (.blk w) off` (a slice of a caller block, outside library storage) is a premise of
+`STORED_p` and the copy lemmas; it goes into the goal with a deviation row when `back_call` is composed.
 
 | Lemma | Meaning | State | Hours |
 | --- | --- | --- | ---: |
@@ -2374,17 +2381,18 @@ protocol whose input exceeds the loop fuel makes it false in the model.
 | `PULLBYTE_p`, `NEEDBITS_p` | One byte into `hold`, and `NEEDBITS(k)` for `k ≤ 32` (bit algebra of `inflate.c.main.macros`) | checked (52ae3999) | 0 |
 | `ROOM_p` | `ROOM()`: `out` on the full window (`outStep`), `whave = wsize`, restart at the window; `Z_BUF_ERROR` on refusal | checked (7971d171) | 0 |
 | `TYPE_p` | `case TYPE`: last flag and block type, `DONE` after the last block | checked (472c8a15) | 0 |
-| `STORED_p` | `case STORED`: length check and the copy through `PULL` and `ROOM` (from `infback.c.stored`) | open | 4 |
-| `TABLE_p` | `case TABLE`: code-length code, code lengths, three `inflate_table` calls (`inflate_table_safe`), tables installed (`TablesOk`) | open | 10 |
-| `fast_alias` | `inflate_fast` with the output inside the window block (`wnext = 0`, `whave` 0 or `wsize`): variant of `Goal.fast_safe`, whose `Env.hwin` asks for a separate window block | open | 12 |
-| `LEN_slow_p` | `case LEN` without the fast path: literal, end of block, length/distance with the distance check and the copy through `ROOM`, invalid codes | open | 8 |
+| `STORED_p` | `case STORED`: length check and the copy through `PULL` and `ROOM`; the chunk may share the window's block | checked (eec477cd) | 0 |
+| `TABLE_p` | `case TABLE`: header, code-length code, decoded lengths, three `inflate_table` calls, tables installed (`TablesOk`, with the decode invariant and query stability): `TABLE_pre_p` checked (bd235671, 445447f5); left: the fall-through into `LEN` | open | 1 |
+| `BitsShort` | Fewer than 8 bits held at the start of a round in `TYPE`, `TABLE`, `LEN` (`Short` in `Round`): lookups with pull witnesses, `consumed_gt` from `StableQuery` and `PrefixQuery`, `TYPE_p`, `STORED_p` and the `LEN` symbols checked (57c7fabd); left: the code-length decoding of `TABLE` (by `CodeLengthContents`) | open | 4 |
+| `fast_alias` | `inflate_fast` with the output inside the window block (`wnext = 0`): `Env.hwin` of `Goal.fast_safe` asks for a separate window block; plan: allow the output block with `wnext = 0` and copy through `Src.out` (`cpyG`), the exact-content lemmas keeping the separate case | open | 12 |
+| `LEN_slow_p` | `case LEN` without the fast path: literal, end of block, length/distance with the distance check and the copy through `ROOM`, invalid codes | checked (06e4a17d) | 0 |
 | `LEN_fast_p` | `case LEN` with the fast path: `RESTORE`, `fast_alias`, `LOAD` | open | 3 |
 | `dispatch_p` | One round of the dispatch: every mode reachable from `PInv`; the measure falls or the call leaves with one of three results | open | 2 |
 | `loop_p` | The dispatch loop ends within the fuel (`backMeasure < 2^64` from `inputBound < 2^48`) | open | 3 |
 | `back_call` | One call: prologue, `loop_p`, epilogue (the last partial window to `out`, `next_in`, `avail_in`) | open | 5 |
 | `back_null`, `back_end` | Null stream; `inflateBackEnd` on a reachable history (`back_end_public`) | open | 1.5 |
 | `back_reach_valid` | Every reachable history leaves a valid state over the caller's window (init, rebuffer, `back_call`) | open | 3 |
-| **Total** | | | **51.5** |
+| **Total** | | | **34.5** |
 
 #### Next work for every unfinished public target
 
@@ -2492,6 +2500,32 @@ with `EOVERFLOW` rather than undefined behaviour; ISO C leaves the case undefine
 corrections are possible: add the path-length premise to these three statements and to
 [deviations](deviations.md), or model POSIX `vsnprintf` in the trusted external model.
 A checked counterexample is not yet written.
+
+#### Gzip library findings with local fixes
+
+Library reports of 2026-11-12, kept here until the owner decides whether F-1 and W7 move to
+`README.md` as confirmed findings. Each has a local patch, approved by the owner on 2026-11-12 and
+not yet submitted upstream ([patches](../patches/README.md)).
+
+- F-1, [gzread position overflow](findings/gzread-pos-overflow/README.md): after a transparent
+  `gzseek` to `INT64_MAX` on Linux `/dev/zero`, `gzread` overflows the signed `x.pos`. Confirmed
+  by UBSan on x86_64 Linux. Patch 0004.
+- W7, [gzwrite position overflow](findings/gzwrite-pos-overflow/README.md): a transparent writer
+  on `/dev/null` that seeks to `INT64_MAX - 10` overflows `x.pos` in `gzwrite` (and in `gzputc` at
+  `INT64_MAX`). Confirmed by UBSan on x86_64 Linux with the real device. Patch 0004.
+- R-3, [x.next never written](findings/gz-reset-next-uninitialised/README.md): `gzseek` and
+  `gzdirect` right after `gzopen` advance the never-written `x.next` by zero. Undefined by the
+  letter of C; no sanitizer report. Patch 0005.
+- R-4, [x.next dangling after a direct read](findings/gz-next-dangling-after-direct-read/README.md):
+  after a large `gzread` into a buffer the caller then frees, `gzseek` and `gzdirect` advance
+  `x.next` by zero inside the freed buffer. Undefined by the letter of C; no sanitizer report.
+  Patch 0005.
+
+The translations of `gzread.c`, `gzwrite.c` and `gzlib.c` follow both patches. Only 0005 has a
+differential row (a direct read into a freed buffer, then `gzdirect` and `gzseek`); 0004 needs a
+device, which the file model cannot express. `tests/audit/theorems.txt` still lists
+`seekTail_dangling_ub` and `gzseek64_dangling_next_ub`, which no longer exist; their removal is for
+a human.
 
 ### Translation review
 

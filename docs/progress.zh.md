@@ -1,4 +1,4 @@
-<!-- source-sha256: a910f4029a9dd060bd7f9d61eec9297b3226c9b79b530e734aff0661f9ea09af -->
+<!-- source-sha256: 9bc6f8c60506f585f093c3f99b4ba4cebf93985a891335fd32473f439b53454e -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1324,13 +1324,13 @@ flowchart LR
 | [Zlib.Gzlib.Proofs.gzopen_null](../ZlibF/Proof/gzlib.c.open.lean#L24) | 未记录到固定目标的组合关系 |
 | [Zlib.Gzlib.Proofs.gzrewind_null](../ZlibF/Proof/gzlib.c.rewind.lean#L80) | 未记录到固定目标的组合关系 |
 | [Zlib.Gzlib.Proofs.gzrewind_spec](../ZlibF/Proof/gzlib.c.rewind.lean#L85) | 未记录到固定目标的组合关系 |
-| [Zlib.Gzlib.Proofs.gzseek64_cur_negpos_ub](../ZlibF/Proof/gzlib.c.seek.lean#L867) | 未记录到固定目标的组合关系 |
-| [Zlib.Gzlib.Proofs.gzseek64_dangling_next_ub](../ZlibF/Proof/gzlib.c.seek.lean#L952) | 未记录到固定目标的组合关系 |
+| [Zlib.Gzlib.Proofs.gzseek64_head_any](../ZlibF/Proof/gzlib.c.seek.lean#L189) | 未记录到固定目标的组合关系 |
+| [Zlib.Gzlib.Proofs.gzseek64_dangling_next_ok](../ZlibF/Proof/gzlib.c.seek.lean#L1010) | 未记录到固定目标的组合关系 |
 | [Zlib.Gzlib.Proofs.gzseek64_head](../ZlibF/Proof/gzlib.c.seek.lean#L177) | 未记录到固定目标的组合关系 |
 | [Zlib.Gzlib.Proofs.gzseek64_null](../ZlibF/Proof/gzlib.c.seek.lean#L805) | 未记录到固定目标的组合关系 |
 | [Zlib.Gzlib.Proofs.gzseek64_refuse](../ZlibF/Proof/gzlib.c.seek.lean#L837) | 未记录到固定目标的组合关系 |
 | [Zlib.Gzlib.Proofs.gzseek64_safe](../ZlibF/Proof/gzlib.c.seek.lean#L812) | 未记录到固定目标的组合关系 |
-| [Zlib.Gzlib.Proofs.gzseek64_set_negpos_ub](../ZlibF/Proof/gzlib.c.seek.lean#L889) | 未记录到固定目标的组合关系 |
+| [Zlib.Gzlib.Proofs.gzseek64_set_negpos_refuse](../ZlibF/Proof/gzlib.c.seek.lean#L945) | 未记录到固定目标的组合关系 |
 | [Zlib.Gzlib.Proofs.gzseek64_write_run](../ZlibF/Proof/gzlib.c.seek.lean#L232) | 未记录到固定目标的组合关系 |
 | [Zlib.Gzlib.Proofs.gzseek_eq](../ZlibF/Proof/gzlib.c.seek.lean#L850) | 未记录到固定目标的组合关系 |
 | [Zlib.Gzlib.Proofs.gztell64_null](../ZlibF/Proof/gzlib.c.simple.lean#L122) | 未记录到固定目标的组合关系 |
@@ -1340,7 +1340,7 @@ flowchart LR
 | [Zlib.Gzlib.Proofs.seekTail_back](../ZlibF/Proof/gzlib.c.seek.lean#L475) | 未记录到固定目标的组合关系 |
 | [Zlib.Gzlib.Proofs.seekTail_copy](../ZlibF/Proof/gzlib.c.seek.lean#L315) | 未记录到固定目标的组合关系 |
 | [Zlib.Gzlib.Proofs.seekTail_copy_ub](../ZlibF/Proof/gzlib.c.seek.lean#L962) | 未记录到固定目标的组合关系 |
-| [Zlib.Gzlib.Proofs.seekTail_dangling_ub](../ZlibF/Proof/gzlib.c.seek.lean#L919) | 未记录到固定目标的组合关系 |
+| [Zlib.Gzlib.Proofs.seekTail_fwd_empty](../ZlibF/Proof/gzlib.c.seek.lean#L962) | 未记录到固定目标的组合关系 |
 | [Zlib.Gzlib.Proofs.seekTail_fwd](../ZlibF/Proof/gzlib.c.seek.lean#L376) | 未记录到固定目标的组合关系 |
 | [Zlib.Gzread.Proofs.gzclose_r_null](../ZlibF/Proof/gzread.c.close.lean#L43) | 未记录到固定目标的组合关系 |
 | [Zlib.Gzread.Proofs.gzclose_r_unbuffered](../ZlibF/Proof/gzread.c.close.lean#L56) | 未记录到固定目标的组合关系 |
@@ -1850,8 +1850,8 @@ gzip 文件接口的安全（第 5 项结论，所有者 2026-11-12 的决定）
 | `gzvprintf_step` | `vsnprintf`（M6）、哨兵、停滞路径（`gzprintf_step` 已在骨架中检查）。 | 未完成 | 9 | batch C |
 | `gzflush_step`、`gzsetparams_step` | `gz_zero` 和 `gz_comp`；`deflateParams` 步骤。 | 未完成 | 7 | batch C |
 | `gzclose_w_step` | 结束、`deflateEnd`、释放、释放描述符（也包括 O-1）。 | 未完成 | 8 | batch C |
-| `deflate_quiet` | 没有输入、有输出空间的 `deflate` 在产生输出时降低一个势函数。 | 未完成 | 15–25 | batch C |
-| **剩余总计** | batch 1 61–67；读取侧 82；写入侧 72；`deflate_quiet` 15–25 | | **230–246** | |
+| `deflate_quiet` | 没有输入的 `deflate`：从至少 8 字节空间开始并填满输出的调用降低 `Φ`；结束时仍有空间的调用留下 `Quiet`；从 `Quiet` 出发不产生输出；重新设置缓冲区保持两者。已在 dev 上证明为 `Zlib.Deflate.Universal.Quiet.deflate_quiet_holds`（`dde03ce6`），即骨架的 `DeflateQuiet` 展开写出，没有假设；`skeleton/gz` 包含该提交后，`deflate_quiet := deflate_quiet_holds`。组成部分：`quiet_silent`、`stateOf_rebuffer`、`phiD_lt`、`strat_quiet`、`marker_quiet`、`header_quiet`、`trailer_quiet`、`tail_quiet`、`call_quiet_of`（文件 `deflate.c.quiet-*`）。 | 已检查 | 0 | batch 3 |
+| **剩余总计** | batch 1 61–67；读取侧 82；写入侧 72 | | **215–221** | |
 
 
 ### 按顺序的下一步工作
@@ -1910,6 +1910,7 @@ gzip 文件接口的安全（第 5 项结论，所有者 2026-11-12 的决定）
 
 回调解码器的安全（所有者 2026-11-12 的要求）：`Goal.inflate_back_sequence_safety`（`ZlibF/Spec/Public/Sequences.lean`），与未改动的 `Goal.inflate_back_sequence` 并列陈述。回调就是目标中的 `CallbackProtocol`：任意会返回的调用者代码，只修改自己的块和必须保持的窗口切片，交出位于窗口之外的可读输入，并提供有限的总输入（`inputBound`）。目标另加 `inputBound < 2^48`（循环额度；`docs/deviations.md`）。陈述测试：`tests/goals/infback-callbacks`（ASan/UBSan，30000 个用例，无报告）。骨架：分支 `skeleton/inflate-back`，`ZlibF/Proof/infback.c.safety-skeleton.lean`（类型检查通过；引理证明待完成）。早先的内部约定 `CbContract` 比协议窄，因此回调引理在 `PInv` 上重新陈述，其位代数可复用。
 问题（不在计划内的功能目标）：`Goal.inflateBack` 对 `inputBound` 没有上限，因此输入超过循环额度的协议在模型中使它为假。
+所需不变量：`inflate_fast` 假定入口处 `state->bits < 8`。`inflate.c` 在快速路径前检查它（上游 e7bb978）；`infback.c` 不检查，因此证明要说明每轮以 `TYPE`、`TABLE` 或 `LEN` 开始时持有的位少于 8（`BitsShort` 行）。若持有 8 位或更多，`inflate_fast` 可能把 `next` 退回到 `in` 给出的数据块之前。证据：`tests/goals/infback-callbacks/bits8.sh`（60000 个用例，未触发陷阱）。窗口前提 `window = .ref (.blk w) off`（调用者块的一个切片，位于库存储之外）是 `STORED_p` 与复制引理的前提；组合 `back_call` 时连同一行偏差记录加入目标。
 
 | 引理 | 含义 | 状态 | 小时 |
 | --- | --- | --- | ---: |
@@ -1918,17 +1919,18 @@ gzip 文件接口的安全（第 5 项结论，所有者 2026-11-12 的决定）
 | `PULLBYTE_p`、`NEEDBITS_p` | 向 `hold` 读入一个字节，以及 `k ≤ 32` 的 `NEEDBITS(k)`（`inflate.c.main.macros` 的位代数） | 已检查（52ae3999） | 0 |
 | `ROOM_p` | `ROOM()`：对满窗口调用 `out`（`outStep`），`whave = wsize`，从窗口开头重新写；拒绝时为 `Z_BUF_ERROR` | 已检查（7971d171） | 0 |
 | `TYPE_p` | `case TYPE`：最后块标志与块类型，最后一块之后进入 `DONE` | 已检查（472c8a15） | 0 |
-| `STORED_p` | `case STORED`：长度检查以及经 `PULL` 和 `ROOM` 的复制（来自 `infback.c.stored`） | 待完成 | 4 |
-| `TABLE_p` | `case TABLE`：码长码、码长、三次 `inflate_table` 调用（`inflate_table_safe`），表已安装（`TablesOk`） | 待完成 | 10 |
-| `fast_alias` | 输出位于窗口块内的 `inflate_fast`（`wnext = 0`，`whave` 为 0 或 `wsize`）：`Goal.fast_safe` 的变体，后者的 `Env.hwin` 要求窗口块与输出块不同 | 待完成 | 12 |
-| `LEN_slow_p` | 不走快速路径的 `case LEN`：字面量、块结束、带距离检查并经 `ROOM` 复制的长度/距离对、无效码 | 待完成 | 8 |
+| `STORED_p` | `case STORED`：长度检查以及经 `PULL` 和 `ROOM` 的复制；数据块可与窗口同属一个块 | 已检查（eec477cd） | 0 |
+| `TABLE_p` | `case TABLE`：头部、码长码、解码出的码长、三次 `inflate_table` 调用，表已安装（`TablesOk`，含解码不变量与查询稳定性）：`TABLE_pre_p` 已检查（bd235671、445447f5）；剩余：转入 `LEN` | 待完成 | 1 |
+| `BitsShort` | 每轮以 `TYPE`、`TABLE`、`LEN` 开始时持有的位少于 8（`Round` 中的 `Short`）：带读入见证的查表、由 `StableQuery` 与 `PrefixQuery` 得到的 `consumed_gt`、`TYPE_p`、`STORED_p` 与 `LEN` 的符号均已检查（57c7fabd）；剩余：`TABLE` 的码长解码（依据 `CodeLengthContents`） | 待完成 | 4 |
+| `fast_alias` | 输出位于窗口块内的 `inflate_fast`（`wnext = 0`）：`Goal.fast_safe` 的 `Env.hwin` 要求窗口块与输出块不同；计划：在 `wnext = 0` 时允许输出块，经 `Src.out`（`cpyG`）复制，精确内容引理保留不同块的情形 | 待完成 | 12 |
+| `LEN_slow_p` | 不走快速路径的 `case LEN`：字面量、块结束、带距离检查并经 `ROOM` 复制的长度/距离对、无效码 | 已检查（06e4a17d） | 0 |
 | `LEN_fast_p` | 走快速路径的 `case LEN`：`RESTORE`、`fast_alias`、`LOAD` | 待完成 | 3 |
 | `dispatch_p` | 调度的一轮：`PInv` 可达的每种模式；度量下降，或调用以三种结果之一离开 | 待完成 | 2 |
 | `loop_p` | 调度循环在额度内结束（由 `inputBound < 2^48` 得 `backMeasure < 2^64`） | 待完成 | 3 |
 | `back_call` | 一次调用：入口、`loop_p`、出口（把最后的部分窗口交给 `out`，写 `next_in`、`avail_in`） | 待完成 | 5 |
 | `back_null`、`back_end` | 空流；可达历史上的 `inflateBackEnd`（`back_end_public`） | 待完成 | 1.5 |
 | `back_reach_valid` | 每个可达历史都在调用者窗口上留下有效状态（初始化、换缓冲区、`back_call`） | 待完成 | 3 |
-| **合计** | | | **51.5** |
+| **合计** | | | **34.5** |
 
 #### 每个未完成公开目标的下一步
 
@@ -1990,6 +1992,17 @@ gzip 文件接口的安全（第 5 项结论，所有者 2026-11-12 的决定）
 在目标平台上，POSIX `snprintf` 返回 `-1` 并设置 `EOVERFLOW`，而不是未定义行为；ISO C 未定义此情形。
 可行的修正有两种：在这三条陈述及[偏差](deviations.zh.md)中加入路径长度前提，或在可信外部模型中按 POSIX 建模 `vsnprintf`。
 尚未编写经过检查的反例。
+
+#### 带本地修复的 gzip 库发现
+
+2026-11-12 的库报告，在所有者决定 F-1 和 W7 是否作为已确认的发现移入 `README.md` 之前记录在这里。每一项都有本地补丁，经所有者于 2026-11-12 批准，尚未提交上游（[补丁](../patches/README.md)）。
+
+- F-1，[gzread 位置溢出](findings/gzread-pos-overflow/README.md)：在 Linux 的 `/dev/zero` 上透明 `gzseek` 到 `INT64_MAX` 之后，`gzread` 使有符号的 `x.pos` 溢出。在 x86_64 Linux 上由 UBSan 确认。补丁 0004。
+- W7，[gzwrite 位置溢出](findings/gzwrite-pos-overflow/README.md)：`/dev/null` 上的透明写入者定位到 `INT64_MAX - 10` 后，`gzwrite` 使 `x.pos` 溢出（在 `INT64_MAX` 处的 `gzputc` 也是）。在 x86_64 Linux 上用真实设备由 UBSan 确认。补丁 0004。
+- R-3，[x.next 从未写入](findings/gz-reset-next-uninitialised/README.md)：`gzopen` 之后立即调用的 `gzseek` 和 `gzdirect` 把从未写入的 `x.next` 前进零。按 C 标准的字面规定未定义；没有 sanitizer 报告。补丁 0005。
+- R-4，[直接读取之后 x.next 悬空](findings/gz-next-dangling-after-direct-read/README.md)：大块 `gzread` 读入调用者随后释放的缓冲区之后，`gzseek` 和 `gzdirect` 在已释放的缓冲区内把 `x.next` 前进零。按 C 标准的字面规定未定义；没有 sanitizer 报告。补丁 0005。
+
+`gzread.c`、`gzwrite.c` 和 `gzlib.c` 的翻译跟上了两个补丁。只有 0005 有差分测试行（直接读入已释放的缓冲区，然后 `gzdirect` 和 `gzseek`）；0004 需要设备，文件模型无法表达。`tests/audit/theorems.txt` 仍列出已不存在的 `seekTail_dangling_ub` 和 `gzseek64_dangling_next_ub`；删除它们需由人来做。
 
 ### 翻译审查
 

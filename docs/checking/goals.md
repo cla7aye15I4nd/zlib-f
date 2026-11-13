@@ -95,6 +95,6 @@ depends on the mutated check. They are acceptable for the exact public replay on
 semantic kills are covered by the script-row tables that every mutant shard runs:
 `tests/proof-mutants/deflate-header.tsv` (header stages and `_tr_flush_block`),
 `tests/proof-mutants/deflate-strategies.tsv` (`fill_window`, `longest_match` and the strategies) and
-`tests/audit/proofmut/deflate.tsv` (the stream operations). Each script row makes the edit in the
+`tests/proof-mutants/deflate-ops.tsv` (the stream operations). Each script row makes the edit in the
 translation and in every proof restatement of it, and must be killed in its semantic lemma. A shard
 fails if any of these tables is missing or empty (`SAFETY_MUTANT_LISTS` in `scripts/verification.py`).

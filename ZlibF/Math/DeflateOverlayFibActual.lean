@@ -17,13 +17,13 @@ open Zlib.Trees.HuffmanAbstract
 set_option autoImplicit false
 
 /-- The largest `ℓ ≤ n` with `f·F(ℓ+1) + F(ℓ) ≤ W`, or `0`. -/
-def fibLenUpTo (f W : Nat) : Nat → Nat
+noncomputable def fibLenUpTo (f W : Nat) : Nat → Nat
   | 0 => 0
   | n + 1 => if f * fib (n + 2) + fib (n + 1) ≤ W then n + 1 else fibLenUpTo f W n
 
 /-- The longest code length the Fibonacci bound allows for frequency `f` in a tree of weight at
 most `W`, among lengths at most 15. -/
-def fibLen (f W : Nat) : Nat := fibLenUpTo f W 15
+noncomputable def fibLen (f W : Nat) : Nat := fibLenUpTo f W 15
 
 theorem fibLenUpTo_ge (f W : Nat) :
     ∀ n l, l ≤ n → f * fib (l + 1) + fib l ≤ W → l ≤ fibLenUpTo f W n := by
@@ -45,7 +45,7 @@ theorem fibLen_ge {f W l : Nat} (length : l ≤ 15) (fits : f * fib (l + 1) + fi
 
 /-- The Fibonacci excess with the actual frequencies: length codes over 9 bits, distance codes
 over 15 bits, each code at the longest length its frequency allows. -/
-def excessFibActual (W : Nat) (FL FD literalExtra distanceExtra : Nat → Nat) : Nat :=
+noncomputable def excessFibActual (W : Nat) (FL FD literalExtra distanceExtra : Nat → Nat) : Nat :=
   mass (fun v => if v < 257 then 0 else FL v * (fibLen (FL v) W + literalExtra (v - 257) - 9)) 286 +
     mass (fun v => FD v * (fibLen (FD v) W + distanceExtra v - 15)) 30
 

@@ -26,7 +26,7 @@ set_option autoImplicit false
 def histL (L : Nat) (δ : Nat → Nat) (N j : Nat) : Nat := countR (fun r => min (δ r) L == j) N
 
 /-- The weights of the ranks that the `M` repair steps lengthen. -/
-def repairExtra (L : Nat) (w : Nat → Nat) : Nat → (Nat → Nat) → Nat
+noncomputable def repairExtra (L : Nat) (w : Nat → Nat) : Nat → (Nat → Nat) → Nat
   | 0, _ => 0
   | M + 1, c => w (cumC c (deepest c (L - 1))) + repairExtra L w M (repairStep L c)
 

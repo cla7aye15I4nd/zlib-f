@@ -1,4 +1,4 @@
-<!-- source-sha256: adb4dc2397de1805bdead9c6d528782028e5a8f05a033cefd9308f2ad561ff9c -->
+<!-- source-sha256: 55ddcbfe1519679deeac6c797f9063e43b396a6b64c97cc2575a0579a0096242 -->
 
 # 证明变异
 
@@ -39,6 +39,13 @@ bash tests/audit/proofmut.sh tests/audit/proofmut/crc32.tsv '^combine'
 每个已有精确证明的公开入口都需要 `tests/audit/public-mutants.json` 中的记录。记录指定该函数翻译后主体的变异，并保持签名不变。解析器在不加载候选导入的情况下检查两个版本。修改另一个函数、只改规范、注入声明或标记的证明缺口都不算。
 
 除重新构建指定证明模块外，公开检查还取出原来已登记的精确证明，只在其依赖闭包中替换变化的源码声明。全新内核重放必须接受原版并拒绝变异。无关定理的失败，或带额外前提的更强定理，都不足以满足要求。验收套件防御什么、不防御什么，见[防止取巧的规则](../anti-cheating.md)。
+
+内核重放不能在重放预算内驳倒所有种类的变异。只有内核类型不匹配才算拒绝。有两类修改会让内核无界地工作：
+
+- 对自由变量做机器算术的修改，例如把 `x - left` 改成 `x - len`。为驳倒它，内核把 `UInt64` 和 `UInt32` 运算一直展开到 `Nat` 取模，却没有可计算的值。`uncompress2_z` 上实测：806 s 后达到 12 GiB 预算。
+- `cdoWhile` 循环体内的任何修改，哪怕只是去掉一个测试。两个循环体比较失败后，惰性 delta 在两边展开 `cdoWhile`。它的燃料递归随后一次展开一轮迭代，并在每一步再次比较循环体。`compress2_z` 上实测：467 s 后达到 12 GiB 预算；去掉一个测试的变异 214 s 后达到 16 GiB。
+
+循环外的修改很快被拒绝：去掉或替换的调用、去掉的存储、改变的常量。在 `uncompress2_z` 和 `compress2_z` 上，每个这样的行用 120 s 到 200 s，约 10.5 GB。因此公开记录指定结构性变异。表中也保留算术变异和循环体变异，每个变异分片都用重新繁饰检查它们，证明必须在语义引理处失败。`tests/proof-mutants/api-boundary.tsv` 是一个例子：`uncompress2_z-destLen-count` 和两个 `refill-off-by-one` 行由重新繁饰检查。意图相同、修改是结构性的行承担内核重放：`uncompress2_z-destLen-drop`（错误的 `destLen` 计数），以及两个 `initial-room` 行（输出空间超过剩余量）。
 
 ## 列表格式
 

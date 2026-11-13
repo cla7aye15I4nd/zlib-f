@@ -67,6 +67,21 @@ deflate stream domain excludes it ([deviations](docs/deviations.md)). A
 [report draft](docs/findings/deflate-copy-pending-prev-report.md) is written; nothing was sent
 upstream.
 
+## Source finding: gz position overflow
+
+`gzread` and `gzwrite` add the bytes they move to the signed 64-bit position `x.pos` without a
+bound. On a transparent file whose position can reach 2^63 − 1 the addition overflows, which is
+undefined behaviour. Reading: on a device whose `lseek` succeeds without moving (`/dev/zero` on
+Linux), `gzseek(INT64_MAX, SEEK_SET)` is accepted and the next `gzread` overflows in `gz_read`,
+`gzgetc` and the `gzgetc()` macro ([reproduction](docs/findings/gzread-pos-overflow/README.md)).
+Writing: after a transparent writer seeks near 2^63 on `/dev/null`, `gzwrite` and `gzputc` overflow
+([reproduction](docs/findings/gzwrite-pos-overflow/README.md)). UndefinedBehaviorSanitizer reports
+both on x86_64 Linux with the pinned C. Confidence is high for the diagnosed sequences. Scope: a
+device whose `lseek` succeeds without moving, or a transparent position near 2^63. The verified
+source includes a local fix, [patch 0004](patches/README.md), approved by the owner and not yet
+submitted upstream: the position stays within `z_off64_t`, and an overflowing call fails with
+`Z_DATA_ERROR`.
+
 ## Source fix
 
 `inflateCopy` compares a static fixed table with a separately allocated state

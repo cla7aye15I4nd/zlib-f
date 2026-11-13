@@ -1,0 +1,218 @@
+import ZlibF.Spec.Public.GzControl
+import ZlibF.Spec.PlatformMemory
+
+/-!
+# gz file interface, safety: the representation invariant `GzInv` and the shape of a safe call
+
+The shared definitions of the gz safety proof (skeleton branch `skeleton/gz`, file `gz.skeleton-model.lean`),
+without the proposed OS-call oracle, which is still in review:
+
+1. `GzInv` (`GzCommon`, `GzReadInv`, `GzWriteInv`): the representation invariant of an open handle, with batch
+   C's W1–W10 folded into the write part. Other modules use its interface lemmas, not the definition.
+2. `GzCallSafe`: safety of one public call on a handle in `GzInv`, for every world.
+3. `ReadsFinite`: the M7 premise of the termination half of the reading calls. It is `True` over today's
+   deterministic `Fs`; it becomes a bound read from the oracle fields of `Fs` once the oracle lands.
+
+Correction against the skeleton at `7d896179` (a strengthening): `GzCommon.next` also excludes the message block
+(`blkOf s.msg ≠ some b`), as `NextOk` does. Without it `x.next` may point into the message block, which `gz_error`
+frees, so `GzInv` would not survive `gz_error`.
+
+Patches. Some clauses (`GzCommon.pos`, `GzCommon.next`, `GzReadInv.output`) are established only for the patched
+source (patch 0002, patch 0003, and local patches for F-1, W7, R-3, R-4). The definitions do not depend on that;
+the lemmas that need a patch say so.
+-/
+
+namespace ZlibF.Spec.Public
+open C Zlib.GzFs
+set_option autoImplicit false
+
+namespace GzOracle
+
+/-- The descriptor number `j` is open. -/
+def FdOpen (fs : Fs) (j : Nat) : Prop := ∃ f, fs.fds[j]? = some (some f)
+
+end GzOracle
+
+/-- **M7, the finiteness premise, as the goal states it today.** On today's deterministic `Fs` every read
+source is a finite array that does not grow during one call, so the premise holds of every world: it is `True`.
+After the oracle change this definition becomes `fs.readBudget fd.toInt.toNat ≠ none` (`GzOracle.ReadsFiniteO`
+read from the fields of `Fs`); only this definition changes. It is a premise of the termination half only, and
+only for the calls of `NeedsReadBound`. -/
+def ReadsFinite (_fs : Fs) (_fd : Int32) : Prop := True
+
+/-- The calls whose termination needs M7: the loops of `gz_fetch` (over empty gzip members), `gz_skip` and
+`gz_read` read until the input ends. `gzread`, `gzfread`, `gzgetc`, `gzgetc_`, `gzgets` reach them, `gzungetc`
+through `gz_skip`. `gzdirect` (one `gz_look`, whose `gz_load` loop is bounded by the request), the write side
+(M2) and `gzseek` (no reading loop: the skip is deferred) do not need it. -/
+def NeedsReadBound : Call → Prop
+  | .gzread _ _ _ | .gzfread _ _ _ _ | .gzgetc _ | .gzgetc_ _ | .gzgets _ _ _ | .gzungetc _ _ => True
+  | _ => False
+
+/-! ## 2. The invariant -/
+
+/-- A pointer to the start of a live writable byte block of exactly `n` bytes (`gz_look` and `gz_init` allocate
+exactly these sizes). -/
+def ExactBuffer (h : Heap) (p : BPtr) (n : Nat) : Prop :=
+  ∃ b a, p = .ref (.blk b) 0 ∧ h.bytes b = some a ∧ h.ro b = false ∧ a.size = n
+
+/-- The block of a pointer into a heap block. -/
+def blkOf : BPtr → Option Nat
+  | .ref (.blk b) _ => some b
+  | _ => none
+
+/-- The pointer advanced by `n` bytes. -/
+def padv : BPtr → Nat → BPtr
+  | .null, _ => .null
+  | .ref r o, n => .ref r (o + n)
+
+/-- The pointer fields the record owns: path, message, and the buffers when they exist (`out` only for a
+reader or a compressing writer). -/
+def ownedPtrs (s : GzState) : List BPtr :=
+  [s.path, s.msg] ++
+    (if s.size ≠ 0 then s.«in» :: (if s.mode = GZ_READ ∨ s.direct = 0 then [s.out] else []) else [])
+
+/-- The embedded stream `&state->strm`. -/
+def gzStrm (i : Nat) : ZStreamRef := .in_gzstate_strm i
+
+/-- The part of the invariant common to readers and writers. -/
+structure GzCommon (h : Heap) (i : Nat) (s : GzState) : Prop where
+  record : h.gzstates i = some s
+  mode : s.mode = GZ_READ ∨ s.mode = GZ_WRITE
+  fresh : Fresh h
+  uniq : Zlib.Gzlib.Spec.Uniq h
+  globals : LibraryGlobals h
+  /-- needed by `StreamReachable .inflate` at each codec step -/
+  fit : ZlibF.PlatformMemory.ByteObjectsFit h
+  path : ∃ p, CString h s.path p ∧ MallocBuffer h s.path (p.length + 1)
+  /-- W9 -/
+  msg : s.msg = .null ∨ ∃ m, CString h s.msg m ∧ MallocBuffer h s.msg (m.length + 1)
+  memerr : s.err = Z_MEM_ERROR → s.msg = .null
+  /-- W1 (`gzbuffer` clamps to 8 and refuses a doubling overflow) -/
+  want : 8 ≤ s.want.toNat ∧ s.want.toNat < 2 ^ 31
+  size : s.size = 0 ∨ s.size = s.want
+  /-- the owned pointer blocks are distinct, differ from the record and from the codec's blocks -/
+  distinct : ((ownedPtrs s).filterMap blkOf).Nodup ∧
+    (∀ p, p ∈ ownedPtrs s → ∀ b, blkOf p = some b → b ≠ i ∧ ¬ StreamOwned h (gzStrm i) b)
+  /-- every owned block is live -/
+  live : ∀ b, GzOwned h i s b → h.live b
+  /-- positions. Relies on local patches for F-1 and W7 (`x.pos + skip` never passes `GZ_OFF_MAX`) and on patch
+  0002 (R-1). The pushback lower bound is **to confirm**. -/
+  pos : 0 ≤ s.skip.toInt ∧ s.x.pos.toInt + s.skip.toInt ≤ 9223372036854775807 ∧
+    -(2 * s.size.toNat : Int) ≤ s.x.pos.toInt
+  /-- `x.next` is NULL, or inside an owned buffer other than the message with `x.have` bytes after it. Relies on
+  local patches for R-3 (`gz_reset` writes `x.next`) and R-4 (`x.next` is never left in the caller's buffer). -/
+  next : s.x.next = .null ∨ ∃ b off a, s.x.next = .ref (.blk b) off ∧ b ≠ i ∧ GzOwned h i s b ∧
+    blkOf s.msg ≠ some b ∧ h.bytes b = some a ∧ off + s.x.have.toNat ≤ a.size
+  nullHave : s.x.next = .null → s.x.have = 0
+
+/-- The reader part (`s.mode = GZ_READ`). The note's clause "past ≠ 0 → skip = 0" is not included: a forward
+`gzseek` after a short read keeps `past` and sets `skip` (`Api.GzSeek`). -/
+structure GzReadInv (h : Heap) (i : Nat) (s : GzState) : Prop where
+  how : s.how = LOOK ∨ s.how = GZ_COPY ∨ s.how = GZIP
+  copyDirect : s.how = GZ_COPY → s.direct = 1
+  gzipDirect : s.how = GZIP → s.direct = 0
+  direct : s.direct = -1 ∨ s.direct = 0 ∨ s.direct = 1
+  junk : s.junk = -1 ∨ s.junk = 0 ∨ s.junk = 1
+  flags : (s.eof = 0 ∨ s.eof = 1) ∧ (s.past = 0 ∨ s.past = 1) ∧ (s.again = 0 ∨ s.again = 1)
+  unalloc : s.size = 0 → s.x.have = 0 ∧ s.strm.avail_in = 0 ∧ s.how = LOOK ∧ ∀ b, ¬ StreamOwned h (gzStrm i) b
+  bufs : s.size ≠ 0 → ExactBuffer h s.«in» s.size.toNat ∧ ExactBuffer h s.out (2 * s.size.toNat)
+  input : s.strm.avail_in = 0 ∨ ∃ a, s.strm.next_in = padv s.«in» a ∧ a + s.strm.avail_in.toNat ≤ s.size.toNat
+  /-- relies on patch 0003 (R-2: `x.next` is set before a COPY load can fail) -/
+  output : s.x.have ≠ 0 → ∃ c, s.x.next = padv s.out c ∧ c + s.x.have.toNat ≤ 2 * s.size.toNat
+  /-- the inflate stream is in the inflate history, with no header record (`gz_look` never calls
+  `inflateGetHeader`) -/
+  codec : s.size ≠ 0 → StreamReachable .inflate h (gzStrm i) ∧
+    ∃ z k st, (gzStrm i).get h = some z ∧ z.state = some (.inflate k) ∧ h.istates k = some st ∧ st.head = none
+
+/-- The writer part (`s.mode = GZ_WRITE`): batch C's W1–W10. W1 and W9 are in `GzCommon`; W10 needs no fact;
+W7 is the position clause of `GzCommon` (relies on the local patch for W7). -/
+structure GzWriteInv (h : Heap) (i : Nat) (s : GzState) : Prop where
+  /-- the `gzgetc` macro reads `x.have` on any handle -/
+  have0 : s.x.have = 0
+  direct : s.direct = 0 ∨ s.direct = 1
+  reset : s.reset = 0 ∨ s.reset = 1
+  /-- W2 -/
+  unalloc : s.size = 0 → ∀ b, ¬ StreamOwned h (gzStrm i) b
+  /-- W3 -/
+  bufs : s.size ≠ 0 → ExactBuffer h s.«in» (2 * s.size.toNat) ∧ (s.direct = 0 → ExactBuffer h s.out s.size.toNat)
+  /-- W4 -/
+  input : s.strm.avail_in = 0 ∨ ∃ a, s.strm.next_in = padv s.«in» a ∧ a + s.strm.avail_in.toNat ≤ s.size.toNat
+  /-- W5 -/
+  output : s.direct = 0 → s.size ≠ 0 → ∃ b c, s.strm.next_out = padv s.out b ∧
+    s.strm.avail_out.toNat = s.size.toNat - b ∧ s.x.next = padv s.out c ∧ c ≤ b ∧ b ≤ s.size.toNat
+  /-- W6: the deflate stream is in the deflate history, with no gzip header record -/
+  codec : s.direct = 0 → s.size ≠ 0 → StreamReachable .deflate h (gzStrm i) ∧
+    ∃ z k d, (gzStrm i).get h = some z ∧ z.state = some (.deflate k) ∧ h.dstates k = some d ∧ d.gzhead = none
+  /-- W8 -/
+  transparent : s.direct ≠ 0 → ∀ b, ¬ StreamOwned h (gzStrm i) b
+
+/-- **The gz representation invariant.** Other modules use its interface lemmas, not this definition. -/
+def GzInv (h : Heap) (i : Nat) (s : GzState) : Prop :=
+  GzCommon h i s ∧ (s.mode = GZ_READ → GzReadInv h i s) ∧ (s.mode = GZ_WRITE → GzWriteInv h i s)
+
+/-! ## The shape of a safe call -/
+
+/-- The caller regions a call may write. -/
+def GzWriteRegions : Call → List Region
+  | .gzread _ p n => if n.toNat < 2 ^ 31 then [⟨p, n.toNat⟩] else []
+  | .gzfread p size n _ => if size.toNat * n.toNat < 2 ^ 64 then [⟨p, size.toNat * n.toNat⟩] else []
+  | .gzgets _ p n => if 1 ≤ n.toInt then [⟨p, n.toInt.toNat⟩] else []
+  | .gzerror _ p => [⟨p, 4⟩]
+  | _ => []
+
+/-- The set of open descriptors is unchanged. -/
+def FdsKept (fs fs' : Fs) : Prop := ∀ j, GzOracle.FdOpen fs' j ↔ GzOracle.FdOpen fs j
+
+/-- After a non-closing call that returned: a well-formed world, the invariant, mode and descriptor kept, only
+the handle's blocks and the declared caller regions written, and an exact ledger. -/
+def GzStepPost (h : Heap) (i : Nat) (s : GzState) (call : Call) (fs' : Fs) (after : Heap) : Prop :=
+  FileSystem fs' ∧ ∃ s', GzInv after i s' ∧ s'.mode = s.mode ∧ s'.fd = s.fd ∧
+    BufferFrame h after (GzOwned h i s) (GzWriteRegions call) ∧
+    LiveChange h after
+      (fun b => GzOwned after i s' b ∧ ¬ h.live b)
+      (fun b => GzOwned h i s b ∧ ¬ GzOwned after i s' b)
+
+/-- **Safety of one call** on a handle in `GzInv`, for every world (every oracle): no fault other than running
+out of fuel; it returns, under M7 for the calls that need it; and when it returns the open descriptors are kept
+and `GzStepPost` holds. -/
+def GzCallSafe (i : Nat) (call : Call) : Prop :=
+  ∀ h fs s, GzInv h i s → FileSystem fs → GzArguments h i s call →
+    (∀ e, call.execute fs h = .error e → e = .outOfFuel) ∧
+    ((NeedsReadBound call → ReadsFinite fs s.fd) →
+      ∃ value fs' after, call.execute fs h = .ok ((value, fs'), after)) ∧
+    (∀ value fs' after, call.execute fs h = .ok ((value, fs'), after) →
+      FdsKept fs fs' ∧ GzStepPost h i s call fs' after)
+
+/-! ## Interface lemmas of `GzInv` -/
+
+/-- The state pointer of handle `i`. -/
+def gzSt (i : Nat) : GzStatePtr := some (.tab i)
+
+/-- Interface: the common part. -/
+theorem GzInv.common {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) : GzCommon h i s := And.left inv
+
+/-- Interface: the reader part. -/
+theorem GzInv.reader {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) (hm : s.mode = GZ_READ) :
+    GzReadInv h i s := (And.right inv).1 hm
+
+/-- Interface: the writer part. -/
+theorem GzInv.writer {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) (hm : s.mode = GZ_WRITE) :
+    GzWriteInv h i s := (And.right inv).2 hm
+
+/-- Interface: the record determines the state. -/
+theorem GzInv.state_eq {h : Heap} {i : Nat} {s t : GzState} (inv : GzInv h i s) (ht : h.gzstates i = some t) :
+    s = t := by
+  have hs := inv.common.record
+  rw [ht] at hs
+  exact (Option.some.inj hs).symm
+
+/-! ## Decision (4): the three `Uniq` are one predicate -/
+
+/-- `Zlib.Gzlib.Spec.Uniq` and `Zlib.Inflate.Spec.Uniq` have the same body (one object per block number over the
+same seven tables), so the codec histories embed with no conversion. -/
+theorem gz_uniq_iff_inflate (h : Heap) : Zlib.Gzlib.Spec.Uniq h ↔ Zlib.Inflate.Spec.Uniq h := Iff.rfl
+
+/-- The same for `Zlib.Deflate.Spec.Uniq`. -/
+theorem gz_uniq_iff_deflate (h : Heap) : Zlib.Gzlib.Spec.Uniq h ↔ Zlib.Deflate.Spec.Uniq h := Iff.rfl
+
+end ZlibF.Spec.Public

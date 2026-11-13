@@ -899,6 +899,15 @@ import ZlibF.Proof.«deflate.c.universal-invariant»
 import ZlibF.Proof.«deflate.c.universal-heads»
 import ZlibF.Proof.«deflate.c.universal-init»
 import ZlibF.Proof.«deflate.c.universal-history»
+import ZlibF.Proof.«deflate.c.quiet-silent»
+import ZlibF.Proof.«deflate.c.quiet-phi»
+import ZlibF.Proof.«deflate.c.quiet-strat-def»
+import ZlibF.Proof.«deflate.c.quiet-phases»
+import ZlibF.Proof.«deflate.c.quiet-trailer»
+import ZlibF.Proof.«deflate.c.quiet-tail»
+import ZlibF.Proof.«deflate.c.quiet-call-of»
+import ZlibF.Proof.«deflate.c.quiet-strat»
+import ZlibF.Proof.«deflate.c.quiet-call»
 import ZlibF.Proof.«deflate.c.universal-ops»
 import ZlibF.Proof.«deflate.c.universal-ops-reset»
 import ZlibF.Proof.«deflate.c.universal-ops-prime»
@@ -1144,6 +1153,19 @@ import ZlibF.Proof.«infback.c.safety-library»
 import ZlibF.Proof.«infback.c.safety-modes»
 import ZlibF.Proof.«infback.c.safety-window»
 import ZlibF.Proof.«infback.c.safety-stored»
+import ZlibF.Proof.«infback.c.safety-lookup»
+import ZlibF.Proof.«infback.c.safety-table-head»
+import ZlibF.Proof.«infback.c.safety-table-cl»
+import ZlibF.Proof.«infback.c.safety-table-codes»
+import ZlibF.Proof.«infback.c.safety-table-read»
+import ZlibF.Proof.«infback.c.safety-table-lens»
+import ZlibF.Proof.«infback.c.safety-table»
+import ZlibF.Proof.«infback.c.safety-lookup2»
+import ZlibF.Proof.«infback.c.safety-bits»
+import ZlibF.Proof.«infback.c.safety-len-defs»
+import ZlibF.Proof.«infback.c.safety-sym»
+import ZlibF.Proof.«infback.c.safety-copy»
+import ZlibF.Proof.«infback.c.safety-len»
 import ZlibF.Proof.«inflate.c.completes-reachable»
 import ZlibF.Proof.«inflate.c.len-end-drops»
 
@@ -1632,6 +1654,10 @@ import ZlibF.Proof.«public-deflate-goals»
 import ZlibF.Proof.«trees.c.universal-spec»
 import ZlibF.Proof.«trees.c.universal-stored»
 import ZlibF.Proof.«zutil.c»
+import ZlibF.Proof.«gz.inv-model»
+import ZlibF.Proof.«gz.inv-put-scalars»
+import ZlibF.Proof.«gz.inv-queries»
+import ZlibF.Proof.«gz.inv-frame»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.

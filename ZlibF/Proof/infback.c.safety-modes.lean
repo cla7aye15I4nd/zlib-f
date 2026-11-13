@@ -15,13 +15,29 @@ open C ZlibF.Spec ZlibF.Spec.Public Zlib.Inflate Zlib.Inflate.Proofs Zlib.Infbac
 open Zlib.Inflate.Spec (setI)
 set_option autoImplicit false
 
+/-- Fewer than 8 bits are held when the next round is in `TYPE`, `TABLE` or `LEN`: the entry
+assumption of `inflate_fast`, which `case LEN` calls without checking it. -/
+def Short (i : Nat) (l : IL) (h : Heap) : Prop :=
+  ∀ s, h.istates i = some s → (s.mode = TYPE ∨ s.mode = TABLE ∨ s.mode = LEN) → l.bits.toNat < 8
+
+theorem Short.of_bits {i : Nat} {l : IL} {h : Heap} (b : l.bits.toNat < 8) : Short i l h := fun _ _ _ => b
+
+theorem Short.of_mode {i : Nat} {l : IL} {h : Heap} {sF : InflateState} (hs : h.istates i = some sF)
+    (m : sF.mode = BAD ∨ sF.mode = DONE ∨ sF.mode = STORED) : Short i l h := by
+  intro s g mm
+  rw [hs] at g
+  cases g
+  exfalso
+  rcases m with m | m | m <;> rcases mm with x | x | x <;> rw [m] at x <;> exact absurd x (by decide)
+
 /-- What one round of the dispatch loop leaves. -/
 def Round (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
     (pr : Proto c r i window n) (h0 h : Heap) (l : IL) (log : BackLog)
     (res : Except Ex Unit) (l' : IL) (h' : Heap) : Prop :=
   ∃ log', PInv c pr h0 h' l' log' ∧
     ((res = .ok () ∧ backMeasure pr h' l' log' < backMeasure pr h l log) ∨
-     (res = .error Ex.leave ∧ (l'.ret = Z_STREAM_END ∨ l'.ret = Z_DATA_ERROR ∨ l'.ret = Z_BUF_ERROR)))
+     (res = .error Ex.leave ∧ (l'.ret = Z_STREAM_END ∨ l'.ret = Z_DATA_ERROR ∨ l'.ret = Z_BUF_ERROR))) ∧
+    (res = .ok () → Short i l' h')
 
 /-- **A change of the bit registers alone keeps `PInv`.** -/
 theorem PInv.regs {c : BCtx} {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat} {pr : Proto c r i window n}
@@ -135,7 +151,7 @@ set_option maxRecDepth 100000 in
 `STORED`, `LEN` with the fixed tables, `TABLE` or `BAD`; or the input ends (`Z_BUF_ERROR`). -/
 theorem TYPE_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
     (pr : Proto c r i window n) {h0 h : Heap} {l : IL} {log : BackLog} (I : PInv c pr h0 h l log)
-    {s : InflateState} (hs : h.istates i = some s) (mode : s.mode = TYPE) :
+    {s : InflateState} (hs : h.istates i = some s) (mode : s.mode = TYPE) (short : l.bits.toNat < 8) :
     ∃ res l' h', runX (back_TYPE c) l h = .ok ((res, l'), h') ∧ Round c pr h0 h l log res l' h' := by
   have rank0 : backMeasure pr h l log = 4 * (l.bits.toNat + 8 * l.have_.toNat + 8 * (pr.inputBound - log.supplied.length)) + 1 := by
     unfold backMeasure; rw [hs]; simp [modeRank, mode]; decide
@@ -152,7 +168,8 @@ theorem TYPE_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
       show (l.bits - (l.bits &&& 7)).toNat ≤ _
       rw [UInt32.toNat_sub_of_le _ _ (UInt32.le_iff_toNat_le.mpr (and7_le l))]; omega
     have I2 := I1.regs (l' := bytebits l) rfl rfl rfl rfl (by have := I.bits.1; omega) B1.hold_lt
-    refine ⟨.ok (), bytebits l, setI h i sD, ?_, log, I2, Or.inl ⟨rfl, ?_⟩⟩
+    refine ⟨.ok (), bytebits l, setI h i sD, ?_, log, I2, Or.inl ⟨rfl, ?_⟩,
+      fun _ => Short.of_mode (sF := sD) (by simp [setI]) (Or.inr (Or.inl rfl))⟩
     · unfold back_TYPE
       simp [runX_bind, runX_lift_ok (rdS_ok I.cst hs _), hl, BYTEBITS_run, runX_lift_ok (setMode_ok I.cst hs DONE),
         runX_pure, sD]
@@ -162,16 +179,16 @@ theorem TYPE_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
       show 4 * ((bytebits l).bits.toNat + 8 * l.have_.toNat + 8 * (pr.inputBound - log.supplied.length)) + 0 < _
       omega
   · have hl0 : s0.last = 0 := Classical.byContradiction hl
-    obtain ⟨res0, l1, h1, log1, run1, I1, okc, errc, meas1⟩ := NEEDBITS_p c pr 3 (by decide) I
+    obtain ⟨res0, l1, h1, log1, run1, I1, okc, errc, -, meas1⟩ := NEEDBITS_p c pr 3 (by decide) I
     cases res0 with
     | error e =>
       obtain ⟨rfl, ret⟩ := errc e rfl
-      refine ⟨.error Ex.leave, l1, h1, ?_, log1, I1, Or.inr ⟨rfl, Or.inr (Or.inr ret)⟩⟩
+      refine ⟨.error Ex.leave, l1, h1, ?_, log1, I1, Or.inr ⟨rfl, Or.inr (Or.inr ret)⟩, fun x => (nomatch x)⟩
       unfold back_TYPE
       simp [runX_bind, runX_lift_ok (rdS_ok I.cst hs _), hl0, run1]
     | ok u =>
       cases u
-      obtain ⟨b3, put1, left1⟩ := okc rfl
+      obtain ⟨b3, put1, left1, mx⟩ := okc rfl
       obtain ⟨z1, s1, valid1, -, -⟩ := I1.valid
       have hs1 := valid1.2.1
       have wf1 := valid1.2.2.2.2.2.1
@@ -233,11 +250,17 @@ theorem TYPE_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
       have regs : ∀ (hf : Heap) (I' : PInv c pr h0 hf l1 log1), PInv c pr h0 hf l3 log1 := fun hf I' =>
         I'.regs put3 left3 have3 next3 (by omega) B3'.hold_lt
       have wfL : sL.WellFormed := by rw [hsL]; exact wf_with wf1 _ rfl rfl rfl
+      have short3 : l3.bits.toNat < 8 := by
+        have m3 : l1.bits.toNat ≤ max l.bits.toNat ((3 : UInt32).toNat + 7) := mx
+        simp only [show (3 : UInt32).toNat = 3 from rfl] at m3
+        have m4 : l1.bits.toNat ≤ 10 := Nat.le_trans m3 (Nat.max_le.mpr ⟨by omega, Nat.le_refl _⟩)
+        omega
       rcases hcases with rfl | rfl | rfl | rfl
       · refine ⟨.ok (), l3, setI h1 i { sL with mode := STORED }, ?_, log1,
           regs _ (I1.setState hs1 { sL with mode := STORED } (by rw [hsL]) (by rw [hsL]) (by rw [hsL])
             (wf_with wfL _ rfl rfl rfl) (modeOk_of (Or.inl rfl))),
-          Or.inl ⟨rfl, measure _ { sL with mode := STORED } (by simp [setI])⟩⟩
+          Or.inl ⟨rfl, measure _ { sL with mode := STORED } (by simp [setI])⟩,
+          fun _ => Short.of_mode (sF := { sL with mode := STORED }) (by simp [setI]) (Or.inr (Or.inr rfl))⟩
         unfold back_TYPE
         simp only [runX_bind, runX_lift_ok (rdS_ok I.cst hs _), hl0, bne_self_eq_false, Bool.false_eq_true, ↓reduceIte,
           run1, hr1, runX_lift_ok hw1, hd1, hb2, runX_lift_ok (setMode_ok I1.cst hs2 STORED), hd2]
@@ -250,7 +273,8 @@ theorem TYPE_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
         refine ⟨.ok (), l3, setI h1 i { Zlib.Inftrees.Proofs.fixedState sL with mode := LEN }, ?_, log1,
           regs _ (I1.setState hs1 { Zlib.Inftrees.Proofs.fixedState sL with mode := LEN } (by rw [hsL]; rfl)
             (by rw [hsL]; rfl) (by rw [hsL]; rfl) (wf_with wfL _ rfl rfl rfl) (modeOk_fixed i sL)),
-          Or.inl ⟨rfl, measure _ { Zlib.Inftrees.Proofs.fixedState sL with mode := LEN } (by simp [setI])⟩⟩
+          Or.inl ⟨rfl, measure _ { Zlib.Inftrees.Proofs.fixedState sL with mode := LEN } (by simp [setI])⟩,
+          fun _ => Short.of_bits short3⟩
         unfold back_TYPE
         simp only [runX_bind, runX_lift_ok (rdS_ok I.cst hs _), hl0, bne_self_eq_false, Bool.false_eq_true, ↓reduceIte,
           run1, hr1, runX_lift_ok hw1, hd1, hb2, runX_lift_ok hfx, runX_lift_ok (setMode_ok I1.cst hs3 LEN), hd2]
@@ -258,7 +282,7 @@ theorem TYPE_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
       · refine ⟨.ok (), l3, setI h1 i { sL with mode := TABLE }, ?_, log1,
           regs _ (I1.setState hs1 { sL with mode := TABLE } (by rw [hsL]) (by rw [hsL]) (by rw [hsL])
             (wf_with wfL _ rfl rfl rfl) (modeOk_of (Or.inr (Or.inl rfl)))),
-          Or.inl ⟨rfl, measure _ { sL with mode := TABLE } (by simp [setI])⟩⟩
+          Or.inl ⟨rfl, measure _ { sL with mode := TABLE } (by simp [setI])⟩, fun _ => Short.of_bits short3⟩
         unfold back_TYPE
         simp only [runX_bind, runX_lift_ok (rdS_ok I.cst hs _), hl0, bne_self_eq_false, Bool.false_eq_true, ↓reduceIte,
           run1, hr1, runX_lift_ok hw1, hd1, hb2, runX_lift_ok (setMode_ok I1.cst hs2 TABLE), hd2]
@@ -271,7 +295,8 @@ theorem TYPE_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
         have IC := IB.setState hsB { sL with mode := BAD } rfl rfl rfl (wf_with wfL _ rfl rfl rfl)
           (modeOk_of (Or.inr (Or.inr (Or.inr rfl))))
         refine ⟨.ok (), l3, setI (r.put (setI h1 i sL) { z1 with msg := .ref (.str k) 0 }) i { sL with mode := BAD }, ?_,
-          log1, regs _ IC, Or.inl ⟨rfl, measure _ { sL with mode := BAD } (by simp [setI])⟩⟩
+          log1, regs _ IC, Or.inl ⟨rfl, measure _ { sL with mode := BAD } (by simp [setI])⟩,
+          fun _ => Short.of_mode (sF := { sL with mode := BAD }) (by simp [setI]) (Or.inl rfl)⟩
         unfold back_TYPE
         simp only [runX_bind, runX_lift_ok (rdS_ok I.cst hs _), hl0, bne_self_eq_false, Bool.false_eq_true, ↓reduceIte,
           run1, hr1, runX_lift_ok hw1, hd1, hb2]

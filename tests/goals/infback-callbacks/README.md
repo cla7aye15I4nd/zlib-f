@@ -21,3 +21,9 @@ be wrong, which is a functional matter outside the safety goal; the sanitizers s
 
 Result on 2026-11-12, seeds 1 to 30000: no report; 13030 `Z_STREAM_END`, 16463 `Z_DATA_ERROR`,
 30469 `Z_BUF_ERROR` (over all calls), 6049 round trips equal. This is evidence, not proof.
+
+`bits8.sh [first-seed] [count]` tests a loop invariant the proof needs: when `inflateBack` takes the
+fast path (`have >= 6 && left >= 258`), fewer than 8 bits are held. `inflate_fast` lists
+`state->bits < 8` among its entry assumptions; `inflate.c` checks it before the call, `infback.c`
+does not. The script builds a copy whose fast path traps on `bits >= 8` and runs the same harness.
+Result on 2026-11-12, seeds 1 to 30000 and 30001 to 60000: no trap. This is evidence, not proof.

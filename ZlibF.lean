@@ -592,4 +592,17 @@ import ZlibF.Proof.«infback.c.safety-library»
 import ZlibF.Proof.«infback.c.safety-modes»
 import ZlibF.Proof.«infback.c.safety-window»
 import ZlibF.Proof.«infback.c.safety-stored»
+import ZlibF.Proof.«infback.c.safety-lookup»
+import ZlibF.Proof.«infback.c.safety-table-head»
+import ZlibF.Proof.«infback.c.safety-table-cl»
+import ZlibF.Proof.«infback.c.safety-table-codes»
+import ZlibF.Proof.«infback.c.safety-table-read»
+import ZlibF.Proof.«infback.c.safety-table-lens»
+import ZlibF.Proof.«infback.c.safety-table»
+import ZlibF.Proof.«infback.c.safety-lookup2»
+import ZlibF.Proof.«infback.c.safety-bits»
+import ZlibF.Proof.«infback.c.safety-len-defs»
+import ZlibF.Proof.«infback.c.safety-sym»
+import ZlibF.Proof.«infback.c.safety-copy»
+import ZlibF.Proof.«infback.c.safety-len»
 import ZlibF.Proof.«deflate.c.universal-flush-cursor»

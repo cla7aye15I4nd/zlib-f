@@ -1,0 +1,19 @@
+== before
+-- gzopen, gzseek(f, 3, SEEK_SET)
+x.next + 0 at gzlib.c:435, x.next = 0xbebebebebebebebe
+gzseek = 3
+gzread 5 = 5 "lo, h"
+-- gzopen, gzdirect
+x.next + 0 at gzread.c:313, x.next = 0xbebebebebebebebe
+gzdirect = 0
+evaluations of x.next with n == 0: 2
+ok: before the fix: x.next evaluated with n == 0 in gzseek64 and gz_skip_have
+== after
+-- gzopen, gzseek(f, 3, SEEK_SET)
+gzseek = 3
+gzread 5 = 5 "lo, h"
+-- gzopen, gzdirect
+gzdirect = 0
+evaluations of x.next with n == 0: 0
+ok: after the fix: x.next is never evaluated with n == 0
+rc=0

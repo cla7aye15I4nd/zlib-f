@@ -1,0 +1,74 @@
+Raw output of tests/regression/gzread-transparent-stale-next/run.sh (stale.c), exit status 0.
+Source: the pinned zlib commit 757f0527154291bcf6bfbd6396ecde6bedd2db95, built twice by tests/build-zlib.sh:
+without any patch (unpatched) and with patches/*.patch (patched).
+Build: GCC 15.2, the sanitizer options of run.sh.
+Host: x86_64 Linux, the project's target. Process ids are replaced by PID. Paths are relative to
+the build directory or to the repository root; system paths are as the toolchain prints them.
+Same verdict as on arm64 macOS: a heap-buffer-overflow READ of size 1 in gz_read at gzread.c:369,
+0 bytes after the 32-byte buffer allocated in gz_look (gzread.c:100). GCC inlines the fortified
+memcpy, so the SUMMARY line names string_fortified.h; frame #2 is gz_read gzread.c:369.
+
+== unpatched
+before: how=1 have=0 next-offset=32 size=16
+=================================================================
+==PID==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x7926271e0060 at pc 0x7cf628f2901f bp 0x7fff02a49d20 sp 0x7fff02a494c8
+READ of size 1 at 0x7926271e0060 thread T0
+    #0 0x7cf628f2901e in memcpy ../../../../src/libsanitizer/sanitizer_common/sanitizer_common_interceptors_memintrinsics.inc:117
+    #1 0x64c563f4acad in memcpy /usr/include/x86_64-linux-gnu/bits/string_fortified.h:29
+    #2 0x64c563f4acad in gz_read unpatched/gzread.c:369
+    #3 0x64c563f4b208 in gzread unpatched/gzread.c:454
+    #4 0x64c563f46e1c in main tests/regression/gzread-transparent-stale-next/stale.c:51
+    #5 0x7cf62822a600 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:59
+    #6 0x7cf62822a717 in __libc_start_main_impl ../csu/libc-start.c:360
+    #7 0x64c563f46624 in _start (stale-unpatched+0x4a624) (BuildId: 27d440e3b0ac27db31361dcb732247a06389c8e2)
+
+0x7926271e0060 is located 0 bytes after 32-byte region [0x7926271e0040,0x7926271e0060)
+allocated by thread T0 here:
+    #0 0x7cf628f2b60f in malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:67
+    #1 0x64c563f49c7e in gz_look unpatched/gzread.c:100
+    #2 0x64c563f4a451 in gz_fetch unpatched/gzread.c:266
+    #3 0x64c563f4af2b in gz_read unpatched/gzread.c:388
+    #4 0x64c563f4b954 in gzgetc unpatched/gzread.c:543
+    #5 0x64c563f46b77 in main tests/regression/gzread-transparent-stale-next/stale.c:46
+    #6 0x7cf62822a600 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:59
+    #7 0x7cf62822a717 in __libc_start_main_impl ../csu/libc-start.c:360
+    #8 0x64c563f46624 in _start (stale-unpatched+0x4a624) (BuildId: 27d440e3b0ac27db31361dcb732247a06389c8e2)
+
+SUMMARY: AddressSanitizer: heap-buffer-overflow /usr/include/x86_64-linux-gnu/bits/string_fortified.h:29 in memcpy
+Shadow bytes around the buggy address:
+  0x7926271dfd80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x7926271dfe00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x7926271dfe80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x7926271dff00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x7926271dff80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+=>0x7926271e0000: fa fa fd fd fd fa fa fa 00 00 00 00[fa]fa fd fd
+  0x7926271e0080: fd fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x7926271e0100: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x7926271e0180: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x7926271e0200: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x7926271e0280: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07 
+  Heap left redzone:       fa
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+  Left alloca redzone:     ca
+  Right alloca redzone:    cb
+==PID==ABORTING
+ok: unpatched: gz_read copies from the stale x.next past the output buffer
+== patched
+before: how=1 have=0 next-offset=32 size=16
+after: n=1 have=0 next-offset=1 err=-1
+ok: patched: gzread returns the byte and keeps Z_ERRNO, no report
