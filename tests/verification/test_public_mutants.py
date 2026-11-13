@@ -157,6 +157,16 @@ class PublicMutationTests(unittest.TestCase):
         changed = self.replay(candidate)
         self.assertEqual(changed.returncode, 2, changed.stdout + changed.stderr)
         self.assertTrue(changed.stdout.startswith('EXACT_PROOF_REJECTED: '))
+        # The diagnostic names the kind and the declaration, never a rendered term.
+        self.assertIn("while replaying declaration '", changed.stdout)
+        self.assertIn('(kernel) ', changed.stdout)
+        self.assertLess(len(changed.stdout), 2000)
+
+    @unittest.skipUnless(sys.platform.startswith('linux'), 'the memory budget reads /proc')
+    def test_replay_over_the_memory_budget_fails_closed(self):
+        with patch.object(verification, 'REPLAY_RSS_LIMIT', 1):
+            with self.assertRaisesRegex(verification.Rejected, 'memory budget'):
+                verification.run_replay(['sleep', '10'], 'fixture')
 
     def test_complete_public_runner_keeps_its_original_tool_outside_variants(self):
         proof = self.root / 'ZlibF/Proof.lean'
