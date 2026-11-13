@@ -1688,6 +1688,7 @@ import ZlibF.Proof.«gzwrite.c.init»
 import ZlibF.Proof.«gzlib.c.error-inv-premises»
 import ZlibF.Proof.«gzlib.c.error-inv-rec»
 import ZlibF.Proof.«gz.read-load-error»
+import ZlibF.Proof.«gz.read-avail»
 import ZlibF.Proof.«gzwrite.c.upto-input»
 import ZlibF.Proof.«gz.inv-seek»
 

@@ -1010,7 +1010,8 @@ theorem gz_load_paths (i : Nat) (buf : BPtr) (len : UInt32) (h : Heap) (fs : Fs)
       l.«have».toNat ≤ len.toNat ∧
       (¬ (l.ret < 0 ∧ ¬ (BLOCKED fs'.errno = true ∧ l.«have» ≠ 0)) →
         ∃ fs'' after, loadTail i l fs' H = .ok (((0, l.«have»), fs''), after) ∧ FdsKept fs fs'' ∧
-          GzPost h i s [⟨buf, len.toNat⟩] fs'' after GzInvUpToOutput) := by
+          GzPost h i s [⟨buf, len.toNat⟩] fs'' after GzInvUpToOutput ∧
+          ∃ ag ef : Int32, after.gzstates i = some { s with again := ag, eof := ef }) := by
   obtain ⟨hs, inv⟩ := hu
   let s1 : GzState := { s with again := 0 }
   let h1 := putGz h i s1
@@ -1080,15 +1081,15 @@ theorem gz_load_paths (i : Nat) (buf : BPtr) (len : UInt32) (h : Heap) (fs : Fs)
     have hge : getErrno fs' H = .ok ((fs'.errno, fs'), H) := rfl
     simp only [g_bind_app, g_lift_app, liftM, monadLift, MonadLift.monadLift,
       MonadLiftT.monadLift, hge, hb.1, updS_run hrecH, hne, g_pure_app, ite_true, if_true]
-    exact ⟨fs', _, rfl, hkept, post 1 s.eof (Or.inr rfl) heof⟩
+    exact ⟨fs', _, rfl, hkept, post 1 s.eof (Or.inr rfl) heof, 1, s.eof, (by first | rfl | (simp only [Zlib.Gzlib.Spec.setS, putGz, upd_same]; rfl) | simp only [Zlib.Gzlib.Spec.setS, putGz, upd_same])⟩
   · rw [if_neg hr]
     by_cases hz : (l.ret == 0) = true
     · simp only [hz, ite_true, g_bind_app, g_lift_app, liftM, monadLift, MonadLift.monadLift,
         MonadLiftT.monadLift, updS_run hrecH, g_pure_app]
-      exact ⟨fs', _, rfl, hkept, post 0 1 (Or.inl rfl) (Or.inr rfl)⟩
+      exact ⟨fs', _, rfl, hkept, post 0 1 (Or.inl rfl) (Or.inr rfl), 0, 1, (by first | rfl | (simp only [Zlib.Gzlib.Spec.setS, putGz, upd_same]; rfl) | simp only [Zlib.Gzlib.Spec.setS, putGz, upd_same])⟩
     · simp only [hz, Bool.false_eq_true, ite_false, g_bind_app, g_pure_app]
       have hself : putGz H i { s1 with again := 0, eof := s.eof } = H := upd_self_heap hrecH
-      refine ⟨fs', H, rfl, hkept, ?_⟩
+      refine ⟨fs', H, rfl, hkept, ?_, 0, s.eof, hrecH⟩
       rw [← hself]
       exact post 0 s.eof (Or.inl rfl) heof
 

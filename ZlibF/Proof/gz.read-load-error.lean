@@ -194,7 +194,8 @@ theorem gz_load_error_tail (i : Nat) (buf : BPtr) (len : UInt32) (h : Heap) (fs 
     (linv : LoadInv i buf len { s with again := 0 } (putGz h i { s with again := 0 }) { fs with errno := 0 } l fs' H)
     (herr : l.ret < 0 ∧ ¬ (BLOCKED fs'.errno = true ∧ l.«have» ≠ 0)) :
     ∃ fs'' after, loadTail i l fs' H = .ok (((-1, l.«have»), fs''), after) ∧ FdsKept fs fs'' ∧
-      GzPost h i s [⟨buf, len.toNat⟩] fs'' after GzInvUpToOutput := by
+      GzPost h i s [⟨buf, len.toNat⟩] fs'' after GzInvUpToOutput ∧
+      ∃ ag ef e m, after.gzstates i = some { s with again := ag, eof := ef, err := e, msg := m } := by
   have hs : h.gzstates i = some s := hu.1
   have inv : GzInv (putGz h i (clearOut s)) i (clearOut s) := hu.2
   have linv0 := linv
@@ -349,8 +350,8 @@ theorem gz_load_error_tail (i : Nat) (buf : BPtr) (len : UInt32) (h : Heap) (fs 
       rw [this] at hb; cases hb
     · have hpm' : s4.msg = .ref (.blk mb) 0 := hpm
       rw [hpm'] at hb; cases hb; exact Or.inr (Or.inr (Or.inl hpm'))
-  refine ⟨fs', after, hrun, hkeptH, hfsH, s4, ⟨hs4, inv4⟩, by rw [hsame4.2.2.2.2.2.1],
-    by rw [shape4], bf, ?_, ?_⟩
+  refine ⟨fs', after, hrun, hkeptH, ⟨hfsH, s4, ⟨hs4, inv4⟩, by rw [hsame4.2.2.2.2.2.1],
+    by rw [shape4], bf, ?_, ?_⟩, ag, s.eof, s4.err, s4.msg, by rw [hs4, shape4]⟩
   · intro b
     have L2 := lc4 b
     simp only [liveA, liveX3, hliveX] at L2
@@ -386,16 +387,18 @@ theorem gz_load_safe (i : Nat) (buf : BPtr) (len : UInt32) (h : Heap) (fs : Fs) 
       (∀ b, ByteRoot buf b → ¬ GzOwned h i s b)) :
     RunSafe (Zlib.Gzread.gz_load (gzSt i) buf len) fs h True fun r fs' after =>
       (r.1 = 0 ∨ r.1 = -1) ∧ r.2.toNat ≤ len.toNat ∧ FdsKept fs fs' ∧
-      GzPost h i s [⟨buf, len.toNat⟩] fs' after GzInvUpToOutput := by
+      GzPost h i s [⟨buf, len.toNat⟩] fs' after GzInvUpToOutput ∧
+      ∃ ag ef e m, after.gzstates i = some { s with again := ag, eof := ef, err := e, msg := m } := by
   obtain ⟨l, fs', H, hrun, linv, hle, hok⟩ := gz_load_paths i buf len h fs s hu hm hsz hfs hw hroot
   have key : ∃ r fs'' after, Zlib.Gzread.gz_load (gzSt i) buf len fs h = .ok ((r, fs''), after) ∧
       (r.1 = 0 ∨ r.1 = -1) ∧ r.2.toNat ≤ len.toNat ∧ FdsKept fs fs'' ∧
-      GzPost h i s [⟨buf, len.toNat⟩] fs'' after GzInvUpToOutput := by
+      GzPost h i s [⟨buf, len.toNat⟩] fs'' after GzInvUpToOutput ∧
+      ∃ ag ef e m, after.gzstates i = some { s with again := ag, eof := ef, err := e, msg := m } := by
     by_cases herr : l.ret < 0 ∧ ¬ (BLOCKED fs'.errno = true ∧ l.«have» ≠ 0)
-    · obtain ⟨fs'', after, ht, hk, hp⟩ := gz_load_error_tail i buf len h fs s hu hm hsz hw hroot l fs' H linv herr
-      exact ⟨_, fs'', after, hrun.trans ht, Or.inr rfl, hle, hk, hp⟩
-    · obtain ⟨fs'', after, ht, hk, hp⟩ := hok herr
-      exact ⟨_, fs'', after, hrun.trans ht, Or.inl rfl, hle, hk, hp⟩
+    · obtain ⟨fs'', after, ht, hk, hp, hr⟩ := gz_load_error_tail i buf len h fs s hu hm hsz hw hroot l fs' H linv herr
+      exact ⟨_, fs'', after, hrun.trans ht, Or.inr rfl, hle, hk, hp, hr⟩
+    · obtain ⟨fs'', after, ht, hk, hp, ag, ef, hr⟩ := hok herr
+      exact ⟨_, fs'', after, hrun.trans ht, Or.inl rfl, hle, hk, hp, ag, ef, s.err, s.msg, hr⟩
   obtain ⟨r, fs'', after, run, post⟩ := key
   refine ⟨fun e he => ?_, fun _ => ⟨r, fs'', after, run⟩, fun r' fs3 after' he => ?_⟩
   · rw [run] at he; cases he

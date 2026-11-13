@@ -2237,7 +2237,7 @@ Pending inputs that change the skeleton:
 | Rebase on patches 0002–0004+, statement review | | open | 4 | batch 1 |
 | `history_inv`, `operation_safe`, `close_safe`, `gz_sequence_safety`, `gzclose_step`, `gzseek_step`, `gzeof_step`, `gzopen64_safe` | Assembly. | checked (skeleton) | 0 | batch 1 |
 | `gz_load_safe` | The `read` loop (M1): `-1` or `0`, `have ≤ len`, only the buffer written. Checked as `gz_load_safe` (`gz.read-load-error`): `fsRead_contract` (M1, every oracle value), `gz_load_paths` (`gz.read-store`: the loop and the tails that return `0`) and `gz_load_error_tail` (the `gz_error(Z_ERRNO, strerror)` report, through `gz_error_upToOutput`, `gzlib.c.error-inv-rec`). Premises found: `size ≠ 0` (a stalled read sets `again`) and the buffer is a data buffer block or not owned. | checked | 0 | read side (deflate owner) |
-| `gz_avail_safe` | Refill `in`; the input window is kept. | open | 4 | read side (deflate owner) |
+| `gz_avail_safe` | Refill `in`; the input window is kept. Checked (`gz.read-avail`): the compaction copy (`copy_loop`, `copy_run`; dead for every caller, proved anyway), `gz_load_safe` behind the pending input, and the new window (`GzInv.set_input`); the record changes only in flags, error, message and window (`AvailRec`). Premise: a reader (`s.mode = GZ_READ`). For it `gz_load_safe` now also states the record after the call. | checked | 0 | read side (deflate owner) |
 | `gz_look_safe` | Lazy buffers and `inflateInit2`, failure ledger, COPY copy. | open | 10 | read side (deflate owner) |
 | `gz_decomp_safe` | Inflate steps in the inflate history; `x.next` in the output window. | open | 14 | read side (deflate owner) |
 | `gz_fetch_safe` | The dispatcher; terminates under M7. | open | 6 | read side (deflate owner) |
