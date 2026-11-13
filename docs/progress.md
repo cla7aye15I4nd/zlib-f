@@ -2236,7 +2236,7 @@ Pending inputs that change the skeleton:
 | `gzbuffer_step`, `gzerror_step`, `gzclearerr_step`, `gzoffset64_step`, `gzoffset_step`, `gzrewind_step` | The registered queries restated over `GzInv`. | open | 6 | batch 1 |
 | Rebase on patches 0002–0004+, statement review | | open | 4 | batch 1 |
 | `history_inv`, `operation_safe`, `close_safe`, `gz_sequence_safety`, `gzclose_step`, `gzseek_step`, `gzeof_step`, `gzopen64_safe` | Assembly. | checked (skeleton) | 0 | batch 1 |
-| `gz_load_safe` | The `read` loop (M1): `-1` or `0`, `have ≤ len`, only the buffer written. | open | 6 | read side (deflate owner) |
+| `gz_load_safe` | The `read` loop (M1): `-1` or `0`, `have ≤ len`, only the buffer written. Checked: `fsRead_contract` (M1, every oracle value), the loop `gz_load_loop` with its store frame (`gz.read-store`). Open: the tails (`eof`, `again`, and the `gz_error` report, which needs `GzInv.gz_error`) and `GzPost`. | partly checked | 2 | read side (deflate owner) |
 | `gz_avail_safe` | Refill `in`; the input window is kept. | open | 4 | read side (deflate owner) |
 | `gz_look_safe` | Lazy buffers and `inflateInit2`, failure ledger, COPY copy. | open | 10 | read side (deflate owner) |
 | `gz_decomp_safe` | Inflate steps in the inflate history; `x.next` in the output window. | open | 14 | read side (deflate owner) |
