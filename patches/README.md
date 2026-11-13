@@ -32,7 +32,9 @@ safety proof of `gzseek64` and `gzseek`.
 The patch is the `gzlib.c` part of
 [upstream PR #1361](https://github.com/madler/zlib/pull/1361) at head
 `ce2248ee9750`. The `test/example.c` part of that pull request is not part of
-the verified source. The pull request is open.
+the verified source. The pull request is open. The retained
+[reproduction](../tests/regression/gzseek-pushback-overflow/README.md) builds the
+unpatched C under the sanitizers and shows the reports gone with the patches.
 
 ## 0003-gzread-partial-copy-read-error.patch
 
@@ -46,7 +48,10 @@ blocks the safety proof of the read side.
 
 The patch is exactly the change of
 [upstream PR #1363](https://github.com/madler/zlib/pull/1363) at head
-`37627fd3bb47`. The pull request is open.
+`37627fd3bb47`. The pull request is open. The retained
+[reproduction](../tests/regression/gzread-transparent-stale-next/README.md)
+builds the unpatched C under the sanitizers and shows the report gone with the
+patches.
 
 ## 0004-gz-position-overflow.patch
 

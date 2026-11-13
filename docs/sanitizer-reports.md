@@ -15,8 +15,8 @@ stream reaches any of them.
 Each row is outside the proved domain: a named premise of a public goal excludes it. Where
 zlib.h is silent about the layout, the premise is listed in [deviations](deviations.md).
 
-None of these rows was reported upstream. The only reproduction reported upstream is the
-library defect in the next section, and upstream has fixed it.
+None of these rows was reported upstream. The reproductions reported upstream are the library
+defects in the section "Library defects": upstream has fixed one, and two await the maintainer.
 
 ## Caller layouts outside the proved domain
 
@@ -51,13 +51,17 @@ source on x86_64 Linux; the same AddressSanitizer report on arm64 macOS.
 | --- | --- | --- | --- | --- | --- |
 | deflateCopy after deflateResetKeep | `windowBits` 9; `deflate(Z_NO_FLUSH)`; `deflateResetKeep`; `deflate(Z_BLOCK)`; `deflateCopy`; on the copy `deflateParams(Z_RLE)`, `deflate(Z_SYNC_FLUSH)` with no input, `deflateParams(Z_DEFAULT_STRATEGY)`, `deflate` on input that starts with the bytes at `strstart - 2` | ASan `heap-buffer-overflow` READ of size 1, `deflate.c:1511` (`longest_match`), with fresh memory filled by the allocator; with the default allocator, valgrind: conditional jump on an uninitialised value, `deflate.c:1555`, created by the `prev` allocation of `deflateCopy` | No direct `deflateResetKeep` in a deflate call history (`StreamOperation .deflate`, [deviations](deviations.md)) | [deflate-copy-pending-prev](../tests/regression/deflate-copy-pending-prev/README.md), `copy.c`, [report](../tests/regression/deflate-copy-pending-prev/report.txt); analysis in [findings](findings/deflate-copy-pending-prev/README.md); [report draft](findings/deflate-copy-pending-prev-report.md), not sent | Lists `deflateResetKeep` among the undocumented functions |
 
-## Library defect, fixed upstream
+## Library defects
 
 | Name | Call sequence | Sanitizer verdict | Status | Reproduction |
 | --- | --- | --- | --- | --- |
 | inflateCopy fixed table | default `inflateInit`; `inflate` stops inside a fixed block; `inflateCopy` | `invalid-pointer-pair`, `inflate.c:1383`, between the static `lenfix` and the inflate state | A zlib defect inside the documented use. Fixed upstream ([PR #1369](https://github.com/madler/zlib/pull/1369)); the verified source applies that fix as a temporary patch | [inflate-copy-fixed](findings/inflate-copy-fixed/README.md), [report](findings/inflate-copy-fixed/report.txt) |
+| gzseek after initial gzungetc | `gzopen`; `gzungetc` at position 0 (`x.pos` becomes -1); `gzseek(f, 1, SEEK_CUR)`, or on another handle `gzseek(f, LONG_MAX, SEEK_SET)`; transparent and gzip input | UBSan: signed integer overflow, `gzlib.c:395` (`SEEK_CUR`), `gzlib.c:403` (`SEEK_SET`, transparent), `gzlib.c:424` (`SEEK_SET`, gzip) | A zlib defect inside the documented use. Fix submitted upstream ([PR #1361](https://github.com/madler/zlib/pull/1361)), not yet confirmed by the maintainer; the verified source applies it as a temporary patch | [gzseek-pushback-overflow](../tests/regression/gzseek-pushback-overflow/README.md), `seek.c`, [report](../tests/regression/gzseek-pushback-overflow/report.txt) |
+| gzread stale next after partial read | transparent `gzopen`, `gzbuffer(f, 16)`; 48 `gzgetc` on a 128-byte file; `read()` returns 1 byte, then fails with `EIO`; `gzread(f, buf, 1)` | `heap-buffer-overflow` READ of size 1, `gzread.c:369` (`gz_read`), 0 bytes after the 32-byte output buffer | A zlib defect inside the documented use. Fix submitted upstream ([PR #1363](https://github.com/madler/zlib/pull/1363)), not yet confirmed by the maintainer; the verified source applies it as a temporary patch | [gzread-transparent-stale-next](../tests/regression/gzread-transparent-stale-next/README.md), `stale.c`, [report](../tests/regression/gzread-transparent-stale-next/report.txt) |
 
-This reproduction builds the unpatched pinned source on purpose.
+These reproductions build the unpatched pinned source on purpose; the two gz runners also build
+the patched source and check that the report is gone. The two gz reports come from arm64 macOS
+(Apple clang 21); the overflows they show do not depend on the target.
 
 ## Clean runs, kept as evidence that a layout is defined
 
