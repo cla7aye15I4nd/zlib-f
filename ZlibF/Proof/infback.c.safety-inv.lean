@@ -1,6 +1,7 @@
 import ZlibF.Proof.«infback.c.safety-valid»
 import ZlibF.Proof.«infback.c.pull»
 import ZlibF.Proof.«infback.c.wf»
+import ZlibF.Proof.«inffast.c.tableok»
 
 /-!
 # infback.c: the invariant of the dispatch loop over the caller protocol, and `PULL()`
@@ -28,6 +29,19 @@ def ChunkOk (h : Heap) (r : ZStreamRef) (i : Nat) (window : BPtr) (n : Nat) (act
   held ≠ [] → Bytes h active held.length held ∧ Separate active held.length window n ∧
     ∀ b, ByteRoot active b → b ≠ i ∧ ¬ StreamRoot r b
 
+/-- The decoding tables of the current block: each is either the state's own `codes` array
+with the shape `inflate_fast` needs, or the static fixed table. -/
+def TablesOk (i : Nat) (s : InflateState) : Prop :=
+  ((∃ ol, s.lencode = .ref (.istate_codes i) ol ∧ Zlib.Inffast.Spec.LenTableSafe s.codes ol s.lenbits.toNat) ∨
+    (s.lencode = .ref .st_lenfix 0 ∧ s.lenbits = 9)) ∧
+  ((∃ od, s.distcode = .ref (.istate_codes i) od ∧ Zlib.Inffast.Spec.DistTableSafe s.codes od s.distbits.toNat) ∨
+    (s.distcode = .ref .st_distfix 0 ∧ s.distbits = 5))
+
+/-- The modes the dispatch loop of `inflateBack()` can be in, with the tables in `LEN`. -/
+def ModeOk (i : Nat) (s : InflateState) : Prop :=
+  (s.mode = TYPE ∨ s.mode = STORED ∨ s.mode = TABLE ∨ s.mode = LEN ∨ s.mode = DONE ∨ s.mode = BAD) ∧
+    (s.mode = LEN → TablesOk i s)
+
 /-- **The invariant of the dispatch loop**, relative to the heap `h0` at the call. -/
 structure PInv (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
     (pr : Proto c r i window n) (h0 h : Heap) (l : IL) (log : BackLog) : Prop where
@@ -43,6 +57,7 @@ structure PInv (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
   proto : pr.invariant h log
   frame : CallbackFrame pr.own h0 h r i window n
   live : ∀ b, ¬ pr.own b → (h.live b ↔ h0.live b)
+  mode : ∀ s, h.istates i = some s → ModeOk i s
 
 /-- The rank of a mode in the measure: the modes that leave at once rank lowest. -/
 def modeRank (m : UInt32) : Nat := if m == DONE || m == BAD then 0 else if m == TYPE then 1 else 2
@@ -140,7 +155,9 @@ theorem PULL_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
         PULL_noinput hz run,
         { cstrm := I.cstrm, cst := I.cst, valid := ⟨z, s, valid', win, size⟩, winRoot := I.winRoot,
           put := I.put, chunk := ⟨by simp, fun e => absurd rfl e⟩, held := fun e => absurd rfl e,
-          bits := I.bits, proto := inv', frame := frame', live := live' },
+          bits := I.bits, proto := inv', frame := frame', live := live',
+          mode := fun s1 g => by
+            rw [istates_frame ext.1 valid.2.1 stateOut] at g; injection g with e; subst e; exact I.mode s valid.2.1 },
         fun e => (nomatch e), fun e he => by injection he with he; subst he; exact ⟨rfl, rfl⟩, ?_⟩
       unfold backMeasure
       rw [rank, hz]
@@ -153,7 +170,9 @@ theorem PULL_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
           put := I.put, chunk := ⟨by show k.toNat ≤ bytes.length; rw [len]; exact Nat.le_refl _,
             fun _ => by simp [len, advance_zero]⟩,
           held := fun _ => ⟨by rw [len]; exact bytesB, by rw [len]; exact sep, roots⟩,
-          bits := I.bits, proto := inv', frame := frame', live := live' },
+          bits := I.bits, proto := inv', frame := frame', live := live',
+          mode := fun s1 g => by
+            rw [istates_frame ext.1 valid.2.1 stateOut] at g; injection g with e; subst e; exact I.mode s valid.2.1 },
         fun _ => ⟨hk, rfl, rfl, rfl, rfl, Or.inr hz⟩, fun e he => (nomatch he), ?_⟩
       unfold backMeasure
       rw [rank, hz]

@@ -141,7 +141,7 @@ theorem backValid_setI {h : Heap} {r : ZStreamRef} {i : Nat} {z : ZStream} {s s'
 theorem PInv.setState {c : BCtx} {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat} {pr : Proto c r i window n}
     {h0 h : Heap} {l : IL} {log : BackLog} (I : PInv c pr h0 h l log) {s : InflateState}
     (get : h.istates i = some s) (s' : InflateState) (window' : s'.window = s.window) (size : s'.wsize = s.wsize)
-    (bits : s'.wbits = s.wbits) (wf : s'.WellFormed) : PInv c pr h0 (setI h i s') l log := by
+    (bits : s'.wbits = s.wbits) (wf : s'.WellFormed) (mode' : ModeOk i s') : PInv c pr h0 (setI h i s') l log := by
   obtain ⟨z, s1, valid, win, sz⟩ := I.valid
   have e : s1 = s := Option.some.inj (valid.2.1.symm.trans get)
   subst e
@@ -162,7 +162,8 @@ theorem PInv.setState {c : BCtx} {r : ZStreamRef} {i : Nat} {window : BPtr} {n :
     { cstrm := I.cstrm, cst := I.cst,
       valid := ⟨z, s', backValid_setI valid window' size bits wf, by rw [window', win], by rw [size, sz]⟩,
       winRoot := I.winRoot, put := I.put, chunk := I.chunk, held := held', bits := I.bits,
-      proto := proto_setI pr s' I.proto, frame := frame', live := live' }
+      proto := proto_setI pr s' I.proto, frame := frame', live := live',
+      mode := fun s2 g => by simp [setI] at g; subst g; exact mode' }
 
 /-- **An `out` step of the protocol keeps `PInv`**: same registers, the log with the chunk in use. -/
 theorem PInv.callback {c : BCtx} {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat} {pr : Proto c r i window n}
@@ -186,7 +187,9 @@ theorem PInv.callback {c : BCtx} {r : ZStreamRef} {i : Nat} {window : BPtr} {n :
       bits := I.bits, proto := inv',
       frame := CallbackFrame.trans I.frame (callbackFrame_of_external ext writable)
         (fun disjoint => window_views writable I.winRoot disjoint),
-      live := fun b o => (live_callback ext b o).trans (I.live b o) }
+      live := fun b o => (live_callback ext b o).trans (I.live b o),
+      mode := fun s1 g => by
+        rw [istates_frame ext.1 valid.2.1 pr.disjoint.1] at g; injection g with e; subst e; exact I.mode s valid.2.1 }
 
 /-- The window is readable as `n` bytes. -/
 theorem bytes_of_writable {h : Heap} {p : BPtr} {n : Nat} (w : Writable h p n) : ∃ xs, Bytes h p n xs := by
@@ -198,7 +201,7 @@ theorem bytes_of_writable {h : Heap} {p : BPtr} {n : Nat} (w : Writable h p n) :
 theorem PInv.withRet {c : BCtx} {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat} {pr : Proto c r i window n}
     {h0 h : Heap} {l : IL} {log : BackLog} (I : PInv c pr h0 h l log) (v : Int32) :
     PInv c pr h0 h { l with ret := v } log :=
-  ⟨I.cstrm, I.cst, I.valid, I.winRoot, I.put, I.chunk, I.held, I.bits, I.proto, I.frame, I.live⟩
+  ⟨I.cstrm, I.cst, I.valid, I.winRoot, I.put, I.chunk, I.held, I.bits, I.proto, I.frame, I.live, I.mode⟩
 
 /-- **`ROOM()` on the invariant.** With room left nothing happens. With a full window, `whave =
 wsize` is stored and `out` gets the whole window (`outStep`): on 0 the fill restarts at the window,
@@ -217,7 +220,7 @@ theorem ROOM_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
     have wf := valid.2.2.2.2.2.1
     let s1 : InflateState := { s with whave := s.wsize }
     have I1 : PInv c pr h0 (setI h i s1) l log :=
-      I.setState hs s1 rfl rfl rfl (wf_with wf s1 rfl rfl rfl)
+      I.setState hs s1 rfl rfl rfl (wf_with wf s1 rfl rfl rfl) (I.mode s hs)
     let l1 : IL := { l with put := s.window, left := s.wsize }
     have I1' : PInv c pr h0 (setI h i s1) l1 log :=
       { I1 with put := ⟨by show s.window = advance window (n - s.wsize.toNat); rw [sz, Nat.sub_self, advance_zero, win],
