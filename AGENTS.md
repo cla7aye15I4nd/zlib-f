@@ -24,8 +24,10 @@ exists to keep the result honest, not to slow it down.
 - `zlib/` is the upstream submodule. Never modify it. The verified source is `zlib/` plus
   `patches/*.patch` applied in name order.
 - A patch is allowed only for a confirmed zlib bug that blocks a proof. It must be minimal, match
-  a fix submitted upstream, and be listed in `patches/README.md`. Delete it once upstream merges
-  the fix and the pin moves past it.
+  a fix submitted upstream, and be listed in `patches/README.md`. A patch may land before its
+  upstream submission when the owner approves it; `patches/README.md` then marks it as local and
+  pending, and it is replaced by the upstream fix when one exists. Delete a patch once upstream
+  merges the fix and the pin moves past it.
 - Translations mirror the C layout: `zlib/X.c` is `ZlibF/Zlib/X.c.lean`, and `zlib/X.h` is
   `ZlibF/Zlib/X.h.lean`. Each function keeps its C name, and its docstring starts with the C
   signature.

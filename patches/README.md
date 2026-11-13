@@ -81,4 +81,6 @@ request draft is in the R-3 finding.
 
 The submodule is never edited. A patch is allowed only for a confirmed upstream bug
 that blocks a proof. It must be minimal, match a submitted upstream fix, and be listed
-here. Remove it once upstream incorporates the fix and the pin moves past it.
+here. A patch approved by the owner may land before its upstream submission; its entry
+then says it is local and pending, and it is replaced by the upstream fix when one
+exists. Remove a patch once upstream incorporates the fix and the pin moves past it.
