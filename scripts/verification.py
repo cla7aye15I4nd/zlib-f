@@ -447,7 +447,8 @@ def coverage() -> dict:
         "sequence_goals": ["inflate_sequence", "deflate_sequence", "inflate_back_sequence", "gz_sequence"],
         "nonvacuity_goals": ["inflate_initialisation_domain", "deflate_initialisation_domain",
                               "inflate_back_initialisation_domain", "gz_initialisation_domain"],
-        "safety_goals": ["inflate_sequence_safety", "deflate_sequence_safety", "uncompress_safe", "uncompress_z_safe", "uncompress2_safe", "uncompress2_z_safe", "compress_safety", "compress_z_safety", "compress2_safety", "compress2_z_safety"],
+        "safety_goals": ["inflate_sequence_safety", "deflate_sequence_safety", "uncompress_safe", "uncompress_z_safe", "uncompress2_safe", "uncompress2_z_safe", "compress_safety", "compress_z_safety", "compress2_safety", "compress2_z_safety",
+                         "inflate_back_sequence_safety"],
     }
     for group, suffixes in groups.items():
         expected = ["ZlibF.Spec.Public.Goal." + suffix for suffix in suffixes]
