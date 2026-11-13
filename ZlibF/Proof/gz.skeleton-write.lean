@@ -1,4 +1,5 @@
 import ZlibF.Proof.«gz.skeleton-model»
+import ZlibF.Proof.«gzwrite.c.safe-init»
 
 /-!
 # gz file interface, safety skeleton: the write side (skeleton)
@@ -78,8 +79,8 @@ allocated and records `Z_MEM_ERROR` (ledger: nothing new). -/
 theorem gz_init_safe (i : Nat) (h : Heap) (fs : Fs) (s : GzState)
     (inv : GzInv h i s) (hfs : FileSystem fs) (hm : s.mode = GZ_WRITE) (hsz : s.size = 0) :
     RunSafe (Zlib.Gzwrite.gz_init (gzSt i)) fs h True fun r fs' after =>
-      (r = 0 ∨ r = -1) ∧ FdsKept fs fs' ∧ GzPost h i s [] fs' after GzInv := by
-  sorry
+      (r = 0 ∨ r = -1) ∧ FdsKept fs fs' ∧ GzPost h i s [] fs' after GzInv :=
+  Zlib.Gzwrite.SafeInit.gz_init_safe' i h fs s inv hfs hm hsz
 
 /-- `gz_comp(state, flush)`: the transparent write loop, the deflate loop (`deflate_quiet`, with `GzCommon.want`'s
 buffer of at least 8 bytes) with its write-out
