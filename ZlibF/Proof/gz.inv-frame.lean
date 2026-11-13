@@ -272,7 +272,8 @@ theorem GzInv.frame_core (inv : GzInv h i s) (fr : Frame h after (fun b => ¬ Gz
         exact ⟨StreamReachable.rebuffer reach hreb (fun _ => fit),
           z, k, st, by rw [hget]; exact hzget, hzst, by rw [he]; exact hk, hhead⟩
       posHave := r.posHave
-      againSize := r.againSize }
+      againSize := r.againSize
+      haveSkip := r.haveSkip }
   · intro hm
     have w := inv.writer hm
     exact {

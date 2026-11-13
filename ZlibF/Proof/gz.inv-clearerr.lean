@@ -281,7 +281,8 @@ theorem GzInv.clear_message {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i 
         exact ⟨StreamReachable.rebuffer reach hreb (fun _ => fitH),
           z, k, st, by rw [hget]; exact hzget, hzst, by rw [hist]; exact hk, hhead⟩
       posHave := r.posHave
-      againSize := r.againSize }
+      againSize := r.againSize
+      haveSkip := r.haveSkip }
   · intro hm
     have w := inv.writer hm
     exact {

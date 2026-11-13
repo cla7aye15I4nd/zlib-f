@@ -24,6 +24,9 @@ Corrections against the skeleton at `7d896179` (strengthenings):
 - `GzReadInv.posHave`: `x.pos + x.have ≤ GZ_OFF_MAX` on return (patch 0004). Without it the buffered path of
   `gzgetc` overflows `x.pos`.
 - `GzReadInv.againSize`: `size = 0 → again = 0`. Without it `gzungetc` computes `out + 2·size - 1` on a NULL `out`.
+- `GzReadInv.haveSkip`: `x.have ≠ 0 → skip = 0` at call boundaries; `GzInvUpToSkip` is the invariant without it, for
+  the inside of reading calls. Without it `gzgetc` returns a buffered byte while a skip is pending, and moves `x.pos`
+  past `GZ_OFF_MAX - skip`.
 - `GzPost` has a no-grab clause: a block owned after a helper call was owned before it or was not live before it.
 
 Patches. Some clauses (`GzCommon.pos`, `GzCommon.next`, `GzReadInv.output`) are established only for the patched
@@ -150,6 +153,13 @@ structure GzReadInv (h : Heap) (i : Nat) (s : GzState) : Prop where
   /-- no stalled read without buffers: only `gz_load` sets `again`, and it runs only with buffers; `gz_reset`
   clears it. Without it `gzungetc` could skip its `size == 0` refusal after a failed `gz_look`. -/
   againSize : s.size = 0 → s.again = 0
+  /-- buffered output means no pending skip: the buffered bytes are at the current position `x.pos`, as the
+  buffered paths of `gzgetc` (the function and the zlib.h macro) assume. It holds at call boundaries: `gzseek64`
+  empties the buffer or zeroes the offset before it sets `skip`; `gz_read`, `gzgets` and `gzungetc` run `gz_skip`
+  first (it ends with `skip = 0`, or fails with `x.have = 0`); `gzdirect` follows `gz_look` with `gz_skip_have`.
+  Inside a reading call `gz_look` (COPY) and `gz_fetch` (called by `gz_skip`) may leave both nonzero: their posts are
+  stated over `GzInvUpToSkip`. -/
+  haveSkip : s.x.have ≠ 0 → s.skip = 0
 
 /-- The writer part (`s.mode = GZ_WRITE`): batch C's W1–W10. W1 and W9 are in `GzCommon`; W10 needs no fact;
 W7 is the position clause of `GzCommon` (relies on the local patch for W7). -/
@@ -240,6 +250,17 @@ buffered output. `gz_decomp` and `gz_load` into the caller's buffer leave `x.nex
 resets it (the local patch for R-4); this is what holds in between. -/
 def GzInvUpToOutput (h : Heap) (i : Nat) (s : GzState) : Prop :=
   h.gzstates i = some s ∧ GzInv (putGz h i (clearOut s)) i (clearOut s)
+
+/-- The record with no pending skip. -/
+def clearSkip (s : GzState) : GzState := { s with skip := 0 }
+
+/-- **The invariant up to the pending skip**, for the inside of a reading call: `GzInv` without the clause
+`GzReadInv.haveSkip`. It is `GzInv` of the record with no pending skip, plus the bounds of `GzCommon.pos` on the
+skip. `gz_look` (COPY) and `gz_fetch` (from `gz_skip`) may buffer output while a skip is pending; the caller
+(`gz_skip`, `gzungetc`, `gzdirect`) consumes it before it returns. -/
+def GzInvUpToSkip (h : Heap) (i : Nat) (s : GzState) : Prop :=
+  h.gzstates i = some s ∧ GzInv (putGz h i (clearSkip s)) i (clearSkip s) ∧
+    0 ≤ s.skip.toInt ∧ s.x.pos.toInt + s.skip.toInt ≤ 9223372036854775807
 
 /-! ## Interface lemmas of `GzInv` -/
 

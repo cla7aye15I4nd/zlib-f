@@ -105,7 +105,7 @@ theorem GzInv.put_scalars_of {h : Heap} {i : Nat} {s s' : GzState} (inv : GzInv 
       (s'.how = GZIP → s'.direct = 0) ∧ (s'.junk = -1 ∨ s'.junk = 0 ∨ s'.junk = 1) ∧
       (s'.eof = 0 ∨ s'.eof = 1) ∧ (s'.past = 0 ∨ s'.past = 1) ∧ (s'.again = 0 ∨ s'.again = 1) ∧
       (s.size = 0 → s'.how = LOOK) ∧ (s.size = 0 → s'.again = 0) ∧
-      s'.x.pos.toInt + s'.x.have.toNat ≤ 9223372036854775807)
+      s'.x.pos.toInt + s'.x.have.toNat ≤ 9223372036854775807 ∧ (s'.x.have ≠ 0 → s'.skip = 0))
     (wr : s.mode = GZ_WRITE → s'.reset = 0 ∨ s'.reset = 1) :
     GzInv (putGz h i s') i s' := by
   obtain ⟨hpath, hmsg, hin, hout, hsize, hmode, hdirect, hstrm, hnext, herr⟩ := same
@@ -165,7 +165,7 @@ theorem GzInv.put_scalars_of {h : Heap} {i : Nat} {s s' : GzState} (inv : GzInv 
   · intro hm'
     have hm : s.mode = GZ_READ := by rw [← hmode]; exact hm'
     have r := inv.reader hm
-    obtain ⟨hhow, hcopy, hgzip, hjunk, heof, hpast, hagain, hlook, hagz, hph⟩ := rd hm
+    obtain ⟨hhow, hcopy, hgzip, hjunk, heof, hpast, hagain, hlook, hagz, hph, hhs⟩ := rd hm
     exact {
       how := hhow
       copyDirect := hcopy
@@ -193,7 +193,8 @@ theorem GzInv.put_scalars_of {h : Heap} {i : Nat} {s s' : GzState} (inv : GzInv 
         exact ⟨StreamReachable.rebuffer reach (putGz_rebuffer inv hstrm hrec) (fun _ => putGz_fit c.fit),
           z, k, st, by rw [hget]; exact hzget, hzst, hk, hhead⟩
       posHave := hph
-      againSize := fun hz => hagz (by rw [← hsize]; exact hz) }
+      againSize := fun hz => hagz (by rw [← hsize]; exact hz)
+      haveSkip := hhs }
   · intro hm'
     have hm : s.mode = GZ_WRITE := by rw [← hmode]; exact hm'
     have w := inv.writer hm
@@ -242,7 +243,7 @@ theorem GzInv.put_scalars {h : Heap} {i : Nat} {s s' : GzState} (inv : GzInv h i
       (s'.how = GZIP → s'.direct = 0) ∧ (s'.junk = -1 ∨ s'.junk = 0 ∨ s'.junk = 1) ∧
       (s'.eof = 0 ∨ s'.eof = 1) ∧ (s'.past = 0 ∨ s'.past = 1) ∧ (s'.again = 0 ∨ s'.again = 1) ∧
       (s.size = 0 → s'.how = LOOK) ∧ (s.size = 0 → s'.again = 0) ∧
-      s'.x.pos.toInt + s'.x.have.toNat ≤ 9223372036854775807)
+      s'.x.pos.toInt + s'.x.have.toNat ≤ 9223372036854775807 ∧ (s'.x.have ≠ 0 → s'.skip = 0))
     (wr : s.mode = GZ_WRITE → s'.reset = 0 ∨ s'.reset = 1) :
     GzInv (putGz h i s') i s' :=
   inv.put_scalars_of inv.common.recordFree same want pos have_le rd wr

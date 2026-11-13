@@ -97,7 +97,8 @@ theorem GzInv.drop_input {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) 
         subst hz'
         exact ⟨StreamReachable.rebuffer reach hreb (fun _ => fitH), _, k, st, gH, hzst, hk, hhead⟩
       posHave := r.posHave
-      againSize := r.againSize }
+      againSize := r.againSize
+      haveSkip := r.haveSkip }
   · intro hm
     have w := inv.writer hm
     exact {
@@ -163,7 +164,7 @@ theorem GzInv.gz_reset {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) :
           (fun _ => ⟨Or.inl rfl, fun e => absurd e (by show ¬ (LOOK = GZ_COPY); decide),
             fun e => absurd e (by show ¬ (LOOK = GZIP); decide), Or.inl rfl,
             Or.inl rfl, Or.inl rfl, Or.inl rfl, fun _ => rfl, fun _ => rfl,
-            by show (0 : Int64).toInt + ((0 : UInt32).toNat : Int) ≤ 9223372036854775807; decide⟩)
+            by show (0 : Int64).toInt + ((0 : UInt32).toNat : Int) ≤ 9223372036854775807; decide, fun _ => rfl⟩)
           (fun hw => absurd (hmo.symm.trans hw) (by decide))
       · unfold Zlib.Gzlib.Spec.resetRec
         rw [hmo']
