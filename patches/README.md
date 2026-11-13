@@ -20,6 +20,34 @@ comparison. Keep the current pin and this submitted fix until the applied
 commit is available on the upstream branch. Then advance the pin and remove
 the patch.
 
+## 0002-gzseek-negative-position-overflow.patch
+
+Avoid signed overflow in `gzseek64` after an initial `gzungetc`, which sets
+`state->x.pos` to -1: the `SEEK_CUR` range check evaluated `GZ_OFF_MAX - pos`
+with a negative `pos`, and a `SEEK_SET` target near `GZ_OFF_MAX` overflowed in
+`pos - state->x.pos`. UndefinedBehaviorSanitizer reports both on the unpatched
+C. This is R-1 in [the gzip proof notes](../docs/proof/gzip.md) and blocks the
+safety proof of `gzseek64` and `gzseek`.
+
+The patch is the `gzlib.c` part of
+[upstream PR #1361](https://github.com/madler/zlib/pull/1361) at head
+`ce2248ee9750`. The `test/example.c` part of that pull request is not part of
+the verified source. The pull request is open.
+
+## 0003-gzread-partial-copy-read-error.patch
+
+In transparent (`COPY`) mode, set `state->x.next = state->out` before
+`gz_load`. If `read` supplies some bytes and then fails, `gz_load` leaves the
+partial count in `x.have` and returns -1, and `gz_fetch` returned before its
+assignment of `x.next`. The readers then consumed the partial bytes through a
+stale `x.next`: an out-of-bounds read when the previous output buffer was
+exhausted. This is R-2 in [the gzip proof notes](../docs/proof/gzip.md) and
+blocks the safety proof of the read side.
+
+The patch is exactly the change of
+[upstream PR #1363](https://github.com/madler/zlib/pull/1363) at head
+`37627fd3bb47`. The pull request is open.
+
 The submodule is never edited. A patch is allowed only for a confirmed upstream bug
 that blocks a proof. It must be minimal, match a submitted upstream fix, and be listed
 here. Remove it once upstream incorporates the fix and the pin moves past it.
