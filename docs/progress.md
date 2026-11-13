@@ -2551,6 +2551,22 @@ check that rejects the former cached expression. Prove the temporal initializati
 internal depth reads. Review scalar-pointer aliasing and the null-minus-null special case in
 compressor pointer subtraction (**to confirm**).
 
+### Observations
+
+**`gz_comp` spins on a `write` that returns 0.** In both write loops of `gz_comp`
+(`gzwrite.c`: the transparent loop `while (strm->avail_in)` and the write-out loop
+`while (strm->next_out > state->x.next)`), a `write` that returns 0 for a nonempty buffer
+advances nothing and is not an error, so the loop repeats the same call. If the system keeps
+returning 0, the C never returns. This is a reading of the code; a `write` that returns 0
+forever was not run. Linux is not known to return 0 for a nonzero count on regular files, pipes
+or sockets (**to confirm** for other file types), so the gz safety proof assumes it (trusted
+base, "Gz OS facts"). The fault-injection harness of the gz safety study checked the other side:
+with a `write` that returns 0 on 10 % of nonempty calls (40 histories, ASan and UBSan), every
+history ended with no report and no leak, because each loop eventually gets a positive result.
+Behaviour of the library, not a safety finding; worth an upstream note only if a platform is
+known that returns 0. Scope: `gzwrite`, `gzfwrite`, `gzputc`, `gzputs`, `gzprintf`, `gzflush`,
+`gzsetparams`, `gzclose_w`.
+
 ### Historical reports to recheck
 
 Recheck gzip extra-length arithmetic, partial-read recovery, negative-position
