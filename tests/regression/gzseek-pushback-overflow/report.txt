@@ -1,0 +1,36 @@
+== unpatched raw.dat cur
+ungetc=81
+gzlib.c:395:29: runtime error: signed integer overflow: 9223372036854775807 - -1 cannot be represented in type 'off_t' (aka 'long long')
+SUMMARY: UndefinedBehaviorSanitizer: undefined-behavior gzlib.c:395:29 
+ok: unpatched: signed overflow in gzseek64
+== unpatched raw.dat set
+ungetc=81
+gzlib.c:403:36: runtime error: signed integer overflow: 9223372036854775807 - -1 cannot be represented in type 'off_t' (aka 'long long')
+SUMMARY: UndefinedBehaviorSanitizer: undefined-behavior gzlib.c:403:36 
+ok: unpatched: signed overflow in gzseek64
+== unpatched data.gz cur
+ungetc=81
+gzlib.c:395:29: runtime error: signed integer overflow: 9223372036854775807 - -1 cannot be represented in type 'off_t' (aka 'long long')
+SUMMARY: UndefinedBehaviorSanitizer: undefined-behavior gzlib.c:395:29 
+ok: unpatched: signed overflow in gzseek64
+== unpatched data.gz set
+ungetc=81
+gzlib.c:424:18: runtime error: signed integer overflow: 9223372036854775807 - -1 cannot be represented in type 'off_t' (aka 'long long')
+SUMMARY: UndefinedBehaviorSanitizer: undefined-behavior gzlib.c:424:18 
+ok: unpatched: signed overflow in gzseek64
+== patched raw.dat cur
+ungetc=81
+seek cur 1 = 0
+ok: patched: seek cur 1 = 0, no report
+== patched raw.dat set
+ungetc=81
+seek set LONG_MAX = -1
+ok: patched: seek set LONG_MAX = -1, no report
+== patched data.gz cur
+ungetc=81
+seek cur 1 = 0
+ok: patched: seek cur 1 = 0, no report
+== patched data.gz set
+ungetc=81
+seek set LONG_MAX = -1
+ok: patched: seek set LONG_MAX = -1, no report

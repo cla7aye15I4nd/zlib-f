@@ -16,7 +16,8 @@ Each row is outside the proved domain: a named premise of a public goal excludes
 zlib.h is silent about the layout, the premise is listed in [deviations](deviations.md).
 
 None of these rows was reported upstream. The library defects are in the section "Library
-defects": upstream has fixed one; two have a local candidate fix that is not yet submitted.
+defects": upstream has fixed one; two have a fix submitted upstream that the maintainer has not
+yet confirmed; two have a local candidate fix that is not yet submitted.
 
 ## Caller layouts outside the proved domain
 
@@ -56,12 +57,15 @@ source on x86_64 Linux; the same AddressSanitizer report on arm64 macOS.
 | Name | Call sequence | Sanitizer verdict | Status | Reproduction |
 | --- | --- | --- | --- | --- |
 | inflateCopy fixed table | default `inflateInit`; `inflate` stops inside a fixed block; `inflateCopy` | `invalid-pointer-pair`, `inflate.c:1383`, between the static `lenfix` and the inflate state | A zlib defect inside the documented use. Fixed upstream ([PR #1369](https://github.com/madler/zlib/pull/1369)); the verified source applies that fix as a temporary patch | [inflate-copy-fixed](findings/inflate-copy-fixed/README.md), [report](findings/inflate-copy-fixed/report.txt) |
+| gzseek after initial gzungetc | `gzopen`; `gzungetc` at position 0 (`x.pos` becomes -1); `gzseek(f, 1, SEEK_CUR)`, or on another handle `gzseek(f, LONG_MAX, SEEK_SET)`; transparent and gzip input | UBSan: signed integer overflow, `gzlib.c:395` (`SEEK_CUR`), `gzlib.c:403` (`SEEK_SET`, transparent), `gzlib.c:424` (`SEEK_SET`, gzip) | A zlib defect inside the documented use. Fix submitted upstream ([PR #1361](https://github.com/madler/zlib/pull/1361)), not yet confirmed by the maintainer; the verified source applies it as a temporary patch | [gzseek-pushback-overflow](../tests/regression/gzseek-pushback-overflow/README.md), `seek.c`, [report](../tests/regression/gzseek-pushback-overflow/report.txt) |
+| gzread stale next after partial read | transparent `gzopen`, `gzbuffer(f, 16)`; 48 `gzgetc` on a 128-byte file; `read()` returns 1 byte, then fails with `EIO`; `gzread(f, buf, 1)` | `heap-buffer-overflow` READ of size 1, `gzread.c:369` (`gz_read`), 0 bytes after the 32-byte output buffer | A zlib defect inside the documented use. Fix submitted upstream ([PR #1363](https://github.com/madler/zlib/pull/1363)), not yet confirmed by the maintainer; the verified source applies it as a temporary patch | [gzread-transparent-stale-next](../tests/regression/gzread-transparent-stale-next/README.md), `stale.c`, [report](../tests/regression/gzread-transparent-stale-next/report.txt) |
 | gzread position overflow (F-1) | x86_64 Linux: `gzdopen(open("/dev/zero"), "r")`; `gzread(f, buf, 1)` (transparent); `gzseek(f, INT64_MAX, SEEK_SET)`, accepted because `lseek` on the device returns 0; `gzread(f, buf, 16)`. Also: seek to `INT64_MAX - 4`, `gzread` 1 byte, four `gzgetc()` | UBSan: signed integer overflow, `gzread.c:414` (`gz_read`, `x.pos += n`); in the second history in the `gzgetc()` macro in the caller | A zlib defect inside the documented use. Candidate fix, not yet submitted: the local patch 0004, approved by the owner on 2026-11-12 | [gzread-pos-overflow](../tests/regression/gzread-pos-overflow/README.md), `devzero.c`, [report](../tests/regression/gzread-pos-overflow/report.txt); [finding](findings/gzread-pos-overflow/README.md) |
 | gzwrite position overflow (W7) | `gzdopen(open("/dev/null"), "wT")`; `gzbuffer(f, 2^29)`; `gzseek(f, INT64_MAX - 10, SEEK_SET)`; `gzwrite(f, buf, 100)` (the zero fill takes 17 minutes). Also: seek to `INT64_MAX`, `gzputc` | UBSan: signed integer overflow, `gzwrite.c:230` (`gz_write`, `x.pos += copy`); `gzwrite.c:352` (`gzputc`) | A zlib defect inside the documented use. Candidate fix, not yet submitted: the local patch 0004, approved by the owner on 2026-11-12 | [gzwrite-pos-overflow](../tests/regression/gzwrite-pos-overflow/README.md), `wpos.c`, [report](../tests/regression/gzwrite-pos-overflow/report.txt); [finding](findings/gzwrite-pos-overflow/README.md) |
 
-These reproductions build the source without the fix on purpose; the two gz runners also build it
-with the fix and check that the report is gone. The gz reports come from x86_64 Linux (kernel 7.0,
-gcc 15.2).
+These reproductions build the source without the fix on purpose; the gz runners also build it
+with the fix and check that the report is gone. The F-1 and W7 reports come from x86_64 Linux
+(kernel 7.0, gcc 15.2); the reports of the gzseek after gzungetc and the stale `x.next` come from
+arm64 macOS (Apple clang 21), and the defects they show do not depend on the target.
 
 ## Clean runs, kept as evidence that a layout is defined
 
