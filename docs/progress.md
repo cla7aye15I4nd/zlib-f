@@ -2241,7 +2241,8 @@ Pending inputs that change the skeleton:
 | `gz_look_safe` | Lazy buffers and `inflateInit2`, failure ledger, COPY copy. | open | 10 | read side (deflate owner) |
 | `gz_decomp_safe` | Inflate steps in the inflate history; `x.next` in the output window. | open | 14 | read side (deflate owner) |
 | `gz_fetch_safe` | The dispatcher; terminates under M7. | open | 6 | read side (deflate owner) |
-| `gz_skip_have_safe`, `gz_skip_safe` | Skip consumption; terminates under M7. | open | 5 | read side (batch 3) |
+| `gz_skip_have_safe` | Skip consumption of buffered bytes (`gzread.c.skip-have`, 09fe8c0f; with `GzInv.put_consume`). | checked | 0 | read side (batch 3) |
+| `gz_skip_safe` | The skip loop; terminates under M7. | open | 4 | read side (batch 3) |
 | `gz_read_safe` | Three paths, caller range, `x.next` reset (R-4), `x.pos` (F-1). | open | 12 | read side (deflate owner) |
 | `gzread_step`, `gzfread_step` | Wrappers. | open | 4 | read side (deflate owner) |
 | `gzgetc_step` | Wrapper of `gz_read` for one byte (`gzgetc__step` checked in the skeleton). | open | 2 | read side (batch 3) |
@@ -2258,7 +2259,7 @@ Pending inputs that change the skeleton:
 | `gzclose_w_step` | Finish, `deflateEnd`, frees, descriptor released (also O-1). | open | 8 | batch C |
 | `deflate_quiet` | `deflate` with no input: a call from at least 8 bytes of room that fills the output lowers `Φ`; a call that ends with room leaves `Quiet`; from `Quiet` nothing is produced; a rebuffer keeps both. Proved on dev as `Zlib.Deflate.Universal.Quiet.deflate_quiet_holds` (`dde03ce6`), the skeleton's `DeflateQuiet` written out, with no hypothesis; on `skeleton/gz`, `deflate_quiet := deflate_quiet_holds` once it has that commit. Pieces: `quiet_silent`, `stateOf_rebuffer`, `phiD_lt`, `strat_quiet`, `marker_quiet`, `header_quiet`, `trailer_quiet`, `tail_quiet`, `call_quiet_of` (files `deflate.c.quiet-*`). | checked | 0 | batch 3 |
 | Merge the `deflate.c.quiet-*` restated copies | Cleanup, not on the critical path: fold the restated phase and loop proofs back into batch 2's and batch B's files as stronger conclusions of the originals. | open | 4 | later |
-| **Total remaining** | batch 1 61–67; read side 82 (deflate owner 60, batch 3 22); write side 72 | | **215–221** | |
+| **Total remaining** | batch 1 61–67; read side 81 (deflate owner 60, batch 3 21); write side 72 | | **214–220** | |
 
 
 ### Ordered next work

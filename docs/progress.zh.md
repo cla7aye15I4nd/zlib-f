@@ -1,4 +1,4 @@
-<!-- source-sha256: e720bc75096e444092bbc6303b79b04cdb130c5a0b8fa5698000a5d73cb67808 -->
+<!-- source-sha256: b4357e15c2183e681237693308b0e130dcfb9faf3b9401fecb50f81956dfd8c4 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1836,7 +1836,8 @@ gzip 文件接口的安全（第 5 项结论，所有者 2026-11-12 的决定）
 | `gz_look_safe` | 延迟分配的缓冲区与 `inflateInit2`，失败时的账目，COPY 复制。 | 未完成 | 10 | 读取侧（deflate owner） |
 | `gz_decomp_safe` | inflate 历史中的 inflate 步骤；`x.next` 在输出窗口内。 | 未完成 | 14 | 读取侧（deflate owner） |
 | `gz_fetch_safe` | 分派函数；在 M7 下终止。 | 未完成 | 6 | 读取侧（deflate owner） |
-| `gz_skip_have_safe`、`gz_skip_safe` | 消耗 skip；在 M7 下终止。 | 未完成 | 5 | 读取侧（batch 3） |
+| `gz_skip_have_safe` | 消耗缓冲中的 skip 字节（`gzread.c.skip-have`，09fe8c0f；以及 `GzInv.put_consume`）。 | 已检查 | 0 | 读取侧（batch 3） |
+| `gz_skip_safe` | skip 循环；在 M7 下终止。 | 未完成 | 4 | 读取侧（batch 3） |
 | `gz_read_safe` | 三条路径，调用者区域，重置 `x.next`（R-4），`x.pos`（F-1）。 | 未完成 | 12 | 读取侧（deflate owner） |
 | `gzread_step`、`gzfread_step` | 包装函数。 | 未完成 | 4 | 读取侧（deflate owner） |
 | `gzgetc_step` | 读取一个字节的 `gz_read` 包装函数（`gzgetc__step` 已在骨架中检查）。 | 未完成 | 2 | 读取侧（batch 3） |
@@ -1853,7 +1854,7 @@ gzip 文件接口的安全（第 5 项结论，所有者 2026-11-12 的决定）
 | `gzclose_w_step` | 结束、`deflateEnd`、释放、释放描述符（也包括 O-1）。 | 未完成 | 8 | batch C |
 | `deflate_quiet` | 没有输入的 `deflate`：从至少 8 字节空间开始并填满输出的调用降低 `Φ`；结束时仍有空间的调用留下 `Quiet`；从 `Quiet` 出发不产生输出；重新设置缓冲区保持两者。已在 dev 上证明为 `Zlib.Deflate.Universal.Quiet.deflate_quiet_holds`（`dde03ce6`），即骨架的 `DeflateQuiet` 展开写出，没有假设；`skeleton/gz` 包含该提交后，`deflate_quiet := deflate_quiet_holds`。组成部分：`quiet_silent`、`stateOf_rebuffer`、`phiD_lt`、`strat_quiet`、`marker_quiet`、`header_quiet`、`trailer_quiet`、`tail_quiet`、`call_quiet_of`（文件 `deflate.c.quiet-*`）。 | 已检查 | 0 | batch 3 |
 | 合并 `deflate.c.quiet-*` 中重述的副本 | 清理工作，不在关键路径上：把重述的阶段与循环证明作为原引理的更强结论并回 batch 2 和 batch B 的文件。 | 未完成 | 4 | 以后 |
-| **剩余总计** | batch 1 61–67；读取侧 82（deflate owner 60，batch 3 22）；写入侧 72 | | **215–221** | |
+| **剩余总计** | batch 1 61–67；读取侧 81（deflate owner 60，batch 3 21）；写入侧 72 | | **214–220** | |
 
 
 ### 按顺序的下一步工作
