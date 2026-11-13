@@ -243,10 +243,11 @@ symbols give `BAD`; no input gives `Z_BUF_ERROR`; otherwise the code-length loop
 `have = 0` and the counts in range. -/
 theorem tabHead_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
     (pr : Proto c r i window n) {h0 h : Heap} {l : IL} {log : BackLog} (I : PInv c pr h0 h l log)
-    {s : InflateState} (hs : h.istates i = some s) (mode : s.mode = TABLE) :
+    {s : InflateState} (hs : h.istates i = some s) (mode : s.mode = TABLE) (short : l.bits.toNat < 8) :
     (∃ res l' h', runX (back_TABLE c) l h = .ok ((res, l'), h') ∧ TRound c pr h0 (baseM pr l log + 2) res l' h') ∨
     (∃ l1 h1 log1 s1, runX (back_TABLE c) l h = runX (tabA c) l1 h1 ∧ PInv c pr h0 h1 l1 log1 ∧
-      h1.istates i = some s1 ∧ TabSt s1 ∧ s1.«have» = 0 ∧ baseM pr l1 log1 ≤ baseM pr l log) := by
+      h1.istates i = some s1 ∧ TabSt s1 ∧ s1.«have» = 0 ∧ baseM pr l1 log1 ≤ baseM pr l log ∧
+      l1.bits.toNat < 8) := by
   obtain ⟨res0, l1, h1, log1, run1, I1, okc, errc, ist1, meas1⟩ := NEEDBITS_p c pr 14 (by decide) I
   have b1 := baseM_le meas1
   cases res0 with
@@ -258,7 +259,7 @@ theorem tabHead_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat
     simp only [runX_bind, run1]
   | ok u =>
     cases u
-    obtain ⟨b14, -, -, -⟩ := okc rfl
+    obtain ⟨b14, -, -, mx14⟩ := okc rfl
     have hs1 : h1.istates i = some s := ist1.trans hs
     obtain ⟨z1, s1, valid1, -, -⟩ := I1.valid
     have e1 : s1 = s := Option.some.inj (valid1.2.1.symm.trans hs1)
@@ -353,8 +354,12 @@ theorem tabHead_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat
           .ok ((), setI (setI h1 i sC) i { sC with «have» := 0 }) := wrS_ok I1.cst hsC' _
       have ID := IC.setState hsC' { sC with «have» := 0 } rfl rfl rfl (wf_with
         (by rw [hsC, hsB, hsA]; exact wf) _ rfl rfl rfl) (modeOk_of (Or.inr (Or.inl modeC)))
+      have short4 : l4.bits.toNat < 8 := by
+        have m : l1.bits.toNat ≤ max l.bits.toNat ((14 : UInt32).toNat + 7) := mx14
+        have : l1.bits.toNat ≤ 21 := Nat.le_trans m (Nat.max_le.mpr ⟨by omega, by decide⟩)
+        omega
       refine ⟨l4, setI (setI h1 i sC) i { sC with «have» := 0 }, log1, { sC with «have» := 0 }, ?_, ID,
-        by simp [setI], ⟨modeC, ?_, ?_, ?_⟩, rfl, b4⟩
+        by simp [setI], ⟨modeC, ?_, ?_, ?_⟩, rfl, b4, short4⟩
       · rw [pre]
         simp only [runX_bind, runX_lift_ok hld, bad', Bool.false_eq_true, ↓reduceIte, runX_lift_ok hwD]
       · have := mt UInt32.lt_iff_toNat_lt.mpr nl

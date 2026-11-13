@@ -133,21 +133,21 @@ theorem clSet_tab {s : InflateState} (st : TabSt s) (v : UInt16) : TabSt (clSet 
 theorem tabLoop1_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
     (pr : Proto c r i window n) {h0 h : Heap} {l : IL} {log : BackLog} (I : PInv c pr h0 h l log)
     {s : InflateState} (hs : h.istates i = some s) (st : TabSt s) (hv : s.«have».toNat ≤ s.ncode.toNat)
-    (cl : CLInv s) :
+    (cl : CLInv s) (short : l.bits.toNat < 8) :
     ∃ res l' h' log', runX (tabLoop1 c) l h = .ok ((res, l'), h') ∧ PInv c pr h0 h' l' log' ∧
-      (res = .ok () → baseM pr l' log' ≤ baseM pr l log ∧ ∃ s', h'.istates i = some s' ∧ TabSt s' ∧
+      (res = .ok () → baseM pr l' log' ≤ baseM pr l log ∧ l'.bits.toNat < 8 ∧ ∃ s', h'.istates i = some s' ∧ TabSt s' ∧
         s'.«have».toNat = s'.ncode.toNat ∧ CLInv s') ∧
       (∀ e, res = .error e → e = Ex.leave ∧ l'.ret = Z_BUF_ERROR) := by
   have key := xwhileBrk_wf (cond := tl1Cond c) (body := (do tl1Body c; pure false : X Bool))
     (fun l1 h1 => ∃ log1 s1, PInv c pr h0 h1 l1 log1 ∧ h1.istates i = some s1 ∧ TabSt s1 ∧
-      s1.«have».toNat ≤ s1.ncode.toNat ∧ CLInv s1 ∧ baseM pr l1 log1 ≤ baseM pr l log)
+      s1.«have».toNat ≤ s1.ncode.toNat ∧ CLInv s1 ∧ baseM pr l1 log1 ≤ baseM pr l log ∧ l1.bits.toNat < 8)
     (fun res l1 h1 => ∃ log1, PInv c pr h0 h1 l1 log1 ∧
-      (res = .ok () → baseM pr l1 log1 ≤ baseM pr l log ∧ ∃ s1, h1.istates i = some s1 ∧ TabSt s1 ∧
-        s1.«have».toNat = s1.ncode.toNat ∧ CLInv s1) ∧
+      (res = .ok () → baseM pr l1 log1 ≤ baseM pr l log ∧ l1.bits.toNat < 8 ∧ ∃ s1, h1.istates i = some s1 ∧
+        TabSt s1 ∧ s1.«have».toNat = s1.ncode.toNat ∧ CLInv s1) ∧
       (∀ e, res = .error e → e = Ex.leave ∧ l1.ret = Z_BUF_ERROR))
     (fun _ h1 => tabGap i (fun s => s.ncode.toNat) h1)
     (fun l1 h1 hI => by
-      obtain ⟨log1, s1, I1, hs1, st1, hv1, cl1, b1⟩ := hI
+      obtain ⟨log1, s1, I1, hs1, st1, hv1, cl1, b1, sh1⟩ := hI
       have ld1 : ldInflateState c.st h1 = .ok (s1, h1) := by rw [I1.cst]; exact ldInflateState_tab hs1
       have hcond : runX (tl1Cond c) l1 h1 = .ok ((.ok (decide (s1.«have» < s1.ncode)), l1), h1) := by
         unfold tl1Cond; rw [runX_bind, runX_lift_ok ld1]; rfl
@@ -163,7 +163,7 @@ theorem tabLoop1_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Na
           · injection x with x; subst x; exact ⟨rfl, ret⟩
         | ok u =>
           cases u
-          obtain ⟨b3, -, -, -⟩ := okc rfl
+          obtain ⟨b3, -, -, mx3⟩ := okc rfl
           have hs2 : h2.istates i = some s1 := ist2.trans hs1
           obtain ⟨z2, s2, valid2, -, -⟩ := I2.valid
           have e2 : s2 = s1 := Option.some.inj (valid2.2.1.symm.trans hs2)
@@ -180,7 +180,11 @@ theorem tabLoop1_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Na
           obtain ⟨B3, -, hbit3⟩ := DROPBITS_inv (bitInv_of IF) 3 b3' (by decide)
           have IG := IF.regs (l' := { l2 with hold := l2.hold >>> (3 : UInt32).toUInt64, bits := l2.bits - 3 })
             rfl rfl rfl rfl (by have := I2.bits.1; show (l2.bits - 3).toNat ≤ 39; rw [hbit3]; omega) B3.hold_lt
-          refine ⟨.ok false, _, _, ?_, ⟨log2, _, IG, hsF, clSet_tab st1 _, ?_, clSet_inv cl1 hl19 wf.1 v3, ?_⟩,
+          have sh2 : (l2.bits - 3).toNat < 8 := by
+            have m : l2.bits.toNat ≤ max l1.bits.toNat ((3 : UInt32).toNat + 7) := mx3
+            have : l2.bits.toNat ≤ 10 := Nat.le_trans m (Nat.max_le.mpr ⟨by omega, by decide⟩)
+            rw [hbit3]; simp only [show (3 : UInt32).toNat = 3 from rfl]; omega
+          refine ⟨.ok false, _, _, ?_, ⟨log2, _, IG, hsF, clSet_tab st1 _, ?_, clSet_inv cl1 hl19 wf.1 v3, ?_, sh2⟩,
             ?_⟩
           · rw [runX_bind, tl1Body_eq, runX_bind, run2]
             simp only []
@@ -197,8 +201,8 @@ theorem tabLoop1_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Na
             omega
       · have ge : ¬ s1.«have» < s1.ncode := fun x => by simp [x] at hF
         have ge' : s1.ncode.toNat ≤ s1.«have».toNat := Nat.le_of_not_lt (mt UInt32.lt_iff_toNat_lt.mpr ge)
-        exact ⟨log1, I1, fun _ => ⟨b1, s1, hs1, st1, by omega, cl1⟩, fun e x => (nomatch x)⟩)
-    (l := l) (h := h) ⟨log, s, I, hs, st, hv, cl, Nat.le_refl _⟩
+        exact ⟨log1, I1, fun _ => ⟨b1, sh1, s1, hs1, st1, by omega, cl1⟩, fun e x => (nomatch x)⟩)
+    (l := l) (h := h) ⟨log, s, I, hs, st, hv, cl, Nat.le_refl _, short⟩
     (by rw [tabGap_of hs]; have := st.ncode; unfold fuel; omega)
   obtain ⟨res, l', h', hr, log', I', okc, errc⟩ := key
   exact ⟨res, l', h', log', by unfold tabLoop1 xwhile; exact hr, I', okc, errc⟩

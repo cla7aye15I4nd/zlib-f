@@ -20,7 +20,7 @@ def TabOut (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
     (pr : Proto c r i window n) (h0 : Heap) (B : Nat) (m : X Unit) (l : IL) (h : Heap) : Prop :=
   (∃ res l' h', runX m l h = .ok ((res, l'), h') ∧ TRound c pr h0 B res l' h') ∨
   (∃ l1 h1 log1 s1, runX m l h = runX (back_LEN c) l1 h1 ∧ PInv c pr h0 h1 l1 log1 ∧
-    h1.istates i = some s1 ∧ s1.mode = LEN ∧ TablesOk i s1 ∧ baseM pr l1 log1 + 2 ≤ B)
+    h1.istates i = some s1 ∧ s1.mode = LEN ∧ TablesOk i s1 ∧ baseM pr l1 log1 + 2 ≤ B ∧ l1.bits.toNat < 8)
 
 /-- `TabOut` through a first step that ends in `TRound` or continues. -/
 theorem TabOut.bind {c : BCtx} {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
@@ -34,19 +34,19 @@ theorem TabOut.bind {c : BCtx} {r : ZStreamRef} {i : Nat} {window : BPtr} {n : N
     exact ⟨.error e, l1, h1, by rw [runX_bind, run], stop e rfl⟩
   | ok u =>
     cases u
-    rcases go rfl with ⟨res2, l2, h2, run2, T⟩ | ⟨l2, h2, log2, s2, run2, I2, hs2, m2, t2, b2⟩
+    rcases go rfl with ⟨res2, l2, h2, run2, T⟩ | ⟨l2, h2, log2, s2, run2, I2, hs2, m2, t2, b2, sh2⟩
     · left; exact ⟨res2, l2, h2, by rw [runX_bind, run]; exact run2, T⟩
-    · right; exact ⟨l2, h2, log2, s2, by rw [runX_bind, run]; exact run2, I2, hs2, m2, t2, b2⟩
+    · right; exact ⟨l2, h2, log2, s2, by rw [runX_bind, run]; exact run2, I2, hs2, m2, t2, b2, sh2⟩
 
 /-- **The checks of `tabC` and the tables, on the invariant.** -/
 theorem tabC_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
     (pr : Proto c r i window n) {h0 h : Heap} {l : IL} {log : BackLog} (I : PInv c pr h0 h l log)
     {s : InflateState} (hs : h.istates i = some s)
-    (st : s.mode = BAD ∨ (RdSt i s ∧ s.«have».toNat = s.nlen.toNat + s.ndist.toNat))
+    (st : s.mode = BAD ∨ (RdSt i s ∧ s.«have».toNat = s.nlen.toNat + s.ndist.toNat ∧ l.bits.toNat < 8))
     {B : Nat} (lt : baseM pr l log + 2 ≤ B) : TabOut c pr h0 B (tabC c) l h := by
   have rdm : rdS (some (.tab i)) (·.mode) h = .ok (s.mode, h) := by
     have := rdS_ok I.cst hs (·.mode); rwa [I.cst] at this
-  rcases st with bad | ⟨rd, full⟩
+  rcases st with bad | ⟨rd, full, short⟩
   · left
     refine ⟨.ok (), l, h, ?_, log, I, Or.inl ⟨rfl, ?_⟩, fun _ => Short.of_mode hs (Or.inl bad)⟩
     · unfold tabC
@@ -80,7 +80,7 @@ theorem tabC_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
         exact run'
       · right
         refine ⟨{ l with ret := 0 }, h1, log, s1, ?_, I1, hs1, mode1, tab1, by
-          show baseM pr l log + 2 ≤ B; omega⟩
+          show baseM pr l log + 2 ≤ B; omega, short⟩
         unfold tabC
         simp only [I.cst, runX_bind, runX_lift_ok rdm, nb, Bool.false_eq_true, ↓reduceIte, lensP,
           runX_lift_ok read, z']
@@ -89,21 +89,22 @@ theorem tabC_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
 /-- **`case TABLE` up to the fall-through into `case LEN`, on the invariant.** -/
 theorem TABLE_pre_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
     (pr : Proto c r i window n) {h0 h : Heap} {l : IL} {log : BackLog} (I : PInv c pr h0 h l log)
-    {s : InflateState} (hs : h.istates i = some s) (mode : s.mode = TABLE) :
+    {s : InflateState} (hs : h.istates i = some s) (mode : s.mode = TABLE) (short : l.bits.toNat < 8) :
     TabOut c pr h0 (baseM pr l log + 2) (back_TABLE c) l h := by
-  rcases tabHead_p c pr I hs mode with ⟨res, l', h', run', T⟩ | ⟨l1, h1, log1, s1, run1, I1, hs1, st1, have1, b1⟩
+  rcases tabHead_p c pr I hs mode short with
+    ⟨res, l', h', run', T⟩ | ⟨l1, h1, log1, s1, run1, I1, hs1, st1, have1, b1, sh1⟩
   · left
     exact ⟨res, l', h', run', T⟩
   · have go : TabOut c pr h0 (baseM pr l log + 2) (tabA c) l1 h1 := by
       have hv : s1.«have».toNat ≤ s1.ncode.toNat := by rw [have1]; exact Nat.zero_le _
       have cl : CLInv s1 := by intro k _ ⟨j, hj, _⟩; rw [have1] at hj; exact absurd hj (by simp)
-      obtain ⟨res2, l2, h2, log2, run2, I2, ok2, err2⟩ := tabLoop1_p c pr I1 hs1 st1 hv cl
+      obtain ⟨res2, l2, h2, log2, run2, I2, ok2, err2⟩ := tabLoop1_p c pr I1 hs1 st1 hv cl sh1
       unfold tabA
       refine TabOut.bind run2 (fun e x => ?_) (fun x => ?_)
       · obtain ⟨rfl, ret⟩ := err2 e x
         subst x
         exact TRound.leave I2 _ ret
-      · obtain ⟨b2, s2, hs2, st2, full2, cl2⟩ := ok2 x
+      · obtain ⟨b2, sh2, s2, hs2, st2, full2, cl2⟩ := ok2 x
         obtain ⟨h3, run3, I3, s3, hs3, st3, full3, cl3⟩ :=
           tabLoop2_p c pr I2 hs2 st2 (by have := st2.ncode; omega) cl2
         refine TabOut.bind run3 (fun e x => by cases x) (fun _ => ?_)
@@ -112,7 +113,7 @@ theorem TABLE_pre_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : N
         · left; exact ⟨res4, l4, h4, run4, T4⟩
         · have rd : RdSt i s4 :=
             ⟨st4, rd4, by rw [have4]; exact Nat.zero_le _, fun k hk => by rw [have4] at hk; exact absurd hk (by simp)⟩
-          obtain ⟨res5, l5, h5, log5, run5, I5, ok5, err5⟩ := tabRead_p c pr I4 hs4 rd
+          obtain ⟨res5, l5, h5, log5, run5, I5, ok5, err5⟩ := tabRead_p c pr I4 hs4 rd sh2
           have pre : runX (tabB c) l2 h3 = runX (tabRead c >>= fun _ => tabC c) { l2 with ret := 0 } h4 := run4
           have tr : TabOut c pr h0 (baseM pr l log + 2) (tabRead c >>= fun _ => tabC c) { l2 with ret := 0 } h4 :=
             TabOut.bind run5
@@ -124,11 +125,11 @@ theorem TABLE_pre_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : N
                 obtain ⟨b5, s5, hs5, st5⟩ := ok5 x
                 have bb : baseM pr { l2 with ret := 0 } log2 = baseM pr l2 log2 := rfl
                 exact tabC_p c pr I5 hs5 st5 (by omega))
-          rcases tr with ⟨res6, l6, h6, run6, T6⟩ | ⟨l6, h6, log6, s6, run6, I6, hs6, m6, t6, b6⟩
+          rcases tr with ⟨res6, l6, h6, run6, T6⟩ | ⟨l6, h6, log6, s6, run6, I6, hs6, m6, t6, b6, sh6⟩
           · left; exact ⟨res6, l6, h6, by rw [pre, run6], T6⟩
-          · right; exact ⟨l6, h6, log6, s6, by rw [pre, run6], I6, hs6, m6, t6, b6⟩
-    rcases go with ⟨res, l', h', run', T⟩ | ⟨l2, h2, log2, s2, run2, I2, hs2, m2, t2, b2⟩
+          · right; exact ⟨l6, h6, log6, s6, by rw [pre, run6], I6, hs6, m6, t6, b6, sh6⟩
+    rcases go with ⟨res, l', h', run', T⟩ | ⟨l2, h2, log2, s2, run2, I2, hs2, m2, t2, b2, sh2'⟩
     · left; exact ⟨res, l', h', by rw [run1, run'], T⟩
-    · right; exact ⟨l2, h2, log2, s2, by rw [run1, run2], I2, hs2, m2, t2, b2⟩
+    · right; exact ⟨l2, h2, log2, s2, by rw [run1, run2], I2, hs2, m2, t2, b2, sh2'⟩
 
 end Zlib.Infback.Safety

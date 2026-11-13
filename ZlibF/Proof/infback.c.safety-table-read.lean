@@ -239,9 +239,9 @@ theorem trLit_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
     (pr : Proto c r i window n) {h0 h : Heap} {l : IL} {log : BackLog} (I : PInv c pr h0 h l log)
     {s : InflateState} (hs : h.istates i = some s) (rd : RdSt i s)
     (lt : s.«have».toNat < s.nlen.toNat + s.ndist.toNat) {here : Code} (hv : here.val.toNat < 16)
-    (hb : here.bits.toNat ≤ l.bits.toNat) :
+    (hb : here.bits.toNat ≤ l.bits.toNat) (sh : l.bits.toNat - here.bits.toNat < 8) :
     ∃ l' h', runX (trLit c here) l h = .ok ((.ok false, l'), h') ∧ PInv c pr h0 h' l' log ∧
-      l'.have_ = l.have_ ∧ l'.bits.toNat ≤ l.bits.toNat ∧
+      l'.have_ = l.have_ ∧ l'.bits.toNat ≤ l.bits.toNat ∧ l'.bits.toNat < 8 ∧
       ∃ s', h'.istates i = some s' ∧ RdSt i s' ∧ s.«have».toNat < s'.«have».toNat := by
   obtain ⟨z, s0, valid, -, -⟩ := I.valid
   have e0 : s0 = s := Option.some.inj (valid.2.1.symm.trans hs)
@@ -259,7 +259,8 @@ theorem trLit_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
   obtain ⟨B2, -, hbit2⟩ := DROPBITS_inv (bitInv_of IF) here.bits.toUInt32 (by rw [UInt8.toNat_toUInt32]; exact hb) b8
   have IG := IF.regs (l' := { l with hold := l.hold >>> here.bits.toUInt32.toUInt64, bits := l.bits - here.bits.toUInt32 })
     rfl rfl rfl rfl (by show (l.bits - here.bits.toUInt32).toNat ≤ 39; rw [hbit2]; have := I.bits.1; omega) B2.hold_lt
-  refine ⟨_, _, ?_, IG, rfl, by show (l.bits - here.bits.toUInt32).toNat ≤ _; rw [hbit2]; omega, rdSet s0 here.val,
+  refine ⟨_, _, ?_, IG, rfl, by show (l.bits - here.bits.toUInt32).toNat ≤ _; rw [hbit2]; omega,
+    by show (l.bits - here.bits.toUInt32).toNat < 8; rw [hbit2, UInt8.toNat_toUInt32]; omega, rdSet s0 here.val,
     by simp [setI], rdSet_st rd lt wf.1 (by omega), by rw [rdSet_have l320]; omega⟩
   unfold trLit
   rw [I.cst]
@@ -291,7 +292,7 @@ theorem repEnd_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
     (hi : base.toNat + 2 ^ m.toNat ≤ 139) :
     ∃ res l' h', runX (trTail c) (dropR { l with len := len, copy := base + bitsV l m } m) h =
         .ok ((.ok res, l'), h') ∧ PInv c pr h0 h' l' log ∧ baseM pr l' log ≤ baseM pr l log ∧
-      ∃ s', h'.istates i = some s' ∧
+      l'.bits.toNat = l.bits.toNat - m.toNat ∧ ∃ s', h'.istates i = some s' ∧
         ((res = true ∧ s'.mode = BAD) ∨ (res = false ∧ RdSt i s' ∧ s.«have».toNat < s'.«have».toNat)) := by
   have B0 := bitInv_of I
   have B : BitInv h { l with len := len, copy := base + bitsV l m } (log.held.drop (log.held.length - l.have_.toNat)) :=
@@ -307,7 +308,7 @@ theorem repEnd_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
   obtain ⟨res, l6, h6, run6, I6, bits6, have6, s', hs', out⟩ :=
     trTail_p c pr I5 hs rd len15 (by show 3 ≤ (base + bitsV l m).toNat; omega)
       (by show (base + bitsV l m).toNat ≤ 138; omega)
-  refine ⟨res, l6, h6, run6, I6, ?_, s', hs', out⟩
+  refine ⟨res, l6, h6, run6, I6, ?_, by rw [bits6, b5], s', hs', out⟩
   unfold baseM
   rw [bits6, have6, b5]
   show 4 * (l.bits.toNat - m.toNat + 8 * l.have_.toNat + _) ≤ _
@@ -318,23 +319,26 @@ set_option maxRecDepth 100000 in
 theorem trRep_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
     (pr : Proto c r i window n) {h0 h : Heap} {l : IL} {log : BackLog} (I : PInv c pr h0 h l log)
     {s : InflateState} (hs : h.istates i = some s) (rd : RdSt i s) {here : Code}
-    (hb : here.bits.toNat ≤ l.bits.toNat) (h7 : here.bits.toNat ≤ 7) :
+    (hb : here.bits.toNat ≤ l.bits.toNat) (h7 : here.bits.toNat ≤ 7) (sh : l.bits.toNat - here.bits.toNat < 8) :
     ∃ res l' h' log', runX (trRep c here) l h = .ok ((res, l'), h') ∧ PInv c pr h0 h' l' log' ∧
       (∀ b, res = .ok b → baseM pr l' log' ≤ baseM pr l log ∧ ∃ s', h'.istates i = some s' ∧
-          ((b = true ∧ s'.mode = BAD) ∨ (b = false ∧ RdSt i s' ∧ s.«have».toNat < s'.«have».toNat))) ∧
+          ((b = true ∧ s'.mode = BAD) ∨
+           (b = false ∧ RdSt i s' ∧ s.«have».toNat < s'.«have».toNat ∧ l'.bits.toNat < 8))) ∧
       (∀ e, res = .error e → e = Ex.leave ∧ l'.ret = Z_BUF_ERROR) := by
   have hb8 : here.bits.toUInt32.toNat = here.bits.toNat := UInt8.toNat_toUInt32 _
   have b64 : here.bits.toUInt32.toNat < 64 := by omega
   have need : ∀ m : UInt32, m.toNat ≤ 7 → ∃ res2 l2 h2 log2,
       runX (NEEDBITS c (here.bits.toUInt32 + m)) l h = .ok ((res2, l2), h2) ∧ PInv c pr h0 h2 l2 log2 ∧
       h2.istates i = some s ∧ baseM pr l2 log2 ≤ baseM pr l log ∧
-      (res2 = .ok () → here.bits.toNat + m.toNat ≤ l2.bits.toNat) ∧
+      (res2 = .ok () → here.bits.toNat + m.toNat ≤ l2.bits.toNat ∧
+        l2.bits.toNat ≤ max l.bits.toNat (here.bits.toNat + m.toNat + 7)) ∧
       (∀ e, res2 = .error e → e = Ex.leave ∧ l2.ret = Z_BUF_ERROR) := by
     intro m m7
     have k : (here.bits.toUInt32 + m).toNat = here.bits.toNat + m.toNat := by rw [UInt32.toNat_add, hb8]; omega
     obtain ⟨res2, l2, h2, log2, run2, I2, okc, errc, ist2, meas2⟩ :=
       NEEDBITS_p c pr (here.bits.toUInt32 + m) (by rw [k]; omega) I
-    exact ⟨res2, l2, h2, log2, run2, I2, ist2.trans hs, baseM_le meas2, fun e => by rw [← k]; exact (okc e).1, errc⟩
+    exact ⟨res2, l2, h2, log2, run2, I2, ist2.trans hs, baseM_le meas2,
+      fun e => by obtain ⟨a, -, -, b⟩ := okc e; rw [k] at a b; exact ⟨a, b⟩, errc⟩
   -- after `NEEDBITS` and `DROPBITS(here.bits)`
   have drop : ∀ {h2 : Heap} {l2 : IL} {log2 : BackLog}, PInv c pr h0 h2 l2 log2 → here.bits.toNat ≤ l2.bits.toNat →
       PInv c pr h0 h2 (dropR l2 here.bits.toUInt32) log2 ∧
@@ -362,7 +366,8 @@ theorem trRep_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
       · injection x with x; subst x; exact ⟨rfl, ret⟩
     | ok u =>
       cases u
-      have k2 : here.bits.toNat + 2 ≤ l2.bits.toNat := okc rfl
+      obtain ⟨k2, mx2⟩ : here.bits.toNat + 2 ≤ l2.bits.toNat ∧
+          l2.bits.toNat ≤ max l.bits.toNat (here.bits.toNat + 2 + 7) := okc rfl
       obtain ⟨I3, e3, b3⟩ := drop I2 (by omega)
       have ld : ldInflateState (some (.tab i)) h2 = .ok (s, h2) := ldInflateState_tab hs2
       by_cases z : (s.«have» == 0) = true
@@ -391,7 +396,7 @@ theorem trRep_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
         rw [val] at read0
         have len15 : (s1.lens.getD (s1.«have» - 1).toNat 0).toUInt32.toNat ≤ 15 := by
           rw [UInt16.toNat_toUInt32]; exact rd.rl _ (by rw [sub]; omega)
-        obtain ⟨res, l6, h6, run6, I6, b6, s', hs', out⟩ :=
+        obtain ⟨res, l6, h6, run6, I6, b6, bits6, s', hs', out⟩ :=
           repEnd_p c pr I3 hs2 rd 2 3 (s1.lens.getD (s1.«have» - 1).toNat 0).toUInt32
             (by rw [e3]; show 2 ≤ _; omega) (by decide) len15 (by decide) (by decide)
         refine ⟨.ok res, l6, h6, log2, ?_, I6, fun b x => ?_, fun e x => (nomatch x)⟩
@@ -402,7 +407,15 @@ theorem trRep_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
           exact run6
         · injection x with x
           subst x
-          exact ⟨by omega, s', hs', out⟩
+          refine ⟨by omega, s', hs', ?_⟩
+          rcases out with ⟨a, b⟩ | ⟨a, b, c'⟩
+          · exact Or.inl ⟨a, b⟩
+          · refine Or.inr ⟨a, b, c', ?_⟩
+            rw [bits6, e3]
+            have t2 : (2 : UInt32).toNat = 2 := rfl
+            have t3 : (3 : UInt32).toNat = 3 := rfl
+            have t7 : (7 : UInt32).toNat = 7 := rfl
+            omega
   · have v16' : (here.val == 16) = false := by simpa using v16
     by_cases v17 : (here.val == 17) = true
     · obtain ⟨res2, l2, h2, log2, run2, I2, hs2, b2, okc, errc⟩ := need 3 (by decide)
@@ -415,9 +428,10 @@ theorem trRep_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
         · injection x with x; subst x; exact ⟨rfl, ret⟩
       | ok u =>
         cases u
-        have k2 : here.bits.toNat + 3 ≤ l2.bits.toNat := okc rfl
+        obtain ⟨k2, mx2⟩ : here.bits.toNat + 3 ≤ l2.bits.toNat ∧
+          l2.bits.toNat ≤ max l.bits.toNat (here.bits.toNat + 3 + 7) := okc rfl
         obtain ⟨I3, e3, b3⟩ := drop I2 (by omega)
-        obtain ⟨res, l6, h6, run6, I6, b6, s', hs', out⟩ :=
+        obtain ⟨res, l6, h6, run6, I6, b6, bits6, s', hs', out⟩ :=
           repEnd_p c pr I3 hs2 rd 3 3 0 (by rw [e3]; show 3 ≤ _; omega) (by decide) (by decide) (by decide)
             (by decide)
         refine ⟨.ok res, l6, h6, log2, ?_, I6, fun b x => ?_, fun e x => (nomatch x)⟩
@@ -427,7 +441,15 @@ theorem trRep_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
           exact run6
         · injection x with x
           subst x
-          exact ⟨by omega, s', hs', out⟩
+          refine ⟨by omega, s', hs', ?_⟩
+          rcases out with ⟨a, b⟩ | ⟨a, b, c'⟩
+          · exact Or.inl ⟨a, b⟩
+          · refine Or.inr ⟨a, b, c', ?_⟩
+            rw [bits6, e3]
+            have t2 : (2 : UInt32).toNat = 2 := rfl
+            have t3 : (3 : UInt32).toNat = 3 := rfl
+            have t7 : (7 : UInt32).toNat = 7 := rfl
+            omega
     · have v17' : (here.val == 17) = false := by simpa using v17
       obtain ⟨res2, l2, h2, log2, run2, I2, hs2, b2, okc, errc⟩ := need 7 (by decide)
       cases res2 with
@@ -439,9 +461,10 @@ theorem trRep_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
         · injection x with x; subst x; exact ⟨rfl, ret⟩
       | ok u =>
         cases u
-        have k2 : here.bits.toNat + 7 ≤ l2.bits.toNat := okc rfl
+        obtain ⟨k2, mx2⟩ : here.bits.toNat + 7 ≤ l2.bits.toNat ∧
+          l2.bits.toNat ≤ max l.bits.toNat (here.bits.toNat + 7 + 7) := okc rfl
         obtain ⟨I3, e3, b3⟩ := drop I2 (by omega)
-        obtain ⟨res, l6, h6, run6, I6, b6, s', hs', out⟩ :=
+        obtain ⟨res, l6, h6, run6, I6, b6, bits6, s', hs', out⟩ :=
           repEnd_p c pr I3 hs2 rd 7 11 0 (by rw [e3]; show 7 ≤ _; omega) (by decide) (by decide) (by decide)
             (by decide)
         refine ⟨.ok res, l6, h6, log2, ?_, I6, fun b x => ?_, fun e x => (nomatch x)⟩
@@ -451,26 +474,34 @@ theorem trRep_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
           exact run6
         · injection x with x
           subst x
-          exact ⟨by omega, s', hs', out⟩
+          refine ⟨by omega, s', hs', ?_⟩
+          rcases out with ⟨a, b⟩ | ⟨a, b, c'⟩
+          · exact Or.inl ⟨a, b⟩
+          · refine Or.inr ⟨a, b, c', ?_⟩
+            rw [bits6, e3]
+            have t2 : (2 : UInt32).toNat = 2 := rfl
+            have t3 : (3 : UInt32).toNat = 3 := rfl
+            have t7 : (7 : UInt32).toNat = 7 := rfl
+            omega
 
 /-- **The decoding loop of `case TABLE` on the invariant**, measured by `316 - have`. -/
 theorem tabRead_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
     (pr : Proto c r i window n) {h0 h : Heap} {l : IL} {log : BackLog} (I : PInv c pr h0 h l log)
-    {s : InflateState} (hs : h.istates i = some s) (rd : RdSt i s) :
+    {s : InflateState} (hs : h.istates i = some s) (rd : RdSt i s) (short : l.bits.toNat < 8) :
     ∃ res l' h' log', runX (tabRead c) l h = .ok ((res, l'), h') ∧ PInv c pr h0 h' l' log' ∧
       (res = .ok () → baseM pr l' log' ≤ baseM pr l log ∧ ∃ s', h'.istates i = some s' ∧
-        (s'.mode = BAD ∨ (RdSt i s' ∧ s'.«have».toNat = s'.nlen.toNat + s'.ndist.toNat))) ∧
+        (s'.mode = BAD ∨ (RdSt i s' ∧ s'.«have».toNat = s'.nlen.toNat + s'.ndist.toNat ∧ l'.bits.toNat < 8))) ∧
       (∀ e, res = .error e → e = Ex.leave ∧ l'.ret = Z_BUF_ERROR) := by
   have key := xwhileBrk_wf (cond := trCond c) (body := (do Zlib.Infback.lookup1 c false; trAfter c : X Bool))
     (fun l1 h1 => ∃ log1 s1, PInv c pr h0 h1 l1 log1 ∧ h1.istates i = some s1 ∧ RdSt i s1 ∧
-      baseM pr l1 log1 ≤ baseM pr l log)
+      baseM pr l1 log1 ≤ baseM pr l log ∧ l1.bits.toNat < 8)
     (fun res l1 h1 => ∃ log1, PInv c pr h0 h1 l1 log1 ∧
       (res = .ok () → baseM pr l1 log1 ≤ baseM pr l log ∧ ∃ s1, h1.istates i = some s1 ∧
-        (s1.mode = BAD ∨ (RdSt i s1 ∧ s1.«have».toNat = s1.nlen.toNat + s1.ndist.toNat))) ∧
+        (s1.mode = BAD ∨ (RdSt i s1 ∧ s1.«have».toNat = s1.nlen.toNat + s1.ndist.toNat ∧ l1.bits.toNat < 8))) ∧
       (∀ e, res = .error e → e = Ex.leave ∧ l1.ret = Z_BUF_ERROR))
     (fun _ h1 => tabGap i (fun _ => 316) h1)
     (fun l1 h1 hI => by
-      obtain ⟨log1, s1, I1, hs1, rd1, b1⟩ := hI
+      obtain ⟨log1, s1, I1, hs1, rd1, b1, sh1⟩ := hI
       have ld1 : ldInflateState c.st h1 = .ok (s1, h1) := by rw [I1.cst]; exact ldInflateState_tab hs1
       have hcond : runX (trCond c) l1 h1 = .ok ((.ok (decide (s1.«have» < s1.nlen + s1.ndist)), l1), h1) := by
         unfold trCond; rw [runX_bind, runX_lift_ok ld1]; rfl
@@ -481,7 +512,7 @@ theorem tabRead_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat
       refine ⟨l1, h1, _, hcond, fun hT => ?_, fun hF => ?_⟩
       · have lt : s1.«have».toNat < s1.nlen.toNat + s1.ndist.toNat := by
           have := UInt32.lt_iff_toNat_lt.mp (of_decide_eq_true hT); omega
-        obtain ⟨tab, safe⟩ := rd1.rd
+        obtain ⟨tab, safe, alpha, cont⟩ := rd1.rd
         have root7 := safe.2.1
         obtain ⟨res2, l2, h2, log2, run2, I2, ist2, okc, errc, meas2⟩ :=
           lookup1_p c pr false I1 hs1 (ref := .istate_codes i) (off := 0) (ca := s1.codes) (nb := s1.lenbits)
@@ -496,7 +527,11 @@ theorem tabRead_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat
             fun e x => by injection x with x; subst x; exact ⟨rfl, ret⟩⟩
         | ok u =>
           cases u
-          obtain ⟨-, -, hhere, hbits, -, -⟩ := okc rfl
+          obtain ⟨-, -, hhere, hbits, -, pull2⟩ := okc rfl
+          have sh2 : l2.bits.toNat - l2.here.bits.toNat < 8 := by
+            have := bits_after_cl cont sh1 I2.bits.2 (by rw [← hhere]; exact hbits) pull2
+            rw [← hhere] at this
+            exact this
           have hj := Nat.mod_lt l2.hold.toNat (Nat.two_pow_pos s1.lenbits.toNat)
           generalize l2.hold.toNat % 2 ^ s1.lenbits.toNat = j at hhere hj
           have h7 : l2.here.bits.toNat ≤ 7 := by rw [hhere]; have := (safe.2.2.2 j hj).2.1; omega
@@ -505,9 +540,9 @@ theorem tabRead_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat
           by_cases v : l2.here.val < 16
           · have pre2 : runX (trAfter c) l2 h2 = runX (trLit c l2.here) l2 h2 := by
               unfold trAfter; simp only [runX_bind, runX_get, v, ↓reduceIte]
-            obtain ⟨l3, h3, run3, I3, have3, bits3, s', hs', rd', up⟩ :=
-              trLit_p c pr I2 hs2 rd1 lt (UInt16.lt_iff_toNat_lt.mp v) hbits
-            refine ⟨.ok false, l3, h3, by rw [pre, pre2, run3], ⟨log2, s', I3, hs', rd', ?_⟩, ?_⟩
+            obtain ⟨l3, h3, run3, I3, have3, bits3, sh3, s', hs', rd', up⟩ :=
+              trLit_p c pr I2 hs2 rd1 lt (UInt16.lt_iff_toNat_lt.mp v) hbits sh2
+            refine ⟨.ok false, l3, h3, by rw [pre, pre2, run3], ⟨log2, s', I3, hs', rd', ?_, sh3⟩, ?_⟩
             · unfold baseM at b1 b2 ⊢; rw [have3]; omega
             · show tabGap i (fun _ => 316) h3 < tabGap i (fun _ => 316) h1
               rw [tabGap_of hs', tabGap_of hs1]
@@ -515,7 +550,7 @@ theorem tabRead_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat
               omega
           · have pre2 : runX (trAfter c) l2 h2 = runX (trRep c l2.here) l2 h2 := by
               unfold trAfter; simp only [runX_bind, runX_get, v, ↓reduceIte]
-            obtain ⟨res3, l3, h3, log3, run3, I3, okc3, errc3⟩ := trRep_p c pr I2 hs2 rd1 hbits h7
+            obtain ⟨res3, l3, h3, log3, run3, I3, okc3, errc3⟩ := trRep_p c pr I2 hs2 rd1 hbits h7 sh2
             cases res3 with
             | error e =>
               obtain ⟨rfl, ret⟩ := errc3 e rfl
@@ -523,10 +558,10 @@ theorem tabRead_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat
                 fun e x => by injection x with x; subst x; exact ⟨rfl, ret⟩⟩
             | ok b =>
               obtain ⟨b3, s', hs', out⟩ := okc3 b rfl
-              rcases out with ⟨rfl, bad⟩ | ⟨rfl, rd', up⟩
+              rcases out with ⟨rfl, bad⟩ | ⟨rfl, rd', up, sh3⟩
               · exact ⟨.ok true, l3, h3, by rw [pre, pre2, run3], log3, I3,
                   fun _ => ⟨by omega, s', hs', Or.inl bad⟩, fun e x => (nomatch x)⟩
-              · refine ⟨.ok false, l3, h3, by rw [pre, pre2, run3], ⟨log3, s', I3, hs', rd', by omega⟩, ?_⟩
+              · refine ⟨.ok false, l3, h3, by rw [pre, pre2, run3], ⟨log3, s', I3, hs', rd', by omega, sh3⟩, ?_⟩
                 show tabGap i (fun _ => 316) h3 < tabGap i (fun _ => 316) h1
                 rw [tabGap_of hs', tabGap_of hs1]
                 have := rd'.le; have := rd'.tab.nlen; have := rd'.tab.ndist
@@ -535,8 +570,8 @@ theorem tabRead_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat
         have ge' : s1.nlen.toNat + s1.ndist.toNat ≤ s1.«have».toNat := by
           have hn : ¬ s1.«have».toNat < (s1.nlen + s1.ndist).toNat := fun x => ge (UInt32.lt_iff_toNat_lt.mpr x)
           omega
-        exact ⟨log1, I1, fun _ => ⟨b1, s1, hs1, Or.inr ⟨rd1, by have := rd1.le; omega⟩⟩, fun e x => (nomatch x)⟩)
-    (l := l) (h := h) ⟨log, s, I, hs, rd, Nat.le_refl _⟩
+        exact ⟨log1, I1, fun _ => ⟨b1, s1, hs1, Or.inr ⟨rd1, by have := rd1.le; omega, sh1⟩⟩, fun e x => (nomatch x)⟩)
+    (l := l) (h := h) ⟨log, s, I, hs, rd, Nat.le_refl _, short⟩
     (by rw [tabGap_of hs]; unfold fuel; omega)
   obtain ⟨res, l', h', hr, log', I', okc, errc⟩ := key
   exact ⟨res, l', h', log', by rw [tabRead_eq]; exact hr, I', okc, errc⟩

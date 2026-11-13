@@ -1,6 +1,9 @@
 import ZlibF.Proof.«infback.c.safety-table-cl»
 import ZlibF.Proof.«inftrees.c.content.codes»
 import ZlibF.Proof.«inflate.c.main.table5»
+import ZlibF.Proof.«inftrees.c.code-length-contents»
+import ZlibF.Proof.«inflate.c.meaning-lookup»
+import ZlibF.Proof.«inflate.c.meaning-distance»
 
 /-!
 # infback.c: `case TABLE` on the loop invariant, the code-length table
@@ -19,7 +22,8 @@ set_option autoImplicit false
 
 /-- The code-length table of the decoding loop: the state's own `codes` from 0. -/
 def RdTab (i : Nat) (s : InflateState) : Prop :=
-  s.lencode = .ref (.istate_codes i) 0 ∧ Zlib.Inftrees.Spec.CodeLengthTableSafe s.codes 0 s.lenbits.toNat
+  s.lencode = .ref (.istate_codes i) 0 ∧ Zlib.Inftrees.Spec.CodeLengthTableSafe s.codes 0 s.lenbits.toNat ∧
+    ∃ alpha, Zlib.Inftrees.Proofs.CodeLengthContents s.codes 0 s.lenbits.toNat alpha
 
 /-- The state after the code-length table call. -/
 def cdSt (i : Nat) (s : InflateState) (wa : Array UInt16) (ca : Array Code) (nx : CodePtr) (lb : UInt32) :
@@ -63,6 +67,9 @@ theorem tabB_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
     ⟨s0.lens, s0.work, s0.codes, Or.inl rfl, hgl, hgw, hgc, by simp, by simp, by simp; omega, by simp; omega,
       hcap, hf15, hcodes, fun e => absurd e (by decide), fun e => absurd e (by decide)⟩
   obtain ⟨rr, h3, hrun, hres, decoded⟩ := Zlib.Inftrees.Proofs.inflate_table_codes_decoder_safe pre
+  obtain ⟨rc, hc3, crun, -, contents⟩ := Zlib.Inftrees.Proofs.inflate_table_establishes_code_length_contents pre
+  rw [hrun] at crun
+  cases crun
   obtain ⟨ret, nx, lb⟩ := rr
   obtain ⟨wa', ca', hh3, hwa, hca, -, -, -⟩ := hres
   have hh3' : h3 = setI h i { sP with work := wa', codes := ca' } := by
@@ -92,7 +99,10 @@ theorem tabB_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
       simp [Space.get, setI]
     rw [hh3', getQ] at get
     cases get
-    refine ⟨setI h i sR, sR, ?_, IR, hsR, ⟨st.mode, st.nlen, st.ndist, st.ncode⟩, rfl, ⟨rfl, safe⟩, rfl⟩
+    obtain ⟨ca2, get2, cont⟩ := contents rfl
+    rw [hh3', getQ] at get2
+    cases get2
+    refine ⟨setI h i sR, sR, ?_, IR, hsR, ⟨st.mode, st.nlen, st.ndist, st.ncode⟩, rfl, ⟨rfl, safe, _, cont⟩, rfl⟩
     rw [runQ]
     unfold tabBTail
     rw [I.cst]
@@ -106,5 +116,56 @@ theorem tabB_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
     have r0' : (ret != 0) = true := by simpa using r0
     simp only [r0', ↓reduceIte, runX_bind, runX_lift_ok runB]
     rfl
+
+/-- **A code-length symbol leaves fewer than 8 bits** once its bits are dropped, from fewer than 8:
+the code-length table decodes its prefix code (`CodeLengthContents`), so after the last pull the
+symbol needs more bits than were held before it. -/
+theorem bits_after_cl {ca : Array Code} {R : Nat} {alpha : List Nat}
+    (cont : Zlib.Inftrees.Proofs.CodeLengthContents ca 0 R alpha) {l l1 : IL}
+    (short : l.bits.toNat < 8) (hl1 : l1.hold.toNat < 2 ^ l1.bits.toNat)
+    (fit : (ca.getD (0 + l1.hold.toNat % 2 ^ R) default).bits.toNat ≤ l1.bits.toNat)
+    (pull : Pulled ca 0 R l l1) :
+    l1.bits.toNat - (ca.getD (0 + l1.hold.toNat % 2 ^ R) default).bits.toNat < 8 := by
+  rcases pull with ⟨e1, -⟩ | ⟨bp, hp, -, hp_lt, need, b1, keep⟩
+  · rw [e1]; omega
+  · obtain ⟨R1, R7, room, cells⟩ := cont.safe
+    have idx1 : l1.hold.toNat % 2 ^ R < 2 ^ R := Nat.mod_lt _ (Nat.two_pow_pos R)
+    have getE : ca[0 + l1.hold.toNat % 2 ^ R]? = some (ca.getD (0 + l1.hold.toNat % 2 ^ R) default) := by
+      rw [Array.getD_eq_getD_getElem?, Array.getElem?_eq_getElem (by omega)]; rfl
+    have idxp : hp % 2 ^ R < 2 ^ R := Nat.mod_lt _ (Nat.two_pow_pos R)
+    apply Nat.lt_of_not_le
+    intro big
+    have small : (ca.getD (0 + l1.hold.toNat % 2 ^ R) default).bits.toNat ≤ bp := by omega
+    have cellF := cells _ idx1
+    have cellP := cells _ idxp
+    rcases cellF.2.2 with ⟨op0, -⟩ | op64
+    · -- a symbol: the bits it needs were all held before the last pull
+      obtain ⟨rest1, rd1⟩ : ∃ rest, readBits R (Zlib.Inftrees.Spec.DecodeShort.padded
+          (natBits l1.bits.toNat l1.hold.toNat)) = some (l1.hold.toNat % 2 ^ R, rest) := by
+        rw [Zlib.Inflate.Proofs.MeaningLookup.padded_natBits hl1]
+        exact Zlib.Inflate.Proofs.MeaningLookup.readBits_natBits_prefix (by omega)
+      obtain ⟨symbol, -, -, hlen, dec⟩ := cont.sound (natBits l1.bits.toNat l1.hold.toNat) rest1
+        (l1.hold.toNat % 2 ^ R) _ rd1 getE op0 (by rw [natBits_length]; exact fit)
+      have ext := ZlibF.Spec.Proofs.ext_acceptable cont.acceptable
+      have dec2 := Zlib.Inflate.Proofs.MeaningDistance.decode_take ext dec (k := bp) (by rw [← hlen]; exact small)
+      rw [natBits_take _ _ bp (by omega), ← natBits_mod bp, keep] at dec2
+      obtain ⟨value, suffix, entry, rd2, get2, -, -, ebits, -, -⟩ := cont.forward _ _ _ dec2
+      obtain ⟨rest2, rd2'⟩ : ∃ rest, readBits R (Zlib.Inftrees.Spec.DecodeShort.padded (natBits bp hp)) =
+          some (hp % 2 ^ R, rest) := by
+        rw [Zlib.Inflate.Proofs.MeaningLookup.padded_natBits hp_lt]
+        exact Zlib.Inflate.Proofs.MeaningLookup.readBits_natBits_prefix (by omega)
+      rw [rd2'] at rd2
+      injection rd2 with rd2
+      injection rd2 with ev _
+      subst ev
+      have same : ca.getD (0 + hp % 2 ^ R) default = entry := by
+        rw [Array.getD_eq_getD_getElem?, get2]; rfl
+      rw [same] at need
+      omega
+    · -- the empty code-length code: every cell is `{op 64, bits 1, val 0}` and `R = 1`
+      obtain ⟨R1', bits1, -, -⟩ := Zlib.Inftrees.Proofs.CodeLengthContents.invalid_cell_fields cont idx1 getE op64
+      have b1N : (ca.getD (0 + l1.hold.toNat % 2 ^ R) default).bits.toNat = 1 := by rw [bits1]; rfl
+      have := cellP.2.1
+      omega
 
 end Zlib.Infback.Safety
