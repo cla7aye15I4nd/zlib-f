@@ -1143,6 +1143,7 @@ import ZlibF.Proof.«infback.c.safety-inv»
 import ZlibF.Proof.«infback.c.safety-library»
 import ZlibF.Proof.«infback.c.safety-modes»
 import ZlibF.Proof.«infback.c.safety-window»
+import ZlibF.Proof.«infback.c.safety-stored»
 import ZlibF.Proof.«inflate.c.completes-reachable»
 import ZlibF.Proof.«inflate.c.len-end-drops»
 

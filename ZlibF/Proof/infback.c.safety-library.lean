@@ -211,7 +211,8 @@ theorem ROOM_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
     (I : PInv c pr h0 h l log) :
     ∃ res l' h' log', runX (ROOM c) l h = .ok ((res, l'), h') ∧ PInv c pr h0 h' l' log' ∧
       (res = .ok () → l'.left ≠ 0) ∧ (∀ e, res = .error e → e = Ex.leave ∧ l'.ret = Z_BUF_ERROR) ∧
-      l'.have_ = l.have_ ∧ l'.next = l.next ∧ l'.bits = l.bits ∧ l'.hold = l.hold ∧
+      l'.have_ = l.have_ ∧ l'.next = l.next ∧ l'.bits = l.bits ∧ l'.hold = l.hold ∧ l'.copy = l.copy ∧
+      (h'.istates i).map (·.length) = (h.istates i).map (·.length) ∧
       backMeasure pr h' l' log' ≤ backMeasure pr h l log := by
   by_cases hl : l.left = 0
   · obtain ⟨z, s, valid, win, sz⟩ := I.valid
@@ -251,15 +252,17 @@ theorem ROOM_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
     have meas : backMeasure pr after l1 log2 ≤ backMeasure pr h l log := by
       unfold backMeasure; rw [rank]; exact Nat.le_refl _
     by_cases hr0 : rc = 0
-    · refine ⟨.ok (), l1, after, log2, ?_, I2, fun _ => wsNe, fun e x => (nomatch x), rfl, rfl, rfl, rfl, meas⟩
+    · refine ⟨.ok (), l1, after, log2, ?_, I2, fun _ => wsNe, fun e x => (nomatch x), rfl, rfl, rfl, rfl, rfl, (by rw [istates_frame ext.1 (show (setI h i s1).istates i = some s1 by simp [setI]) pr.disjoint.1, hs]; rfl),
+        meas⟩
       unfold ROOM
       simp [runX_bind, runX_get, hb, hl, runX_lift_ok hld, runX_set, runX_lift_ok hwr, hcall, hr0, runX_pure, l1]
     · refine ⟨.error Ex.leave, { l1 with ret := Z_BUF_ERROR }, after, log2, ?_, I2.withRet Z_BUF_ERROR,
-        fun x => (nomatch x), fun e x => by injection x with x; subst x; exact ⟨rfl, rfl⟩, rfl, rfl, rfl, rfl, meas⟩
+        fun x => (nomatch x), fun e x => by injection x with x; subst x; exact ⟨rfl, rfl⟩, rfl, rfl, rfl, rfl, rfl, (by rw [istates_frame ext.1 (show (setI h i s1).istates i = some s1 by simp [setI]) pr.disjoint.1, hs]; rfl),
+        meas⟩
       unfold ROOM
       simp [runX_bind, runX_get, hb, hl, runX_lift_ok hld, runX_set, runX_lift_ok hwr, hcall, hr0, runX_modify,
         runX_throw, l1]
   · exact ⟨.ok (), l, h, log, ROOM_have c hl, I, fun _ => hl, fun e x => (nomatch x), rfl, rfl, rfl, rfl,
-      Nat.le_refl _⟩
+      rfl, rfl, Nat.le_refl _⟩
 
 end Zlib.Infback.Safety

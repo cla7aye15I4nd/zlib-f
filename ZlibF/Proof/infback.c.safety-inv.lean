@@ -126,7 +126,8 @@ theorem PULL_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
     ∃ res l' h' log', runX (PULL c) l h = .ok ((res, l'), h') ∧ PInv c pr h0 h' l' log' ∧
       (res = .ok () → l'.have_ ≠ 0 ∧ l'.bits = l.bits ∧ l'.hold = l.hold ∧ l'.put = l.put ∧ l'.left = l.left ∧
         (l'.next = l.next ∨ l.have_ = 0)) ∧
-      (∀ e, res = .error e → e = Ex.leave ∧ l'.ret = Z_BUF_ERROR) ∧
+      (∀ e, res = .error e → e = Ex.leave ∧ l'.ret = Z_BUF_ERROR) ∧ l'.copy = l.copy ∧
+      (h'.istates i).map (·.length) = (h.istates i).map (·.length) ∧
       backMeasure pr h' l' log' ≤ backMeasure pr h l log := by
   by_cases hz : l.have_ = 0
   · obtain ⟨k, pointer, after, bytes, run, len, ext, window', fresh, inv'⟩ := pr.inStep h log l.next I.proto
@@ -158,7 +159,8 @@ theorem PULL_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
           bits := I.bits, proto := inv', frame := frame', live := live',
           mode := fun s1 g => by
             rw [istates_frame ext.1 valid.2.1 stateOut] at g; injection g with e; subst e; exact I.mode s valid.2.1 },
-        fun e => (nomatch e), fun e he => by injection he with he; subst he; exact ⟨rfl, rfl⟩, ?_⟩
+        fun e => (nomatch e), fun e he => by injection he with he; subst he; exact ⟨rfl, rfl⟩, rfl,
+        by rw [istates_frame ext.1 valid.2.1 stateOut, valid.2.1], ?_⟩
       unfold backMeasure
       rw [rank, hz]
       simp only [List.length_append, List.length_nil, Nat.add_zero, UInt32.toNat_zero]
@@ -173,14 +175,15 @@ theorem PULL_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
           bits := I.bits, proto := inv', frame := frame', live := live',
           mode := fun s1 g => by
             rw [istates_frame ext.1 valid.2.1 stateOut] at g; injection g with e; subst e; exact I.mode s valid.2.1 },
-        fun _ => ⟨hk, rfl, rfl, rfl, rfl, Or.inr hz⟩, fun e he => (nomatch he), ?_⟩
+        fun _ => ⟨hk, rfl, rfl, rfl, rfl, Or.inr hz⟩, fun e he => (nomatch he), rfl,
+        by rw [istates_frame ext.1 valid.2.1 stateOut, valid.2.1], ?_⟩
       unfold backMeasure
       rw [rank, hz]
       simp only [UInt32.toNat_zero, List.length_append, len]
       rw [len] at bound
       omega
   · refine ⟨.ok (), l, h, log, PULL_have hz, I, fun _ => ⟨hz, rfl, rfl, rfl, rfl, Or.inl rfl⟩,
-      fun e he => (nomatch he), Nat.le_refl _⟩
+      fun e he => (nomatch he), rfl, rfl, Nat.le_refl _⟩
 
 /-- The registers of `PInv` satisfy the bit invariant of `inflate()` for the rest of the chunk. -/
 theorem bitInv_of {c : BCtx} {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
@@ -216,7 +219,7 @@ theorem PULLBYTE_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Na
       (res = .ok () → l'.bits.toNat = l.bits.toNat + 8 ∧ l'.put = l.put ∧ l'.left = l.left) ∧
       (∀ e, res = .error e → e = Ex.leave ∧ l'.ret = Z_BUF_ERROR) ∧
       backMeasure pr h' l' log' ≤ backMeasure pr h l log := by
-  obtain ⟨res1, l1, h1, log1, run1, I1, okc, errc, meas1⟩ := PULL_p c pr I
+  obtain ⟨res1, l1, h1, log1, run1, I1, okc, errc, -, -, meas1⟩ := PULL_p c pr I
   cases res1 with
   | error e =>
     obtain ⟨rfl, ret⟩ := errc e rfl
