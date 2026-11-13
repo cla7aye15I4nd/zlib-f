@@ -18,17 +18,19 @@ functional results that safety does not need are not planned.
 | 2 | `deflate` is safe on every input and every split of the buffers, also over its call sequences. | `deflateInit2_`, `deflate`, `deflate_sequence_safety` |
 | 3 | Whole-buffer compositions of 1 and 2. | the safety of `compress*`, `uncompress*` |
 | 4 | The callback decoder is safe on every input and every caller protocol, also over its call sequences (owner's request of 2026-11-12). | `inflate_back_sequence_safety` |
+| 5 | The gzip file interface is safe on every history of a handle, for every file-system world (owner's decision of 2026-11-12). Safety only, not functional correctness. | `gzopen`, `gzopen64`, `gzclose`, `gzclose_r`, `gzclose_w`, `gzread`, `gzfread`, `gzgetc`, `gzgetc_`, `gzungetc`, `gzgets`, `gzdirect`, `gzwrite`, `gzfwrite`, `gzputc`, `gzputs`, `gzprintf`, `gzvprintf`, `gzflush`, `gzsetparams`, `gzseek`, `gzseek64`, `gztell`, `gztell64`, through `gz_sequence_safety` |
 
 A target that one of these needs as a step stays planned as a dependency. This holds for the
 other stream calls that a sequence goal ranges over, such as `inflateSync`, `inflateCopy`,
-`deflateCopy`, `deflateParams`, `deflatePrime` and `deflateSetDictionary`.
+`deflateCopy`, `deflateParams`, `deflatePrime` and `deflateSetDictionary`. `gzvprintf` is
+undocumented in zlib.h, but `gzprintf` goes through it, so it is planned with result 5.
 
 **Not planned.** No further work goes to these. Results already registered for them stay.
 
 | Group | Targets | Reason |
 | --- | --- | --- |
-| Gzip file interface | `gzopen`, `gzopen64`, `gzclose*`, `gzread`, `gzfread`, `gzgetc`, `gzgetc_`, `gzgets`, `gzungetc`, `gzdirect`, `gzwrite`, `gzfwrite`, `gzputc`, `gzputs`, `gzprintf`, `gzflush`, `gzsetparams`, `gzseek*`, `gztell*`, `gz_sequence`, `gz_initialisation_domain` | A theorem here depends on a hand-made model of the file system, descriptors and `printf` formatting. That model is assumed, not proved, so the result says less than it costs. The file layer adds no compression logic to the planned results above. |
-| Undocumented functions | `zError`, `inflateSyncPoint`, `get_crc_table`, `inflateUndermine`, `inflateValidate`, `inflateCodesUsed`, `inflateResetKeep`, `deflateResetKeep`, `gzopen_w`, `gzvprintf` | zlib.h declares them under "undocumented functions (not part of the zlib API)" (`tests/audit/public-api.json`, `undocumented`). They are not required public targets, and a direct call of one is not a required operation of a sequence goal; the deflate stream domain excludes a direct `deflateResetKeep` (`docs/deviations.md`). Their registered proofs stay registered and audited; the only open goal among them, `gzvprintf`, is not planned. Internal use is unchanged: `deflateReset` and `inflateReset` go through the `ResetKeep` lemmas. |
+| Gzip file interface, functional | `gz_sequence`, `gz_initialisation_domain`, and the functional clauses of the gz calls (the bytes read or written, the return values beyond safety) | Functional. These theorems depend on a hand-made model of the file system, descriptors and `printf` formatting. The safety of the gz calls is planned (result 5). |
+| Undocumented functions | `zError`, `inflateSyncPoint`, `get_crc_table`, `inflateUndermine`, `inflateValidate`, `inflateCodesUsed`, `inflateResetKeep`, `deflateResetKeep`, `gzopen_w` | zlib.h declares them under "undocumented functions (not part of the zlib API)" (`tests/audit/public-api.json`, `undocumented`). They are not required public targets, and a direct call of one is not a required operation of a sequence goal; the deflate stream domain excludes a direct `deflateResetKeep` (`docs/deviations.md`). Their registered proofs stay registered and audited. `gzvprintf` moved to result 5 (2026-11-12). Internal use is unchanged: `deflateReset` and `inflateReset` go through the `ResetKeep` lemmas. |
 | Callback decoder, decoding | the decoding clauses of `inflateBack` and `inflate_back_sequence` (what reaches `out`, `Decodes`) | Functional. The safety of the callback decoder is planned (result 4). |
 | Model-only statements | `Api.Goal.inflate_rejects_invalid`, the unregistered `*_refines` goals | They speak about the abstract model, not about the C. The first also rests on a detection lag of eight bytes that a counterexample refutes. Rejection of invalid input is stated against the C in result 2. |
 | Other build configurations | every configuration except the default x86_64 Linux build | Each one repeats the whole proof for a different platform model. The default build carries the result. |
@@ -2194,10 +2196,74 @@ Existing proof families, measured against the skeleton:
 | `trees.c.*` | Parametric in the block and its descriptors (`gen_codes`, `build_tree`, `scan_tree`, `build_bl_tree`, `send_tree`, `send_code` checked). Fit `flush_block_spec`; `send_all_trees`, `compress_block` and F9 remain. Keep. |
 | `ZlibF/Math/Deflate*`, `Huffman*` | Heap-free: symbols and their meaning, block prefixes, overlay and budget bounds, Huffman depth bounds. Fit the ledger and F9. Keep. |
 
+#### gz
+
+Safety of the gzip file interface (result 5, owner's decision of 2026-11-12): no undefined
+behaviour, no memory error, no leak of a block or of the descriptor, and termination, on every
+history of a handle. The skeleton is on the branch `skeleton/gz`, commit `7d896179`, files
+`ZlibF/Proof/gz.skeleton-model.lean`, `gz.skeleton.lean`, `gz.skeleton-read.lean` and
+`gz.skeleton-write.lean`. It type-checks: `Goal.gz_sequence_safety` is proved there from the open
+lemmas below. The goal ranges over every open (`gzopen`, `gzopen64`, `gzdopen`), every public
+call of `GzOperation`, every close, caller edits outside the handle and changes of the
+file-system world between calls. `GzInv` (`GzCommon`, `GzReadInv`, `GzWriteInv`) is the
+representation invariant of an open handle; `GzHistory` replaces `GzReachable` for safety.
+
+Pending inputs that change the skeleton:
+
+- The OS-call oracle (M1–M5, M7: `read`, `write`, `lseek`, `close`, `open` may return any result
+  their contract allows) is a proposed change of `Fs`. Its design is in review. Until it lands,
+  the goal covers the deterministic regular-file world only, and `ReadsFinite` (the M7 premise of
+  the termination half of the reading calls) is `True`.
+- Local patches 0004 and later (findings F-1 and W7: `x.pos` overflow in `gz_read` and
+  `gz_write`; R-3: `gz_reset` does not write `x.next`; R-4: `x.next` left in the caller's buffer)
+  are on the branch `worker/gz-patches`, beside 0002 (R-1) and 0003 (R-2). The lemmas that say
+  "relies on patch" are false against the current translation; they are proved after the patches
+  land and the skeleton is rebased.
+
+| Lemma | Meaning | State | Hours | Owner |
+| --- | --- | --- | ---: | --- |
+| `GzOracle.fsReadO_contract` .. `fsOpenO_fresh`, `regular_instance_*` (10), the oracle change and the port of 16 gz proofs | M1–M5 and M7 hold for every oracle value; today's `Fs` is the default instance. | open (design in review) | 18–24 | batch 1 |
+| `GzInv.caller` | A caller edit outside the handle keeps `GzInv` (a rebuffer of the codec). | open | 3 | batch 1 |
+| `GzInv.gz_error` | `gz_error` keeps `GzInv`; the old message is freed, a new one or `Z_MEM_ERROR`. | open | 3 | batch 1 |
+| `GzInv.gz_reset` | `gz_reset` keeps `GzInv` and clears output, position and skip (R-3 patch). | open | 2 | batch 1 |
+| `GzInv.put_scalars` | A scalar field write that keeps the clauses keeps `GzInv`. | open | 4 | batch 1 |
+| Further interface lemmas (window, codec step) | As the owners need them. | open | 2 | batch 1 |
+| `gzopen_safe` | `gzopen` returns; NULL leaves nothing; a handle is in `GzInv` with only its descriptor new. | open | 6 | batch 1 |
+| `gzdopen_safe` | As above, with no descriptor opened or closed. | open | 2 | batch 1 |
+| `gzclose_dispatch_inv` | `gzclose` is `gzclose_r` or `gzclose_w` by mode. | open | 1 | batch 1 |
+| `gzseek64_step` | Seek is safe on `GzInv` (patch 0002, R-3, R-4 and F-1 patches). | open | 8 | batch 1 |
+| `gztell64_step`, `gztell_step` | Tell is safe; nothing changes. | open | 2 | batch 1 |
+| `gzbuffer_step`, `gzerror_step`, `gzclearerr_step`, `gzoffset64_step`, `gzoffset_step`, `gzrewind_step` | The registered queries restated over `GzInv`. | open | 6 | batch 1 |
+| Rebase on patches 0002–0004+, statement review | | open | 4 | batch 1 |
+| `history_inv`, `operation_safe`, `close_safe`, `gz_sequence_safety`, `gzclose_step`, `gzseek_step`, `gzeof_step`, `gzopen64_safe` | Assembly. | checked (skeleton) | 0 | batch 1 |
+| `gz_load_safe` | The `read` loop (M1): `-1` or `0`, `have ≤ len`, only the buffer written. | open | 6 | read side (deflate owner) |
+| `gz_avail_safe` | Refill `in`; the input window is kept. | open | 4 | read side |
+| `gz_look_safe` | Lazy buffers and `inflateInit2`, failure ledger, COPY copy. | open | 10 | read side |
+| `gz_decomp_safe` | Inflate steps in the inflate history; `x.next` in the output window. | open | 14 | read side |
+| `gz_fetch_safe` | The dispatcher; terminates under M7. | open | 6 | read side |
+| `gz_skip_have_safe`, `gz_skip_safe` | Skip consumption; terminates under M7. | open | 5 | read side |
+| `gz_read_safe` | Three paths, caller range, `x.next` reset (R-4), `x.pos` (F-1). | open | 12 | read side |
+| `gzread_step`, `gzfread_step`, `gzgetc_step` | Wrappers (`gzgetc__step` checked in the skeleton). | open | 6 | read side |
+| `gzungetc_step` | Push back inside `out`. | open | 6 | read side |
+| `gzgets_step` | Bounded `memchr`, copy, NUL. | open | 6 | read side |
+| `gzdirect_step` | One `gz_look` and `gz_skip_have` (R-3, R-4). | open | 3 | read side |
+| `gzclose_r_step` | `inflateEnd`, frees, descriptor released. | open | 4 | read side |
+| `gz_init_safe` | W2 to W3, W5, W6; failure ledger. | open | 6 | batch C |
+| `gz_comp_safe` | Write loops (M2), deflate loop (`deflate_quiet`), reset. | open | 16 | batch C |
+| `gz_zero_safe`, `gz_write_safe`, `gz_vacate_safe` | W4 kept; `x.pos` (W7 patch). | open | 18 | batch C |
+| `gzwrite_step`, `gzfwrite_step`, `gzputc_step`, `gzputs_step` | Wrappers. | open | 8 | batch C |
+| `gzvprintf_step` | `vsnprintf` (M6), sentinel, stall paths (`gzprintf_step` checked in the skeleton). | open | 9 | batch C |
+| `gzflush_step`, `gzsetparams_step` | `gz_zero` and `gz_comp`; the `deflateParams` step. | open | 7 | batch C |
+| `gzclose_w_step` | Finish, `deflateEnd`, frees, descriptor released (also O-1). | open | 8 | batch C |
+| `deflate_quiet` | `deflate` with no input and output room lowers a potential when it produces output. | open | 15–25 | batch C |
+| **Total remaining** | batch 1 61–67; read side 82; write side 72; `deflate_quiet` 15–25 | | **230–246** | |
+
+
 ### Ordered next work
 
-Only rows 9 to 12 are planned work: see [Scope](#scope). Start with row 11, then rows 9 and 12.
-Rows 1 to 5 and 13 are the gzip file interface and are not planned. Rows 6 to 8 and 10 are done
+Rows 9 to 12 are planned work: see [Scope](#scope). Start with row 11, then rows 9 and 12.
+Rows 1 to 5 and 13 are the gzip file interface: their safety is planned (result 5) and follows
+the [gz skeleton](#gz), not this table; their functional contracts are not planned. Rows 6 to 8 and 10 are done
 only when a sequence goal needs them.
 
 Ordered. "Prerequisite" is what must be proved first; it is never an assumed contract.
