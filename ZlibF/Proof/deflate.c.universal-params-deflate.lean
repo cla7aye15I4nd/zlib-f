@@ -74,7 +74,7 @@ theorem par_trailerTail_def (s : DeflateStatePtr) : ParM true (trailerTail s) :=
             rw [DeflateStateRef.put_tab get] at run
             simp only [pure_app, upd_same, DeflateStateRef.get] at run
             cases run
-            refine ⟨fun ds e got => ?_, fun q z got => ⟨z, ?_, ZSame.refl z⟩⟩
+            refine ⟨fun ds e got => ?_, fun q z got => ⟨z, ?_, ZSame.refl z⟩, GzRecordsKept.of_eq rfl⟩
             · by_cases same : ds = i
               · subst same
                 have eq : e = d := Option.some.inj (got.symm.trans get)

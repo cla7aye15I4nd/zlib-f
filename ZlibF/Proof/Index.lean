@@ -1474,6 +1474,7 @@ import ZlibF.Proof.«deflate.c.universal-outframe»
 import ZlibF.Proof.«deflate.c.universal-params-base»
 import ZlibF.Proof.«deflate.c.universal-params-checksum»
 import ZlibF.Proof.«deflate.c.universal-params-deflate»
+import ZlibF.Proof.«deflate.c.universal-params-gz»
 import ZlibF.Proof.«deflate.c.universal-params-helpers»
 import ZlibF.Proof.«deflate.c.universal-params-prims»
 import ZlibF.Proof.«deflate.c.universal-params-publish»

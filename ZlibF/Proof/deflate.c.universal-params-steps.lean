@@ -16,7 +16,7 @@ set_option autoImplicit false
 theorem ExactRel.upd_state {h : Heap} {i : Nat} {d : DeflateState} (get : h.dstates i = some d)
     (d' : DeflateState) (eq : Pars d' = Pars d) :
     ExactRel h { h with dstates := upd h.dstates i (some d') } := by
-  refine ⟨fun ds e got => ?_, fun q z got => ⟨z, ?_, ZSame.refl z⟩⟩
+  refine ⟨fun ds e got => ?_, fun q z got => ⟨z, ?_, ZSame.refl z⟩, GzRecordsKept.of_eq rfl⟩
   · by_cases same : ds = i
     · subst same
       have eq' : e = d := Option.some.inj (got.symm.trans get)

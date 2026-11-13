@@ -129,7 +129,7 @@ theorem exact_strLitRef (s : String) : ExactM (strLitRef s) := by
 /-- Writing a stream record whose `state` and allocators are those of the current record. -/
 theorem exact_put_stream {h : Heap} {r : ZStreamRef} {z : ZStream} (get : r.get h = some z) (z' : ZStream)
     (same : ZSame z z') : ExactRel h (r.put h z') := by
-  refine ⟨fun ds d got => ⟨d, ?_, rfl⟩, fun q y got => ?_⟩
+  refine ⟨fun ds d got => ⟨d, ?_, rfl⟩, fun q y got => ?_, GzRecordsKept.put_stream h r z'⟩
   · cases r <;> simp only [ZStreamRef.put] <;> split <;> exact got
   · by_cases eq : q = r
     · subst eq
@@ -191,7 +191,7 @@ theorem par_wr (keep : Bool) (p : DeflateStatePtr) (f : DeflateState → Deflate
         simp only [ldDeflateState, DeflateStateRef.get, get, stDeflateState, DeflateStateRef.isRo] at run
         cases run
         rw [DeflateStateRef.put_tab get]
-        refine ⟨fun ds e got => ?_, fun q z got => ⟨z, ?_, ZSame.refl z⟩⟩
+        refine ⟨fun ds e got => ?_, fun q z got => ⟨z, ?_, ZSame.refl z⟩, GzRecordsKept.of_eq rfl⟩
         · by_cases same : ds = i
           · subst same
             have eq : e = d := Option.some.inj (got.symm.trans get)
@@ -237,7 +237,7 @@ theorem exact_ld_st {β γ : Type} (p : DeflateStatePtr) (q : DeflateState → M
           simp only [stDeflateState, DeflateStateRef.get, get1, DeflateStateRef.isRo] at run
           rw [DeflateStateRef.put_tab get1] at run
           have rel2 : ExactRel h1 { h1 with dstates := upd h1.dstates i (some (g d x)) } := by
-            refine ⟨fun ds e got => ?_, fun q z got => ⟨z, ?_, ZSame.refl z⟩⟩
+            refine ⟨fun ds e got => ?_, fun q z got => ⟨z, ?_, ZSame.refl z⟩, GzRecordsKept.of_eq rfl⟩
             · by_cases same : ds = i
               · subst same
                 have eq : e = d1 := Option.some.inj (got.symm.trans get1)
@@ -272,7 +272,7 @@ theorem exact_ldz_st {β γ : Type} (p : ZStreamPtr) (q : ZStream → M β)
         rcases p1 with ⟨x, h1⟩
         simp only [eq1] at run
         have rel1 := hq z h x h1 eq1
-        obtain ⟨z1, get1, same1⟩ := rel1.2 r z get
+        obtain ⟨z1, get1, same1⟩ := rel1.2.1 r z get
         have hsame : ZSame z1 (g z x) := by
           have := hg z x
           exact ⟨this.state.trans same1.state.symm, this.zalloc.trans same1.zalloc.symm,

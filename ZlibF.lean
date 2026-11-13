@@ -511,6 +511,7 @@ import ZlibF.Proof.«deflate.c.universal-params-trees»
 import ZlibF.Proof.«deflate.c.universal-params-publish»
 import ZlibF.Proof.«deflate.c.universal-params-strategies»
 import ZlibF.Proof.«deflate.c.universal-params-deflate»
+import ZlibF.Proof.«deflate.c.universal-params-gz»
 import ZlibF.Proof.«trees.c.universal-spec»
 import ZlibF.Proof.«trees.c.universal-flushsafe»
 import ZlibF.Proof.«deflate.c.universal-strategy-specs»
