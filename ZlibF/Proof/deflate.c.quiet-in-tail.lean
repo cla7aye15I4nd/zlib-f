@@ -52,7 +52,7 @@ theorem tail_in {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : Deflat
     (inv : DInv h r ds z d) (ov : Block.OverlayAt d.lit_bufsize.toNat) (header : HeaderInv d) (facts : CallFacts d)
     (buffers : StreamBuffers h r) (out : z.next_out ≠ .null) (input : z.avail_in ≠ 0 → z.next_in ≠ .null)
     (pend : d.pending = 0) (busy : d.status = BUSY_STATE ∨ d.status = FINISH_STATE) (lf : d.last_flush = flush)
-    (lower : 0 ≤ flush.toInt) (upper : flush.toInt ≤ 4) (finIn : d.status = FINISH_STATE → z.avail_in = 0)
+    (lower : 0 ≤ flush.toInt) (upper : flush.toInt ≤ 5) (finIn : d.status = FINISH_STATE → z.avail_in = 0)
     (sstop : StoredStop) :
     ∃ rc after z' d' u p,
       strategyPhase (some r) (some (.tab ds)) flush (trailerPhase (some r) (some (.tab ds)) flush) h =

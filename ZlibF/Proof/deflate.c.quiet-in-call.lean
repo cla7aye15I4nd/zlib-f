@@ -94,7 +94,7 @@ theorem cont_empty_in {h : Heap} {r : ZStreamRef} {ds : Nat}
     (inv : DInv h r ds z d) (ov : Block.OverlayAt d.lit_bufsize.toNat) (header : HeaderInv d)
     (facts : CallFacts d) (buffers : StreamBuffers h r)
     (active : ActiveHeader h r) (pend : d.pending = 0) (accepted : ¬ DeflateRefuses z d flush)
-    (room : z.avail_out ≠ 0) (np : ¬ NoProgress z d flush) (lower : 0 ≤ flush.toInt) (upper : flush.toInt ≤ 4)
+    (room : z.avail_out ≠ 0) (np : ¬ NoProgress z d flush) (lower : 0 ≤ flush.toInt) (upper : flush.toInt ≤ 5)
     (sstop : StoredStop) :
     CallIn r ds z d flush
       (headerPhase (some r) (some (.tab ds)) flush
@@ -172,7 +172,7 @@ theorem call_pending_in {h : Heap} {r : ZStreamRef} {ds : Nat}
     (inv : DInv h r ds z d) (ov : Block.OverlayAt d.lit_bufsize.toNat) (header : HeaderInv d)
     (facts : CallFacts d) (buffers : StreamBuffers h r)
     (active : ActiveHeader h r) (pend : d.pending ≠ 0) (accepted : ¬ DeflateRefuses z d flush)
-    (room : z.avail_out ≠ 0) (lower : 0 ≤ flush.toInt) (upper : flush.toInt ≤ 4) (sstop : StoredStop) :
+    (room : z.avail_out ≠ 0) (lower : 0 ≤ flush.toInt) (upper : flush.toInt ≤ 5) (sstop : StoredStop) :
     CallIn r ds z d flush (C.run (deflate (some r) flush) h) := by
   have accepted0 := accepted
   unfold DeflateRefuses at accepted
@@ -383,7 +383,7 @@ theorem call_pending_in {h : Heap} {r : ZStreamRef} {ds : Nat}
 theorem call_in {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState} {flush : Int32}
     (inv : DInv h r ds z d) (ov : Block.OverlayAt d.lit_bufsize.toNat) (header : HeaderInv d) (facts : CallFacts d)
     (buffers : StreamBuffers h r) (active : ActiveHeader h r) (out : z.next_out ≠ .null)
-    (lower : 0 ≤ flush.toInt) (upper : flush.toInt ≤ 4) (sstop : StoredStop) :
+    (lower : 0 ≤ flush.toInt) (upper : flush.toInt ≤ 5) (sstop : StoredStop) :
     CallIn r ds z d flush (C.run (deflate (some r) flush) h) := by
   have noFull : ∀ {m : BPtr}, 8 ≤ z.avail_out.toNat → ({ z with msg := m } : ZStream).avail_out = 0 → False := by
     intro m big z0

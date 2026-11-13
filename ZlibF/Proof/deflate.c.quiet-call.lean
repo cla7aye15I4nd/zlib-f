@@ -21,7 +21,7 @@ set_option autoImplicit false
 fills the output lowers the potential; a call that ends with room leaves the state quiet. -/
 theorem call_quiet {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState} {flush : Int32}
     (inv : DInv h r ds z d) (header : HeaderInv d) (facts : CallFacts d) (buffers : StreamBuffers h r)
-    (active : ActiveHeader h r) (out : z.next_out ≠ .null) (lower : 0 ≤ flush.toInt) (upper : flush.toInt ≤ 4)
+    (active : ActiveHeader h r) (out : z.next_out ≠ .null) (lower : 0 ≤ flush.toInt) (upper : flush.toInt ≤ 5)
     (empty : z.avail_in = 0) :
     ∃ rc after z' d', C.run (deflate (some r) flush) h = .ok (rc, after) ∧ DInv after r ds z' d' ∧
       (8 ≤ z.avail_out.toNat → z'.avail_out = 0 → LexLt d' d) ∧
@@ -43,23 +43,24 @@ theorem run_of_execute {h after : Heap} {r : ZStreamRef} {flush value : Int32}
     obtain ⟨⟨rfl, -⟩, rfl⟩ := exec
     rfl
 
-/-- **`DeflateQuiet`** (the statement of the gz skeleton, `gz.skeleton-write.lean`). -/
+/-- **`DeflateQuiet`** (the statement of the gz skeleton, `gz.skeleton-write.lean`), widened to `0 ≤ flush ≤ 5`
+so that it covers `Z_BLOCK`, as `gzsetparams` calls `gz_comp(state, Z_BLOCK)`. -/
 theorem deflate_quiet_holds :
     ∃ (Φ : Int32 → Heap → ZStreamRef → Nat) (Quiet : Int32 → Heap → ZStreamRef → Prop),
     (∀ (flush : Int32) (h : Heap) (r : ZStreamRef) (z : ZStream) (value : Int32) (after : Heap) (z' : ZStream),
-      0 ≤ flush.toInt → flush.toInt ≤ 4 →
+      0 ≤ flush.toInt → flush.toInt ≤ 5 →
       StreamReachable .deflate h r → StreamBuffers h r → ActiveHeader h r →
       r.get h = some z → z.next_out ≠ .null → z.avail_in = 0 → 8 ≤ z.avail_out.toNat →
       Call.execute (.deflate (some r) flush) default h = .ok ((value, default), after) → r.get after = some z' →
       z'.avail_out = 0 → Φ flush after r < Φ flush h r) ∧
     (∀ (flush : Int32) (h : Heap) (r : ZStreamRef) (z : ZStream) (value : Int32) (after : Heap) (z' : ZStream),
-      0 ≤ flush.toInt → flush.toInt ≤ 4 →
+      0 ≤ flush.toInt → flush.toInt ≤ 5 →
       StreamReachable .deflate h r → StreamBuffers h r → ActiveHeader h r →
       r.get h = some z → z.next_out ≠ .null → z.avail_in = 0 → z.avail_out ≠ 0 →
       Call.execute (.deflate (some r) flush) default h = .ok ((value, default), after) → r.get after = some z' →
       z'.avail_out ≠ 0 → Quiet flush after r) ∧
     (∀ (flush : Int32) (h : Heap) (r : ZStreamRef) (z : ZStream) (value : Int32) (after : Heap) (z' : ZStream),
-      Quiet flush h r → 0 ≤ flush.toInt → flush.toInt ≤ 4 →
+      Quiet flush h r → 0 ≤ flush.toInt → flush.toInt ≤ 5 →
       StreamReachable .deflate h r → StreamBuffers h r → ActiveHeader h r →
       r.get h = some z → z.next_out ≠ .null → z.avail_in = 0 →
       Call.execute (.deflate (some r) flush) default h = .ok ((value, default), after) → r.get after = some z' →

@@ -72,7 +72,7 @@ theorem tail_quiet {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : Def
     (inv : DInv h r ds z d) (ov : Block.OverlayAt d.lit_bufsize.toNat) (header : HeaderInv d) (facts : CallFacts d)
     (buffers : StreamBuffers h r) (out : z.next_out ≠ .null) (pend : d.pending = 0)
     (busy : d.status = BUSY_STATE ∨ d.status = FINISH_STATE) (lf : d.last_flush = flush)
-    (lower : 0 ≤ flush.toInt) (upper : flush.toInt ≤ 4) (empty : z.avail_in = 0)
+    (lower : 0 ≤ flush.toInt) (upper : flush.toInt ≤ 5) (empty : z.avail_in = 0)
     (sq : ∀ {b : block_state} {after : Heap} {z1 : ZStream} {d1 : DeflateState}, d.status = BUSY_STATE →
       dispatch (some (.tab ds)) flush d h = .ok (b, after) → r.get after = some z1 → after.dstates ds = some d1 →
       StratQuiet flush z d z1 d1 b) :
