@@ -16,10 +16,10 @@ UBSan: without any patch, and with `patches/*.patch`, which includes
 overflow in each of the four runs (transparent and gzip input, `SEEK_CUR` and `SEEK_SET`). The
 patched build must report nothing; `SEEK_CUR` returns 0 and `SEEK_SET` returns -1.
 
-`report.txt` is the raw output of one run on arm64 macOS (Apple clang 21), process ids replaced.
-No C compiler was available on an x86_64 Linux host for this run; the overflow is in 64-bit
-`z_off64_t` arithmetic and does not depend on the target. On x86_64 Linux, UBSan names the type
-`long int` instead of `off_t`.
+`report.txt` is the raw output of one run on x86_64 Linux (GCC 15.2), the project's target, process
+ids replaced. The verdict is the same as on arm64 macOS (Apple clang 21), where the script was first
+run: the same four overflows at the same lines. On x86_64 Linux UBSan names the type `long int`
+instead of `off_t`.
 
 This is a library defect inside the documented use, not a caller layout. The verified source
 applies the submitted fix as a temporary patch ([patches](../../../patches/README.md)).

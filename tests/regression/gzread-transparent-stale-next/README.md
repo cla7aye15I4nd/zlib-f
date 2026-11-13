@@ -16,9 +16,10 @@ calls `gzread(f, buf, 1)`. The replacement `read()` is defined in the program, s
 `heap-buffer-overflow` READ of size 1 in `gz_read` (`gzread.c:369`), 0 bytes after the 32-byte
 output buffer. The patched build must report nothing; `gzread` returns 1 and keeps `Z_ERRNO`.
 
-`report.txt` is the raw output of one run on arm64 macOS (Apple clang 21), process ids replaced.
-No C compiler was available on an x86_64 Linux host for this run. The upstream pull request reports
-the same `gzread.c:369` overflow on x86_64 Linux with an `LD_PRELOAD` read override.
+`report.txt` is the raw output of one run on x86_64 Linux (GCC 15.2), the project's target, process
+ids replaced. The verdict is the same as on arm64 macOS (Apple clang 21), where the script was first
+run. With GCC the `SUMMARY` line names the inlined fortified `memcpy`; the `gz_read` frame is still
+`gzread.c:369`.
 
 This is a library defect inside the documented use, not a caller layout: a `read()` that returns
 some bytes and then fails is an I/O error zlib handles. The verified source applies the submitted

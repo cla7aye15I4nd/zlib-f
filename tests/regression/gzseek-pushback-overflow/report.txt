@@ -1,22 +1,28 @@
+Raw output of tests/regression/gzseek-pushback-overflow/run.sh (seek.c), exit status 0.
+Source: the pinned zlib commit 757f0527154291bcf6bfbd6396ecde6bedd2db95, built twice by tests/build-zlib.sh:
+without any patch (unpatched) and with patches/*.patch (patched).
+Build: GCC 15.2, the sanitizer options of run.sh.
+Host: x86_64 Linux, the project's target. Process ids are replaced by PID. Paths are relative to
+the build directory or to the repository root; system paths are as the toolchain prints them.
+Same verdict as on arm64 macOS: the same four overflows (gzlib.c:395, 403, 424) and the same
+patched results. UBSan names the type 'long int' (macOS: 'off_t'), puts the gzip SEEK_SET report at
+column 12 of gzlib.c:424 (macOS: 18), and GCC prints no SUMMARY line.
+
 == unpatched raw.dat cur
 ungetc=81
-gzlib.c:395:29: runtime error: signed integer overflow: 9223372036854775807 - -1 cannot be represented in type 'off_t' (aka 'long long')
-SUMMARY: UndefinedBehaviorSanitizer: undefined-behavior gzlib.c:395:29 
+gzlib.c:395:29: runtime error: signed integer overflow: 9223372036854775807 - -1 cannot be represented in type 'long int'
 ok: unpatched: signed overflow in gzseek64
 == unpatched raw.dat set
 ungetc=81
-gzlib.c:403:36: runtime error: signed integer overflow: 9223372036854775807 - -1 cannot be represented in type 'off_t' (aka 'long long')
-SUMMARY: UndefinedBehaviorSanitizer: undefined-behavior gzlib.c:403:36 
+gzlib.c:403:36: runtime error: signed integer overflow: 9223372036854775807 - -1 cannot be represented in type 'long int'
 ok: unpatched: signed overflow in gzseek64
 == unpatched data.gz cur
 ungetc=81
-gzlib.c:395:29: runtime error: signed integer overflow: 9223372036854775807 - -1 cannot be represented in type 'off_t' (aka 'long long')
-SUMMARY: UndefinedBehaviorSanitizer: undefined-behavior gzlib.c:395:29 
+gzlib.c:395:29: runtime error: signed integer overflow: 9223372036854775807 - -1 cannot be represented in type 'long int'
 ok: unpatched: signed overflow in gzseek64
 == unpatched data.gz set
 ungetc=81
-gzlib.c:424:18: runtime error: signed integer overflow: 9223372036854775807 - -1 cannot be represented in type 'off_t' (aka 'long long')
-SUMMARY: UndefinedBehaviorSanitizer: undefined-behavior gzlib.c:424:18 
+gzlib.c:424:12: runtime error: signed integer overflow: 9223372036854775807 - -1 cannot be represented in type 'long int'
 ok: unpatched: signed overflow in gzseek64
 == patched raw.dat cur
 ungetc=81

@@ -1,37 +1,52 @@
+Raw output of tests/regression/gzread-transparent-stale-next/run.sh (stale.c), exit status 0.
+Source: the pinned zlib commit 757f0527154291bcf6bfbd6396ecde6bedd2db95, built twice by tests/build-zlib.sh:
+without any patch (unpatched) and with patches/*.patch (patched).
+Build: GCC 15.2, the sanitizer options of run.sh.
+Host: x86_64 Linux, the project's target. Process ids are replaced by PID. Paths are relative to
+the build directory or to the repository root; system paths are as the toolchain prints them.
+Same verdict as on arm64 macOS: a heap-buffer-overflow READ of size 1 in gz_read at gzread.c:369,
+0 bytes after the 32-byte buffer allocated in gz_look (gzread.c:100). GCC inlines the fortified
+memcpy, so the SUMMARY line names string_fortified.h; frame #2 is gz_read gzread.c:369.
+
 == unpatched
 before: how=1 have=0 next-offset=32 size=16
 =================================================================
-==PID==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x603000000f90 at pc 0x000104f4ed94 bp 0x00016b90dcf0 sp 0x00016b90d4a0
-READ of size 1 at 0x603000000f90 thread T0
-    #0 0x000104f4ed90 in __asan_memcpy+0x400 (libclang_rt.asan_osx_dynamic.dylib:arm64e+0x3ed90)
-    #1 0x000104520450 in gz_read gzread.c:369
-    #2 0x0001045200f8 in gzread gzread.c:454
-    #3 0x0001044f0ea4 in main stale.c:51
-    #4 0x0001a0360d78 in start+0x19f8 (dyld:arm64e+0x31d78)
+==PID==ERROR: AddressSanitizer: heap-buffer-overflow on address 0x7926271e0060 at pc 0x7cf628f2901f bp 0x7fff02a49d20 sp 0x7fff02a494c8
+READ of size 1 at 0x7926271e0060 thread T0
+    #0 0x7cf628f2901e in memcpy ../../../../src/libsanitizer/sanitizer_common/sanitizer_common_interceptors_memintrinsics.inc:117
+    #1 0x64c563f4acad in memcpy /usr/include/x86_64-linux-gnu/bits/string_fortified.h:29
+    #2 0x64c563f4acad in gz_read unpatched/gzread.c:369
+    #3 0x64c563f4b208 in gzread unpatched/gzread.c:454
+    #4 0x64c563f46e1c in main tests/regression/gzread-transparent-stale-next/stale.c:51
+    #5 0x7cf62822a600 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:59
+    #6 0x7cf62822a717 in __libc_start_main_impl ../csu/libc-start.c:360
+    #7 0x64c563f46624 in _start (stale-unpatched+0x4a624) (BuildId: 27d440e3b0ac27db31361dcb732247a06389c8e2)
 
-0x603000000f90 is located 0 bytes after 32-byte region [0x603000000f70,0x603000000f90)
+0x7926271e0060 is located 0 bytes after 32-byte region [0x7926271e0040,0x7926271e0060)
 allocated by thread T0 here:
-    #0 0x000104f51274 in malloc+0x78 (libclang_rt.asan_osx_dynamic.dylib:arm64e+0x41274)
-    #1 0x000104521a8c in gz_look gzread.c:100
-    #2 0x00010452281c in gz_fetch gzread.c:266
-    #3 0x0001045205d0 in gz_read gzread.c:388
-    #4 0x000104520e44 in gzgetc gzread.c:543
-    #5 0x0001044f0bf0 in main stale.c:46
-    #6 0x0001a0360d78 in start+0x19f8 (dyld:arm64e+0x31d78)
+    #0 0x7cf628f2b60f in malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:67
+    #1 0x64c563f49c7e in gz_look unpatched/gzread.c:100
+    #2 0x64c563f4a451 in gz_fetch unpatched/gzread.c:266
+    #3 0x64c563f4af2b in gz_read unpatched/gzread.c:388
+    #4 0x64c563f4b954 in gzgetc unpatched/gzread.c:543
+    #5 0x64c563f46b77 in main tests/regression/gzread-transparent-stale-next/stale.c:46
+    #6 0x7cf62822a600 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:59
+    #7 0x7cf62822a717 in __libc_start_main_impl ../csu/libc-start.c:360
+    #8 0x64c563f46624 in _start (stale-unpatched+0x4a624) (BuildId: 27d440e3b0ac27db31361dcb732247a06389c8e2)
 
-SUMMARY: AddressSanitizer: heap-buffer-overflow gzread.c:369 in gz_read
+SUMMARY: AddressSanitizer: heap-buffer-overflow /usr/include/x86_64-linux-gnu/bits/string_fortified.h:29 in memcpy
 Shadow bytes around the buggy address:
-  0x603000000d00: 00 00 00 00 fa fa 00 00 00 00 fa fa 00 00 00 00
-  0x603000000d80: fa fa 00 00 00 00 fa fa 00 00 00 00 fa fa 00 00
-  0x603000000e00: 00 00 fa fa 00 00 00 00 fa fa 00 00 00 00 fa fa
-  0x603000000e80: 00 00 00 00 fa fa 00 00 00 00 fa fa 00 00 00 00
-  0x603000000f00: fa fa 00 00 00 00 fa fa 00 00 00 00 fa fa 00 00
-=>0x603000000f80: 00 00[fa]fa fa fa fa fa fa fa fa fa fa fa fa fa
-  0x603000001000: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
-  0x603000001080: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
-  0x603000001100: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
-  0x603000001180: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
-  0x603000001200: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x7926271dfd80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x7926271dfe00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x7926271dfe80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x7926271dff00: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  0x7926271dff80: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+=>0x7926271e0000: fa fa fd fd fd fa fa fa 00 00 00 00[fa]fa fd fd
+  0x7926271e0080: fd fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x7926271e0100: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x7926271e0180: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x7926271e0200: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x7926271e0280: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
 Shadow byte legend (one shadow byte represents 8 application bytes):
   Addressable:           00
   Partially addressable: 01 02 03 04 05 06 07 
