@@ -1,4 +1,5 @@
 import ZlibF.Spec.Public.GzControl
+import ZlibF.Spec.PlatformMemory
 
 namespace ZlibF.Spec.Public
 open C Zlib.GzFs
@@ -40,6 +41,7 @@ def OpenContract (program : BPtr → BPtr → G GzFilePtr) : Prop :=
   (∀ h fs path mode, path = .null ∨ mode = .null → program path mode fs h = .ok ((none, fs), h)) ∧
   (∀ h fs path mode name flags,
     Fresh h → Zlib.Gzlib.Spec.Uniq h → LibraryGlobals h → FileSystem fs →
+    ZlibF.PlatformMemory.ByteObjectsFit h →
     CString h path name → CString h mode flags →
     ∃ result fs' after, program path mode fs h = .ok ((result, fs'), after) ∧
       Frame h after (fun _ => False) ∧
@@ -57,11 +59,14 @@ def OpenContract (program : BPtr → BPtr → G GzFilePtr) : Prop :=
 
 /-- `gzFile gzopen(const char *path, const char *mode)`.
 Parse the complete mode string, open/truncate/append as requested, transfer descriptor ownership,
-initialize the handle, and release every allocation on a null result. -/
+initialize the handle, and release every allocation on a null result.
+The LP64 platform scope bounds each byte object below `2^63` bytes, including the caller's path
+(`docs/deviations.md`). -/
 def Goal.gzopen : Prop := OpenContract Zlib.Gzlib.gzopen
 
 /-- `gzFile gzopen64(const char *path, const char *mode)`.
-The LP64 entry uses the same open flags and position range as `gzopen`. -/
+The LP64 entry uses the same open flags and position range as `gzopen`, and the same platform
+scope for the caller's path (`docs/deviations.md`). -/
 def Goal.gzopen64 : Prop := OpenContract Zlib.Gzlib.gzopen64
 
 /-- `gzFile gzdopen(int fd, const char *mode)`.

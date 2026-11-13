@@ -73,11 +73,14 @@ def gzWitnessFs (mode : Api.GzMode) : Fs :=
   if mode = .read then Fs.put default #[120] #[] else default
 
 /-- External open success is specified by the fixed file-system semantics. No gz contract
-is an assumption. Every accepted mode has a successful concrete open witness. -/
+is an assumption. Every accepted mode has a successful concrete open witness.
+The LP64 platform scope bounds each byte object below `2^63` bytes, including the caller's path
+(`docs/deviations.md`). -/
 def Goal.gz_initialisation_domain : Prop :=
   (∀ h fs path mode name flags kind level strategy direct fd world start,
     Fresh h → Zlib.Gzlib.Spec.Uniq h → LibraryGlobals h → FileSystem fs →
-    NoAllocationFailure h → CString h path name → CString h mode flags →
+    NoAllocationFailure h → ZlibF.PlatformMemory.ByteObjectsFit h →
+    CString h path name → CString h mode flags →
     parsedMode flags = some (kind, level, strategy, direct) →
     OpenWorld h fs world name flags kind none fd start → fd ≠ -1 →
     ∃ after fs' i s, Zlib.Gzlib.gzopen path mode fs h = .ok ((some (.in_gzstate_x i), fs'), after) ∧

@@ -1,4 +1,4 @@
-<!-- source-sha256: 30449203d3c52edb1510aea685fdfb13f29eba17540294ae28f2261a1a1e317f -->
+<!-- source-sha256: 2c27aed6a41b0cac15ea1e25e329d1b1980628c71f3649ce0f7fab323ce62061 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1865,7 +1865,7 @@ gzip 文件接口的安全（第 5 项结论，所有者 2026-11-12 的决定）
 
 | # | 目标 | 前提 | 负责 PR |
 | ---: | --- | --- | --- |
-| 1 | `gzopen`、`gzopen64`、`gz_initialisation_domain` | 先解决陈述问题（见 [gzip 打开路径长度](#gzip-open-path-length)）。然后是 `gz_open` 的路径打开（`fd = -1`）分支：`fsOpen` 的结果以及追加/读取定位，复用 `gzdopen` 的组合 | — |
+| 1 | `gzopen`、`gzopen64`、`gz_initialisation_domain` | 陈述已修正（见 [gzip 打开路径长度](#gzip-open-path-length)）。接下来是 `gz_open` 的路径打开（`fd = -1`）分支：`fsOpen` 的结果以及追加/读取定位，复用 `gzdopen` 的组合 | — |
 | 2 | `gztell`、`gztell64` | 从每个允许的 gz 调用历史（打开、读、写、定位、回退）推出 `PosInv` | — |
 | 3 | `gzclose_r` | 读端缓冲区在调用历史上的归属，然后是已初始化读端上的 `inflateEnd` | — |
 | 4 | `gzseek`、`gzseek64` | 第 2 项的 `PosInv` 和缓冲区不变式；透明路径与缓冲路径 | — |
@@ -1879,7 +1879,7 @@ gzip 文件接口的安全（第 5 项结论，所有者 2026-11-12 的决定）
 | 12 | `deflate` → `deflate_sequence` → `deflateParams`、`compress*` | `fill_window` 与滑动；以级别、`memLevel`、`windowBits` 为参数的单一策略循环不变式；块输出 | — |
 | 13 | 压缩 gz 路径、`gzclose_w`、`gzclose`、`gz_sequence` | 第 11 和 12 项 | — |
 
-当陈述修正会改变需要证明的内容时，先做修正。尚未解决：依赖 `detectLag = 8` 的 `Api.Goal.inflate_rejects_invalid`（已检查的反例表明该常数有误；[API 模型](design/api-model.md)），以及下文的 gzip 打开路径长度问题。`inflateInit2_` 与 `Api.Goal.gz_seek_read` 已修正并通过检查，等待登记。
+当陈述修正会改变需要证明的内容时，先做修正。尚未解决：依赖 `detectLag = 8` 的 `Api.Goal.inflate_rejects_invalid`（已检查的反例表明该常数有误；[API 模型](design/api-model.md)）。下文的 gzip 打开路径长度问题已修正。`inflateInit2_` 与 `Api.Goal.gz_seek_read` 已修正并通过检查，等待登记。
 
 早先的叙述性检查点（关于 inflate、deflate、树、CRC、差分框架和集成的分领域说明）保存在[进度检查点](history/progress-checkpoints.zh.md)中，属于历史记录，其中的数字不是当前数字。
 
@@ -1944,7 +1944,7 @@ gzip 文件接口的安全（第 5 项结论，所有者 2026-11-12 的决定）
 <!-- proof-readiness:start -->
 | 公开目标 | 图中所示证明工作 | 下一步与缺少的前提 |
 | --- | --- | --- |
-| `gzopen`, `gzopen64`, `gz_initialisation_domain` | 开始：打开与清理 | <a id="readiness-gzopen"></a> **先解决陈述问题：**见 [gzip 打开路径长度](#gzip-open-path-length)。**开始：**`gz_open` 的路径打开分支（`fsOpen` 结果、追加与读取定位），复用已登记的 `gzdopen` 模式循环、分配与 `OpenState` 组合。上文的入口与失败分支已经过本地检查。 |
+| `gzopen`, `gzopen64`, `gz_initialisation_domain` | 开始：打开与清理 | <a id="readiness-gzopen"></a> **陈述已修正：**见 [gzip 打开路径长度](#gzip-open-path-length)。**开始：**`gz_open` 的路径打开分支（`fsOpen` 结果、追加与读取定位），复用已登记的 `gzdopen` 模式循环、分配与 `OpenState` 组合。上文的入口与失败分支已经过本地检查。 |
 | `gztell64`, `gztell` | 需要：位置约束 | <a id="readiness-gztell64"></a> **组合：**从读取、写入、定位和回退字节的调用序列推出位置不变量 `PosInv`，再复用现有算术执行证明。 |
 | `gzclose_r` | 需要：资源归属 | <a id="readiness-gzclose-r"></a> **开始：**已初始化缓冲区的清理，以及从调用序列建立其所有权的证明。未缓冲执行及框架性质已有本地检查；仅有 `inflateEnd` 还不够。 |
 | `gzclose_w`, `gzclose` | 需要：交付与清理 | <a id="readiness-gzclose-w"></a> **组合：**实际补零、最终压缩和文件写入，全部清理与错误路径，再利用两个完整的关闭结果证明分派操作。 |
@@ -1989,14 +1989,12 @@ gzip 文件接口的安全（第 5 项结论，所有者 2026-11-12 的决定）
 
 #### Gzip 打开路径长度
 
-尚未确认的陈述报告，由所有者决定。`gz_open` 用 `snprintf(state->path, len + 1, "%s", path)` 复制调用者路径。
-[`gzfs.lean`](../ZlibF/Zlib/gzfs.lean) 中的模型 `vsnprintf` 在输出超过 `INT_MAX` 字节时产生 `Fault.ub`。
-`Goal.gzopen`、`Goal.gzopen64` 与 `Goal.gz_initialisation_domain` 接受任意 `CString` 路径（长度小于 `2^64`），
-并在分配成功时要求结果不出错。因此长度至少 `2^31` 字节的路径使这三条陈述在模型中为假。
-现有的描述符打开引理已带有 `name.length ≤ 2147483647`；`gzdopen` 的路径很短，不受影响。
-在目标平台上，POSIX `snprintf` 返回 `-1` 并设置 `EOVERFLOW`，而不是未定义行为；ISO C 未定义此情形。
-可行的修正有两种：在这三条陈述及[偏差](deviations.zh.md)中加入路径长度前提，或在可信外部模型中按 POSIX 建模 `vsnprintf`。
-尚未编写经过检查的反例。
+已于 2026-11-13 修正。`gz_open` 用 `malloc(len + 1)` 和 `snprintf(state->path, len + 1, "%s", path)` 复制调用者路径。分两部分：
+
+- `snprintf` 超过 `INT_MAX`：模型 `snprintf` 在此返回 -1，与 glibc 相同（[可信基础](trusted-base.zh.md)，格式化）。不出错，陈述不变。
+- `malloc` 超过 `PTRDIFF_MAX`：运行时分配器现在拒绝 `2^63` 字节及以上的请求，与 glibc 2.43 相同（[可信基础](trusted-base.zh.md)，分配大小）。于是长度为 `2^63 − 1` 字节的路径使 `gzopen` 在没有预言失败、也没有调用 `open` 的情况下返回 NULL。`OpenContract` 原来的第二条款接受该路径，并要求模式无效、预言失败或 `open` 失败三者之一，因此它对修正后的模型为假。经过检查的反例是该[回归](../tests/verification/regressions/gzopen-path-ptrdiff.lean)（`old_open_clause_false`）。`Goal.gz_initialisation_domain` 对同一路径也为假：它在 `NoAllocationFailure h` 下承诺返回句柄。
+
+修正在单独的提交中。`OpenContract`（`Goal.gzopen`、`Goal.gzopen64`）第二条款：原前提为 `Fresh h → Uniq h → LibraryGlobals h → FileSystem fs → CString h path name → CString h mode flags`；新前提在 `FileSystem fs` 之后加入 `ZlibF.PlatformMemory.ByteObjectsFit h`。`Goal.gz_initialisation_domain` 第一条款：原前提为 `... FileSystem fs → NoAllocationFailure h → CString h path name → ...`；新前提在 `NoAllocationFailure h` 之后加入 `ByteObjectsFit h`。有了它，路径及其 NUL 位于同一个小于 `2^63` 字节的对象中，因此复制不会因大小被拒绝，`len + 1` 也不会回绕。见证条款和 `Goal.gzdopen`（19 字节路径）不变。这三个目标都尚未证明或登记。该前提就是已接受的平台范围（[偏差](deviations.zh.md)，“平台字节对象范围”一行）。
 
 #### 带本地修复的 gzip 库发现
 

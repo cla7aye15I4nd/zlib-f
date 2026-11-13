@@ -2274,7 +2274,7 @@ Ordered. "Prerequisite" is what must be proved first; it is never an assumed con
 
 | # | Target | Prerequisite | Owner PR |
 | ---: | --- | --- | --- |
-| 1 | `gzopen`, `gzopen64`, `gz_initialisation_domain` | Statement question first (see [gzip open path length](#gzip-open-path-length)). Then the path-open (`fd = -1`) branch of `gz_open`: `fsOpen` outcomes and the append/read seeks, reusing the `gzdopen` composition | — |
+| 1 | `gzopen`, `gzopen64`, `gz_initialisation_domain` | Statement corrected (see [gzip open path length](#gzip-open-path-length)). Next: the path-open (`fd = -1`) branch of `gz_open`: `fsOpen` outcomes and the append/read seeks, reusing the `gzdopen` composition | — |
 | 2 | `gztell`, `gztell64` | `PosInv` from every permitted gz history (open, read, write, seek, pushback) | — |
 | 3 | `gzclose_r` | Reader buffer ownership over histories, then `inflateEnd` on an initialized reader | — |
 | 4 | `gzseek`, `gzseek64` | `PosInv` and buffer invariants from item 2; transparent and buffered paths | — |
@@ -2290,7 +2290,7 @@ Ordered. "Prerequisite" is what must be proved first; it is never an assumed con
 
 Statement corrections come first when they change what must be proved. Open:
 `Api.Goal.inflate_rejects_invalid`, which rests on `detectLag = 8` (a checked counterexample shows
-the constant is wrong; [API model](design/api-model.md)), and the gzip open path length question below.
+the constant is wrong; [API model](design/api-model.md)). The gzip open path length question below is corrected.
 `inflateInit2_` and `Api.Goal.gz_seek_read` are corrected and checked; they await registration.
 
 Earlier narrative checkpoints (per-area notes on inflate, deflate, trees, CRC, the harness and
@@ -2414,7 +2414,7 @@ checked status or assumes a callee's specification.
 <!-- proof-readiness:start -->
 | Public targets | Proof work shown in graph | Next work and missing prerequisite |
 | --- | --- | --- |
-| `gzopen`, `gzopen64`, `gz_initialisation_domain`  | Start: open and cleanup | <a id="readiness-gzopen"></a> **Statement question first:** see [gzip open path length](#gzip-open-path-length). **Start:** the path-open branch of `gz_open` (`fsOpen` outcomes, append and read seeks), reusing the registered `gzdopen` mode loop, allocation and `OpenState` composition. Entry/failure branches are locally checked above. |
+| `gzopen`, `gzopen64`, `gz_initialisation_domain`  | Start: open and cleanup | <a id="readiness-gzopen"></a> **Statement corrected:** see [gzip open path length](#gzip-open-path-length). **Start:** the path-open branch of `gz_open` (`fsOpen` outcomes, append and read seeks), reusing the registered `gzdopen` mode loop, allocation and `OpenState` composition. Entry/failure branches are locally checked above. |
 | `gztell64`, `gztell`  | Needs: position history | <a id="readiness-gztell64"></a> **Compose:** derive `PosInv` from reads, writes, seeking and pushback; then reuse the existing arithmetic execution proof. |
 | `gzclose_r`  | Needs: resource history | <a id="readiness-gzclose-r"></a> **Start:** initialized-buffer cleanup and its ownership producer over histories. Unbuffered execution and frame are locally checked; `inflateEnd` alone is insufficient. |
 | `gzclose_w`, `gzclose`  | Needs: flush and cleanup | <a id="readiness-gzclose-w"></a> **Compose:** actual zero-fill/final compression and file writes, all cleanup/error paths, then dispatch using both complete close results. |
@@ -2499,18 +2499,31 @@ refinements; the concrete public targets do not assume their callee contracts.
 
 #### Gzip open path length
 
-Unconfirmed statement report; the owner decides. `gz_open` copies the caller path with
-`snprintf(state->path, len + 1, "%s", path)`. The model `vsnprintf` in
-[`gzfs.lean`](../ZlibF/Zlib/gzfs.lean) raises `Fault.ub` when the output is longer than
-`INT_MAX` bytes. `Goal.gzopen`, `Goal.gzopen64` and `Goal.gz_initialisation_domain` admit every
-`CString` path (length below `2^64`) and, with successful allocation, require a non-faulting
-result. A path of at least `2^31` bytes therefore makes all three statements false in the model.
-The existing descriptor-open lemmas already carry `name.length ≤ 2147483647`; `gzdopen` is
-unaffected because its path is short. On the target platform, POSIX `snprintf` returns `-1`
-with `EOVERFLOW` rather than undefined behaviour; ISO C leaves the case undefined. Two
-corrections are possible: add the path-length premise to these three statements and to
-[deviations](deviations.md), or model POSIX `vsnprintf` in the trusted external model.
-A checked counterexample is not yet written.
+Corrected on 2026-11-13. `gz_open` copies the caller path with `malloc(len + 1)` and
+`snprintf(state->path, len + 1, "%s", path)`. Two halves:
+
+- `snprintf` past `INT_MAX`: the model `snprintf` returns -1 there, as glibc does
+  ([trusted base](trusted-base.md), Formatting). No fault, no statement change.
+- `malloc` above `PTRDIFF_MAX`: the runtime allocator now refuses a request of `2^63` bytes or
+  more, as glibc 2.43 does ([trusted base](trusted-base.md), Allocation size). A path of
+  `2^63 − 1` bytes then makes `gzopen` return NULL without an oracle failure and without calling
+  `open`. The old second clause of `OpenContract` admitted that path and demanded an invalid
+  mode, an oracle failure or a failed `open`, so it was false of the corrected model. The
+  checked counterexample is the
+  [regression](../tests/verification/regressions/gzopen-path-ptrdiff.lean)
+  (`old_open_clause_false`). `Goal.gz_initialisation_domain` was false for the same path: it
+  promised a handle under `NoAllocationFailure h`.
+
+Correction, in its own commit. `OpenContract` (`Goal.gzopen`, `Goal.gzopen64`), second clause:
+old premises `Fresh h → Uniq h → LibraryGlobals h → FileSystem fs → CString h path name →
+CString h mode flags`; new premises add `ZlibF.PlatformMemory.ByteObjectsFit h` after
+`FileSystem fs`. `Goal.gz_initialisation_domain`, first clause: old premises `... FileSystem fs →
+NoAllocationFailure h → CString h path name → ...`; new premises add `ByteObjectsFit h` after
+`NoAllocationFailure h`. With it, the path and its NUL lie in one object below `2^63` bytes, so
+the copy is never refused for its size and `len + 1` does not wrap. The witness clause and
+`Goal.gzdopen` (a 19-byte path) are unchanged. None of the three goals was proved or registered.
+The premise is the accepted platform scope ([deviations](deviations.md), row "Platform
+byte-object scope").
 
 #### Gzip library findings with local fixes
 
