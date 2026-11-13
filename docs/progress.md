@@ -2236,7 +2236,7 @@ Pending inputs that change the skeleton:
 | `gz_avail_safe` | Refill `in`; the input window is kept. | open | 4 | read side (deflate owner) |
 | `gz_look_safe` | Lazy buffers and `inflateInit2`, failure ledger, COPY copy. | open | 10 | read side (deflate owner) |
 | `gz_decomp_safe` | Inflate steps in the inflate history; `x.next` in the output window. | open | 14 | read side (deflate owner) |
-| `gz_fetch_safe` | The dispatcher; terminates under M7. | open | 6 | read side (deflate owner) |
+| `gz_fetch_safe` | The dispatcher; terminates under M7. Statement `GzFetchSafe` (`gz.read-fetch-specs`): post `GzInvOut` (the output may pass `GZ_OFF_MAX` until the caller drops it), termination under `ReadsBounded` (budget below `2^61`, see the M7 bound question), premises `err ≠ Z_STREAM_END` and `how = COPY → avail_in = 0` (to become invariant clauses). Checked as `gz_fetch_safe_of` (`gz.read-fetch`) from `GzLookSpec` and `GzDecompSpec`; closes when those are proved. | checked (from callee premises) | 1 | read side (deflate owner) |
 | `gz_skip_have_safe` | Skip consumption of buffered bytes (`gzread.c.skip-have`, 09fe8c0f; with `GzInv.put_consume`). | checked | 0 | read side (batch 3) |
 | `gz_skip_safe` | The skip loop; terminates under M7. Checked as `gz_skip_safe_of` (6c974c42) from `gz_fetch_safe` and two requested `gz_fetch` facts (progress, size kept) and `gz_error`'s no-grab fact; closes when those are proved. | checked (from callee premises) | 1 | read side (batch 3) |
 | `gz_read_safe` | Three paths, caller range, `x.next` reset (R-4), `x.pos` (F-1). | open | 12 | read side (deflate owner) |

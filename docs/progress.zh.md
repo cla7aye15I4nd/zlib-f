@@ -1,4 +1,4 @@
-<!-- source-sha256: c5cff3c960ef2fadc902a7525d386c9098c8c4310e019e34002863525ae7f710 -->
+<!-- source-sha256: b15583c605e5a090dfab8eb5f6bba807d90b0fd74bb2886f22495670e326a251 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1835,7 +1835,7 @@ gzip 文件接口的安全（第 5 项结论，所有者 2026-11-12 的决定）
 | `gz_avail_safe` | 重新填充 `in`；保持输入窗口。已检查（`gz.read-avail`）：压缩复制（`copy_loop`、`copy_run`；对每个调用者都是死代码，但仍然证明）、在待处理输入之后的 `gz_load_safe`，以及新的窗口（`GzInv.set_input`）；记录只在标志、错误、消息和窗口上改变（`AvailRec`）。前提：读取句柄（`s.mode = GZ_READ`）。为此 `gz_load_safe` 现在也陈述调用后的记录。 | 已检查 | 0 | 读取侧（deflate owner） |
 | `gz_look_safe` | 延迟分配的缓冲区与 `inflateInit2`，失败时的账目，COPY 复制。 | 未完成 | 10 | 读取侧（deflate owner） |
 | `gz_decomp_safe` | inflate 历史中的 inflate 步骤；`x.next` 在输出窗口内。 | 未完成 | 14 | 读取侧（deflate owner） |
-| `gz_fetch_safe` | 分派函数；在 M7 下终止。 | 未完成 | 6 | 读取侧（deflate owner） |
+| `gz_fetch_safe` | 分派函数；在 M7 下终止。陈述 `GzFetchSafe`（`gz.read-fetch-specs`）：后置条件 `GzInvOut`（输出可越过 `GZ_OFF_MAX`，直到调用者丢弃它），在 `ReadsBounded`（预算小于 `2^61`，见 M7 上界问题）下终止，前提 `err ≠ Z_STREAM_END` 与 `how = COPY → avail_in = 0`（将成为不变量条款）。已作为 `gz_fetch_safe_of`（`gz.read-fetch`）从 `GzLookSpec` 和 `GzDecompSpec` 检查；二者证明后即闭合。 | 已检查（基于被调用者前提） | 1 | 读取侧（deflate owner） |
 | `gz_skip_have_safe` | 消耗缓冲中的 skip 字节（`gzread.c.skip-have`，09fe8c0f；以及 `GzInv.put_consume`）。 | 已检查 | 0 | 读取侧（batch 3） |
 | `gz_skip_safe` | skip 循环；在 M7 下终止。已检查为 `gz_skip_safe_of`（6c974c42），前提是 `gz_fetch_safe`、两个请求的 `gz_fetch` 事实（进展、保持 size）和 `gz_error` 的不占用事实；这些证明后即完成。 | 已检查（基于被调用者前提） | 1 | 读取侧（batch 3） |
 | `gz_read_safe` | 三条路径，调用者区域，重置 `x.next`（R-4），`x.pos`（F-1）。 | 未完成 | 12 | 读取侧（deflate owner） |
