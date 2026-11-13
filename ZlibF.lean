@@ -590,4 +590,5 @@ import ZlibF.Proof.«infback.c.safety-valid»
 import ZlibF.Proof.«infback.c.safety-inv»
 import ZlibF.Proof.«infback.c.safety-library»
 import ZlibF.Proof.«infback.c.safety-modes»
+import ZlibF.Proof.«infback.c.safety-window»
 import ZlibF.Proof.«deflate.c.universal-flush-cursor»
