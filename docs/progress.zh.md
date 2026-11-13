@@ -1,4 +1,4 @@
-<!-- source-sha256: c2b11c6b8bf04f2cd6fc054cf05b2010b07917ee7a6fec5862d9421a2d82383d -->
+<!-- source-sha256: f69012caff86c5286c006d40a920915dff380c280d3b33972f11b70bbf0d5272 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1831,7 +1831,7 @@ gzip 文件接口的安全（第 5 项结论，所有者 2026-11-12 的决定）
 | `gzbuffer_step`、`gzerror_step`、`gzclearerr_step`、`gzoffset64_step`、`gzoffset_step`、`gzrewind_step` | 已登记的查询在 `GzInv` 上重新陈述。 | 未完成 | 6 | batch 1 |
 | 在补丁 0002–0004+ 上变基，审查陈述 | | 未完成 | 4 | batch 1 |
 | `history_inv`、`operation_safe`、`close_safe`、`gz_sequence_safety`、`gzclose_step`、`gzseek_step`、`gzeof_step`、`gzopen64_safe` | 组装。 | 已检查（骨架） | 0 | batch 1 |
-| `gz_load_safe` | `read` 循环（M1）：`-1` 或 `0`，`have ≤ len`，只写缓冲区。已检查：`fsRead_contract`（M1，对预言机的每个取值）、循环 `gz_load_loop` 及其写入框架（`gz.read-store`）。未完成：循环之后的收尾（`eof`、`again`，以及需要 `GzInv.gz_error` 的 `gz_error` 报告）和 `GzPost`。 | 部分已检查 | 2 | 读取侧（deflate 负责人） |
+| `gz_load_safe` | `read` 循环（M1）：`-1` 或 `0`，`have ≤ len`，只写缓冲区。已检查：`fsRead_contract`（M1，对预言机的每个取值）和 `gz_load_paths`（`gz.read-store`）：循环以及除 `gz_error(Z_ERRNO)` 报告之外的每条收尾路径都返回 `(0, have)` 并满足 `GzPost`。未完成：该报告路径，需要 `GzInv.gz_error`。发现的前提：`size ≠ 0`（读取停滞会置 `again`），缓冲区是数据缓冲块或不属于句柄。 | 部分已检查 | 1 | 读取侧（deflate 负责人） |
 | `gz_avail_safe` | 重新填充 `in`；保持输入窗口。 | 未完成 | 4 | 读取侧（deflate owner） |
 | `gz_look_safe` | 延迟分配的缓冲区与 `inflateInit2`，失败时的账目，COPY 复制。 | 未完成 | 10 | 读取侧（deflate owner） |
 | `gz_decomp_safe` | inflate 历史中的 inflate 步骤；`x.next` 在输出窗口内。 | 未完成 | 14 | 读取侧（deflate owner） |
