@@ -595,4 +595,6 @@ import ZlibF.Proof.«infback.c.safety-stored»
 import ZlibF.Proof.«infback.c.safety-lookup»
 import ZlibF.Proof.«infback.c.safety-table-head»
 import ZlibF.Proof.«infback.c.safety-table-cl»
+import ZlibF.Proof.«infback.c.safety-table-codes»
+import ZlibF.Proof.«infback.c.safety-table-read»
 import ZlibF.Proof.«deflate.c.universal-flush-cursor»

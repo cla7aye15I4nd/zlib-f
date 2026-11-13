@@ -102,13 +102,17 @@ def tabRead (c : BCtx) : X Unit :=
             wrS c.st fun s => { s with «have» := s.«have» + 1 })
         return false)
 
-/-- `case TABLE`: the literal/length and distance tables, then `case LEN`. -/
-def tabLens (c : BCtx) : X Unit := do
-  wrS c.st fun s => { s with next := codesP c.st, lencode := codesP c.st, lenbits := 9 }
-  let s ← ldInflateState c.st
-  let (r, nx, lb) ← inflate_table LENS (lensP c.st) s.nlen s.next s.lenbits (workP c.st)
-  wrS c.st fun s => { s with next := nx, lenbits := lb }
-  modify fun l => { l with ret := r }
+/-- `case TABLE` after the distance table call. -/
+def tabLensTail2 (c : BCtx) (r : Int32) : X Unit := do
+  if r != 0 then
+    badMode c "invalid distances set"
+    return
+  -- state->mode = LEN; /* fallthrough */
+  setMode c.st LEN
+  back_LEN c
+
+/-- `case TABLE` after the literal/length table call. -/
+def tabLensTail1 (c : BCtx) (r : Int32) : X Unit := do
   if r != 0 then
     badMode c "invalid literal/lengths set"
     return
@@ -117,12 +121,16 @@ def tabLens (c : BCtx) : X Unit := do
   let (r, nx, db) ← inflate_table DISTS (← (lensP c.st).add (s.nlen.toNat : Int)) s.ndist s.next s.distbits (workP c.st)
   wrS c.st fun s => { s with next := nx, distbits := db }
   modify fun l => { l with ret := r }
-  if r != 0 then
-    badMode c "invalid distances set"
-    return
-  -- state->mode = LEN; /* fallthrough */
-  setMode c.st LEN
-  back_LEN c
+  tabLensTail2 c r
+
+/-- `case TABLE`: the literal/length and distance tables, then `case LEN`. -/
+def tabLens (c : BCtx) : X Unit := do
+  wrS c.st fun s => { s with next := codesP c.st, lencode := codesP c.st, lenbits := 9 }
+  let s ← ldInflateState c.st
+  let (r, nx, lb) ← inflate_table LENS (lensP c.st) s.nlen s.next s.lenbits (workP c.st)
+  wrS c.st fun s => { s with next := nx, lenbits := lb }
+  modify fun l => { l with ret := r }
+  tabLensTail1 c r
 
 /-- `case TABLE` after the decoded code lengths: the mode check, the end-of-block check, the tables. -/
 def tabC (c : BCtx) : X Unit := do
@@ -132,6 +140,15 @@ def tabC (c : BCtx) : X Unit := do
     return
   tabLens c
 
+/-- `case TABLE` after the code-length table call. -/
+def tabBTail (c : BCtx) (r : Int32) : X Unit := do
+  if r != 0 then
+    badMode c "invalid code lengths set"
+    return
+  wrS c.st fun s => { s with «have» := 0 }
+  tabRead c
+  tabC c
+
 /-- `case TABLE` after the code-length code lengths: the code-length table, the decoded lengths. -/
 def tabB (c : BCtx) : X Unit := do
   wrS c.st fun s => { s with next := codesP c.st, lencode := codesP c.st, lenbits := 7 }
@@ -139,12 +156,7 @@ def tabB (c : BCtx) : X Unit := do
   let (r, nx, lb) ← inflate_table CODES (lensP c.st) 19 s.next s.lenbits (workP c.st)
   wrS c.st fun s => { s with next := nx, lenbits := lb }
   modify fun l => { l with ret := r }
-  if r != 0 then
-    badMode c "invalid code lengths set"
-    return
-  wrS c.st fun s => { s with «have» := 0 }
-  tabRead c
-  tabC c
+  tabBTail c r
 
 /-- `case TABLE` after the header. -/
 def tabA (c : BCtx) : X Unit := do
@@ -196,7 +208,8 @@ theorem TRound.leave {c : BCtx} {r : ZStreamRef} {i : Nat} {window : BPtr} {n : 
 theorem PInv.badRound {c : BCtx} {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
     {pr : Proto c r i window n} {h0 h : Heap} {l : IL} {log : BackLog} (I : PInv c pr h0 h l log)
     (msg : String) (hm : msg ∈ strTable) :
-    ∃ h', badMode c msg h = .ok ((), h') ∧ PInv c pr h0 h' l log ∧ backMeasure pr h' l log = baseM pr l log := by
+    ∃ h', badMode c msg h = .ok ((), h') ∧ PInv c pr h0 h' l log ∧ backMeasure pr h' l log = baseM pr l log ∧
+      ∃ s', h'.istates i = some s' ∧ s'.mode = BAD := by
   obtain ⟨z, s, valid, -, -⟩ := I.valid
   have wf := valid.2.2.2.2.2.1
   obtain ⟨k, hbad⟩ := badMode_run c I.cstrm I.cst valid.1 valid.2.1 msg hm
@@ -205,7 +218,7 @@ theorem PInv.badRound {c : BCtx} {r : ZStreamRef} {i : Nat} {window : BPtr} {n :
     rw [ZStreamRef.put_istates]; exact valid.2.1
   have IC := IB.setState hsB { s with mode := BAD } rfl rfl rfl (wf_with wf _ rfl rfl rfl)
     (modeOk_of (Or.inr (Or.inr (Or.inr rfl))))
-  refine ⟨_, hbad, IC, ?_⟩
+  refine ⟨_, hbad, IC, ?_, { s with mode := BAD }, by simp [setI], rfl⟩
   rw [backMeasure_of pr (s := { s with mode := BAD }) (by simp [setI]) l log]
   show baseM pr l log + modeRank BAD = _
   rw [modeRank_BAD]; rfl
@@ -214,7 +227,7 @@ theorem TRound.bad {c : BCtx} {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Na
     {pr : Proto c r i window n} {h0 h : Heap} {l : IL} {log : BackLog} (I : PInv c pr h0 h l log)
     (msg : String) (hm : msg ∈ strTable) {B : Nat} (lt : baseM pr l log < B) :
     ∃ h', badMode c msg h = .ok ((), h') ∧ TRound c pr h0 B (.ok ()) l h' := by
-  obtain ⟨h', run, I', m⟩ := I.badRound msg hm
+  obtain ⟨h', run, I', m, -⟩ := I.badRound msg hm
   exact ⟨h', run, log, I', Or.inl ⟨rfl, by rw [m]; exact lt⟩⟩
 
 theorem PInv.withRegs {c : BCtx} {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
