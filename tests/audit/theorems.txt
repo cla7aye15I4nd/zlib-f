@@ -545,3 +545,4 @@ ZlibF.Spec.Public.Proofs.Compress.compress2_z_safety
 ZlibF.Spec.Public.Proofs.Compress.compress2_safety
 ZlibF.Spec.Public.Proofs.Compress.compress_z_safety
 ZlibF.Spec.Public.Proofs.Compress.compress_safety
+ZlibF.Spec.Public.Proofs.DeflateInit2.deflateInit2_proof
