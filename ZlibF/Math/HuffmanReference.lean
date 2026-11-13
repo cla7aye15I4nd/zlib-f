@@ -177,7 +177,7 @@ theorem cost_swap (al : Nat → Bool) (w L : Nat → Nat) {n a b : Nat} (ha : a 
     omega
 
 /-- The longest live length. -/
-def mxA (al : Nat → Bool) (L : Nat → Nat) : Nat → Nat
+noncomputable def mxA (al : Nat → Bool) (L : Nat → Nat) : Nat → Nat
   | 0 => 0
   | n + 1 => if al n then max (mxA al L n) (L n) else mxA al L n
 
