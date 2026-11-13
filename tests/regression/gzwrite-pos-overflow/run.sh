@@ -7,17 +7,14 @@
 # overflow of the position; with 0004 nothing may be reported, and the write must fail with
 # Z_DATA_ERROR "position overflow".
 # By default fastwrite.c answers the writes to /dev/null without a system call (about a minute
-# per run). FULL=1 uses the real /dev/null and ASan as well: about 17 minutes per run on x86_64
-# Linux, so about an hour in all.
+# per run). FULL=1 uses the real /dev/null: about 17 minutes per run on x86_64 Linux, so about an
+# hour in all. Both modes build with UBSan only: under ASan the 2^34 intercepted writes take hours.
 set -uo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
 src=${ZLIB_SRC:?set ZLIB_SRC to the pinned zlib checkout}
 work=${WORK:-$here/../../build/gzwrite-pos-overflow}
-if [ "${FULL:-0}" = 1 ]; then
-  san="-fsanitize=address,undefined -fno-sanitize-recover=undefined -g -O1"; extra=""
-else
-  san="-fsanitize=undefined -fno-sanitize-recover=undefined -g -O2"; extra="$here/fastwrite.c"
-fi
+san="-fsanitize=undefined -fno-sanitize-recover=undefined -g -O2"
+if [ "${FULL:-0}" = 1 ]; then extra=""; else extra="$here/fastwrite.c"; fi
 libs=""; [ "$(uname -s)" = Linux ] && libs="-ldl"
 mkdir -p "$work/without/tests" "$work/without/patches"
 cp "$here/../../build-zlib.sh" "$work/without/tests/"
