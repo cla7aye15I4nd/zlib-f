@@ -2382,17 +2382,17 @@ held when a round starts in `TYPE`, `TABLE` or `LEN` (row `BitsShort`). With 8 o
 | `ROOM_p` | `ROOM()`: `out` on the full window (`outStep`), `whave = wsize`, restart at the window; `Z_BUF_ERROR` on refusal | checked (7971d171) | 0 |
 | `TYPE_p` | `case TYPE`: last flag and block type, `DONE` after the last block | checked (472c8a15) | 0 |
 | `STORED_p` | `case STORED`: length check and the copy through `PULL` and `ROOM`; the chunk may share the window's block | checked (eec477cd) | 0 |
-| `TABLE_p` | `case TABLE`: header, code-length code, decoded lengths, three `inflate_table` calls, tables installed (`TablesOk`, with the decode invariant and query stability): `TABLE_pre_p` checked (bd235671, 445447f5); left: the fall-through into `LEN` | open | 1 |
-| `BitsShort` | Fewer than 8 bits held at the start of a round in `TYPE`, `TABLE`, `LEN` (`Short` in `Round`): lookups with pull witnesses, `consumed_gt` from `StableQuery` and `PrefixQuery`, `TYPE_p`, `STORED_p` and the `LEN` symbols checked (57c7fabd); left: the code-length decoding of `TABLE` (by `CodeLengthContents`) | open | 4 |
+| `TABLE_p` | `case TABLE`: header, code-length code, decoded lengths, three `inflate_table` calls, tables installed (`TablesOk`, with the decode invariant and query stability), and the fall-through into `LEN` | checked (650c8931) | 0 |
+| `BitsShort` | Fewer than 8 bits held at the start of a round in `TYPE`, `TABLE`, `LEN` (`Short` in `Round`): lookups with pull witnesses, `consumed_gt` from `StableQuery` and `PrefixQuery`, the code-length decoding of `TABLE` by `CodeLengthContents` | checked (57c7fabd, 9e93b576) | 0 |
 | `fast_alias` | `inflate_fast` with the output inside the window block (`wnext = 0`): `Env.hwin` of `Goal.fast_safe` asks for a separate window block; plan: allow the output block with `wnext = 0` and copy through `Src.out` (`cpyG`), the exact-content lemmas keeping the separate case | open | 12 |
 | `LEN_slow_p` | `case LEN` without the fast path: literal, end of block, length/distance with the distance check and the copy through `ROOM`, invalid codes | checked (06e4a17d) | 0 |
 | `LEN_fast_p` | `case LEN` with the fast path: `RESTORE`, `fast_alias`, `LOAD` | open | 3 |
-| `dispatch_p` | One round of the dispatch: every mode reachable from `PInv`; the measure falls or the call leaves with one of three results | open | 2 |
-| `loop_p` | The dispatch loop ends within the fuel (`backMeasure < 2^64` from `inputBound < 2^48`) | open | 3 |
+| `dispatch_p` | One round of the dispatch: every mode reachable from `PInv`; the measure falls or the call leaves with one of three results; the fast path is the premise `LenFast` until `LEN_fast_p` | checked (650c8931) | 0 |
+| `loop_p` | The dispatch loop ends within the fuel (`backMeasure < 2^64` from `inputBound < 2^48`) | checked (650c8931) | 0 |
 | `back_call` | One call: prologue, `loop_p`, epilogue (the last partial window to `out`, `next_in`, `avail_in`) | open | 5 |
 | `back_null`, `back_end` | Null stream; `inflateBackEnd` on a reachable history (`back_end_public`) | open | 1.5 |
 | `back_reach_valid` | Every reachable history leaves a valid state over the caller's window (init, rebuffer, `back_call`) | open | 3 |
-| **Total** | | | **34.5** |
+| **Total** | | | **24.5** |
 
 #### Next work for every unfinished public target
 
