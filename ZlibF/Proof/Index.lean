@@ -1701,6 +1701,8 @@ import ZlibF.Proof.«gzwrite.c.zero»
 import ZlibF.Proof.«gzwrite.c.vacate»
 import ZlibF.Proof.«gzwrite.c.write»
 import ZlibF.Proof.«gzwrite.c.write-calls»
+import ZlibF.Proof.«gzwrite.c.flush-params»
+import ZlibF.Proof.«gzwrite.c.close»
 import ZlibF.Proof.«gz.inv-seek»
 
 /-!
