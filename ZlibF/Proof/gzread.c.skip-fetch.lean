@@ -1,5 +1,6 @@
 import ZlibF.Proof.«gz.read-fetch-specs»
 import ZlibF.Proof.«gzlib.c.error-inv-premises»
+import ZlibF.Proof.«gz.read-read»
 
 /-!
 # gzread.c: `gz_skip` from the statement of `gz_fetch`
@@ -619,4 +620,8 @@ theorem gz_skip_read_fetch (fetch : GzFetchSafe) :
 #print axioms gz_skip_safe_fetch
 #print axioms gz_skip_read_fetch
 
+/-- **`GzSkipRead`**, the `gz_skip` premise of `gz_read_safe_of` (`gz.read-read`), from `gz_fetch`'s statement. -/
+theorem gzSkipRead_holds (fetch : GzFetchSafe) : GzSkipRead := gz_skip_read_fetch fetch
+
 end ZlibF.Spec.Public.GzRead
+#print axioms ZlibF.Spec.Public.GzRead.gzSkipRead_holds
