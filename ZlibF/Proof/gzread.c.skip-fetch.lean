@@ -389,14 +389,15 @@ end measure
 def SkipEnt (s : GzState) : Prop :=
   MsgLit s ∧ s.err ≠ Z_STREAM_END ∧ (s.how = GZ_COPY → s.strm.avail_in = 0)
 
-/-- What holds between the trips of `gz_skip`: the effect so far up to the pending skip, `ReadsFinite` kept, and
-the buffers' size kept. -/
+/-- What holds between the trips of `gz_skip`: the effect so far up to the pending skip, `ReadsFinite` and
+`HasBudget` kept, the buffers' size kept, and the entry facts of `gz_fetch` on the record. -/
 def SkipInvF (h : Heap) (i : Nat) (s : GzState) (fs : Fs) (fsc : Fs) (hc : Heap) : Prop :=
   AccU h i s fs [] fsc hc ∧ (ReadsFinite fs s.fd → ReadsFinite fsc s.fd) ∧
-    (s.size ≠ 0 → ∀ sc, hc.gzstates i = some sc → sc.size = s.size)
+    (s.size ≠ 0 → ∀ sc, hc.gzstates i = some sc → sc.size = s.size) ∧
+    (HasBudget fs s.fd → HasBudget fsc s.fd) ∧ (∀ sc, hc.gzstates i = some sc → SkipEnt sc)
 
-/-- **`gz_skip`, the three halves, from `GzFetchSafe`**, with no skip left on success and the size of the buffers
-kept. Premises beyond the skeleton statement: `fetch`; `msg`, `err`, `copy` (the entry facts of `gz_fetch`, to become
+/-- **`gz_skip`, the three halves, from `GzFetchSafe`**, with no skip left on success, the size of the buffers kept,
+`ReadsFinite` and `HasBudget` kept, and the entry facts of `gz_fetch` kept on the final record (for `gz_read`). Premises beyond the skeleton statement: `fetch`; `msg`, `err`, `copy` (the entry facts of `gz_fetch`, to become
 clauses of `GzInv`, **open**); and `skip : s.skip ≠ 0`, a statement correction: without it the skeleton statement
 is false (with `skip = 0`, `x.pos = GZ_OFF_MAX`, nothing buffered and input left, the do-while fetches one byte and
 ends with `x.pos + x.have > GZ_OFF_MAX`, against `GzReadInv.posHave`). Every caller (`gz_read`, `gzgetc_`, `gzgets`)
@@ -408,7 +409,10 @@ theorem gz_skip_run_fetch (fetch : GzFetchSafe)
     RunSafe (Zlib.Gzread.gz_skip (gzSt i)) fs h (ReadsFinite fs s.fd) fun r fs' after =>
       (r = 0 ∨ r = -1) ∧ FdsKept fs fs' ∧ GzPost h i s [] fs' after GzInv ∧
       (r = 0 → ∀ s', after.gzstates i = some s' → s'.skip = 0) ∧
-      (∀ s', after.gzstates i = some s' → s.size ≠ 0 → s'.size = s.size) := by
+      (∀ s', after.gzstates i = some s' → s.size ≠ 0 → s'.size = s.size) ∧
+      (ReadsFinite fs s.fd → ReadsFinite fs' s.fd) ∧ (HasBudget fs s.fd → HasBudget fs' s.fd) ∧
+      (∀ s', after.gzstates i = some s' →
+        MsgLit s' ∧ s'.err ≠ Z_STREAM_END ∧ (s'.how = GZ_COPY → s'.strm.avail_in = 0)) := by
   have V := views_nil (StartChanged h i s)
   unfold Zlib.Gzread.gz_skip
   dsimp only
@@ -420,9 +424,10 @@ theorem gz_skip_run_fetch (fetch : GzFetchSafe)
         (y = none → ∀ sc, h'.gzstates i = some sc → sc.skip ≠ 0 →
           SkipEnt sc ∧ (ReadsFinite fs s.fd → skipMeasureF fs' h' sc < k)) ∧ SkipEnd y h' i) _ ?_ ?_
       (k := skipMeasureF fs h s) (fun f => skipMeasureF_lt f)
-      ⟨⟨AccU.refl [] inv.upToSkip hfs, id, fun _ sc hsc => by rw [Option.some.inj (inv.cur.symm.trans hsc)]⟩,
+      ⟨⟨AccU.refl [] inv.upToSkip hfs, id, fun _ sc hsc => by rw [Option.some.inj (inv.cur.symm.trans hsc)], fun x => x,
+        fun sc hsc => by rw [← Option.some.inj (inv.cur.symm.trans hsc)]; exact ⟨msg, err, copy⟩⟩,
         s, inv.cur, skip, ⟨msg, err, copy⟩, rfl⟩) ?_
-  · rintro k _ fsc hc ⟨⟨acc, hfin, hsz⟩, sk, hsk, hskc, ⟨emsg, eerr, ecopy⟩, rfl⟩
+  · rintro k _ fsc hc ⟨⟨acc, hfin, hsz, hbud, -⟩, sk, hsk, hskc, ⟨emsg, eerr, ecopy⟩, rfl⟩
     obtain ⟨sc, invc, hmc, hfdc⟩ := acc.cur
     have e := Option.some.inj (invc.cur.symm.trans hsk)
     subst e
@@ -436,7 +441,10 @@ theorem gz_skip_run_fetch (fetch : GzFetchSafe)
       obtain ⟨hr, hinv, -, -, -, -⟩ := gz_skip_have_run' invc
       refine RunSafe.bind_lift hr ?_
       refine RunSafe.pure' ⟨Or.inl rfl, ⟨acc.put invc hinv.upToSkip ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩ rfl V,
-        hfin, fun hs0 s' hs' => ?_⟩, fun _ s' hs' hne => ?_, fun _ _ => ⟨fun e => (by cases e), fun e => by cases e⟩⟩
+        hfin, fun hs0 s' hs' => ?_, hbud, fun s' hs' => by
+          simp only [putGz, upd_same, Option.some.injEq] at hs'
+          subst hs'
+          exact ⟨emsg, eerr, ecopy⟩⟩, fun _ s' hs' hne => ?_, fun _ _ => ⟨fun e => (by cases e), fun e => by cases e⟩⟩
       · simp only [putGz, upd_same, Option.some.injEq] at hs'
         subst hs'
         exact hsz hs0 sc invc.cur
@@ -452,16 +460,28 @@ theorem gz_skip_run_fetch (fetch : GzFetchSafe)
         · obtain ⟨pl, hpl, ⟨t, ht⟩, hroot⟩ := lit_eof hc
           have hmsg : pl = .null ∨ ∃ t, CString hc pl t ∧ ∀ b, ByteRoot pl b → ¬ GzOwned hc i sc b :=
             Or.inr ⟨t, ht, fun b hb => absurd hb (hroot b)⟩
-          obtain ⟨after, s', hrun, inv', hs', -, fr, lc⟩ := gzErrorSpec_holds invg Z_BUF_ERROR pl hmsg
+          obtain ⟨after, s', hrun, inv', hs', herr, fr, lc⟩ := gzErrorSpec_holds invg Z_BUF_ERROR pl hmsg
           refine RunSafe.bind_lift hpl (RunSafe.bind_lift hrun ?_)
           have acc2 := acc.step invc ((post_of_gz_error invg inv' hs' fr lc
             (gzErrorOwn_holds hc i sc _ _ after invg hmsg hrun) acc.fsys).mono fun _ x => x.upToSkip)
             (fun _ => Iff.rfl) V
           have hsize' : s'.size = sc.size := by rw [hs']
+          have ent' : SkipEnt s' := by
+            have hstrm : s'.strm = sc.strm := by rw [hs']
+            have hhow : s'.how = sc.how := by rw [hs']
+            refine ⟨fun hz => ?_, ?_, fun hcp => ?_⟩
+            · rw [hstrm]
+              exact emsg (by rw [← hsize']; exact hz)
+            · rcases herr with e | ⟨e, -⟩ <;> rw [e] <;> decide
+            · rw [hstrm]
+              exact ecopy (by rw [← hhow]; exact hcp)
           refine RunSafe.bind_lift (updS_run inv'.cur _) ?_
           refine RunSafe.pure' ⟨Or.inr (Or.inl rfl), ⟨acc2.put inv'.upToSkip
             (inv'.put_past (by rw [hs']; exact hmr)).upToSkip
-            ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩ rfl V, hfin, fun hs0 s2 hs2 => ?_⟩, fun e => (by cases e),
+            ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩ rfl V, hfin, fun hs0 s2 hs2 => ?_, hbud, fun s2 hs2 => by
+              simp only [setS, upd_same, Option.some.injEq] at hs2
+              subst hs2
+              exact ent'⟩, fun e => (by cases e),
             fun s2 hs2 => ⟨fun e => (by cases e), fun _ => ?_⟩⟩
           · simp only [setS, upd_same, Option.some.injEq] at hs2
             subst hs2
@@ -471,7 +491,10 @@ theorem gz_skip_run_fetch (fetch : GzFetchSafe)
             rfl
         · refine RunSafe.bind_lift (updS_run invc.cur _) ?_
           refine RunSafe.pure' ⟨Or.inr (Or.inl rfl), ⟨acc.put invc (invg.put_past hmr).upToSkip
-            ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩ rfl V, hfin, fun hs0 s2 hs2 => ?_⟩, fun e => (by cases e),
+            ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩ rfl V, hfin, fun hs0 s2 hs2 => ?_, hbud, fun s2 hs2 => by
+              simp only [setS, upd_same, Option.some.injEq] at hs2
+              subst hs2
+              exact ⟨emsg, eerr, ecopy⟩⟩, fun e => (by cases e),
             fun s2 hs2 => ⟨fun e => (by cases e), fun _ => ?_⟩⟩
           · simp only [setS, upd_same, Option.some.injEq] at hs2
             subst hs2
@@ -485,7 +508,7 @@ theorem gz_skip_run_fetch (fetch : GzFetchSafe)
         have F := (fetch i hc fsc sc hu0 h0 acc.fsys hmr eerr ecopy emsg).fin_mono
           (fun f => by rw [hfdc]; exact hfin f)
         refine RunSafe.bind F ?_
-        rintro r fs2 h2 ⟨hr01, kept, post, -, hrf1, -, s2, hs2, keeps, msg2, -, -, -, ent2, ecopy2, -, hph2, hR,
+        rintro r fs2 h2 ⟨hr01, kept, post, hb1, hrf1, -, s2, hs2, keeps, msg2, -, -, -, ent2, ecopy2, -, hph2, hR,
           c0, c1, f1, f2, f3, f4⟩
         have hm2 : s2.mode = GZ_READ := keeps.1.trans hmr
         have hsk2 : s2.skip = sc.skip := keeps.2.2.1
@@ -506,7 +529,10 @@ theorem gz_skip_run_fetch (fetch : GzFetchSafe)
           exact u2 ht
         have acc2 := acc.step invc post' kept V
         have SI : SkipInvF h i s fs fs2 h2 := by
-          refine ⟨acc2, fun f => by rw [← hfdc]; exact hrf1 (by rw [hfdc]; exact hfin f), fun hs0 sc' hsc' => ?_⟩
+          refine ⟨acc2, fun f => by rw [← hfdc]; exact hrf1 (by rw [hfdc]; exact hfin f), fun hs0 sc' hsc' => ?_,
+            fun f => by rw [← hfdc]; exact hb1 (by rw [hfdc]; exact hbud f), fun sc' hsc' => by
+              rw [← Option.some.inj (hs2.symm.trans hsc')]
+              exact ⟨msg2, ent2, ecopy2⟩⟩
           rw [← Option.some.inj (hs2.symm.trans hsc')]
           have e1 := hsz hs0 sc invc.cur
           rw [(keeps.2.2.2.2 (by rw [e1]; exact hs0)).1, e1]
@@ -556,7 +582,7 @@ theorem gz_skip_run_fetch (fetch : GzFetchSafe)
       · exact ⟨fun e => absurd e (by decide), fun _ => e2 rfl⟩
       · exact ⟨fun _ => e1 rfl, fun e => absurd e (by decide)⟩
     exact RunSafe.pure' ⟨hr, si.1.1, skip_post_inv hr si.1 hend', fun h0 sc hsc => (hend' sc hsc).2 h0,
-      fun sc hsc hs0 => si.2.2 hs0 sc hsc⟩
+      fun sc hsc hs0 => si.2.2.1 hs0 sc hsc, si.2.1, si.2.2.2.1, fun sc hsc => si.2.2.2.2 sc hsc⟩
 
 /-- **`gz_skip_safe`** (skeleton statement, branch `skeleton/gz`) from `GzFetchSafe`, with the entry facts of
 `gz_fetch` (`msg`, `err`, `copy`, **open**) and the statement correction `skip : s.skip ≠ 0` (see
@@ -569,9 +595,28 @@ theorem gz_skip_safe_fetch (fetch : GzFetchSafe)
       (r = 0 ∨ r = -1) ∧ FdsKept fs fs' ∧ GzPost h i s [] fs' after GzInv :=
   (gz_skip_run_fetch fetch i h fs s inv hfs hm msg err copy skip).mono fun _ _ _ x => ⟨x.1, x.2.1, x.2.2.1⟩
 
+/-- `gz_skip` in the shape of the read side's `GzSkipRead` (premise of `gz_read_safe_of`, `gz.read-read`, not yet on
+`dev`): the same proposition, so that `gzSkipRead_holds` is `gz_skip_read_fetch fetch` once that definition lands. -/
+theorem gz_skip_read_fetch (fetch : GzFetchSafe) :
+    ∀ (i : Nat) (h : Heap) (fs : Fs) (s : GzState), GzInv h i s → FileSystem fs → s.mode = GZ_READ → s.skip ≠ 0 →
+      s.err ≠ Z_STREAM_END → (s.how = GZ_COPY → s.strm.avail_in = 0) → MsgLit s →
+      RunSafe (Zlib.Gzread.gz_skip (gzSt i)) fs h (ReadsFinite fs s.fd) fun r fs' after =>
+        (r = 0 ∨ r = -1) ∧ FdsKept fs fs' ∧ GzPost h i s [] fs' after GzInv ∧
+        (ReadsFinite fs s.fd → ReadsFinite fs' s.fd) ∧
+        ∃ s', after.gzstates i = some s' ∧ MsgLit s' ∧ s'.err ≠ Z_STREAM_END ∧
+          (s'.how = GZ_COPY → s'.strm.avail_in = 0) ∧ (r = 0 → s'.skip = 0) :=
+  fun i h fs s inv hfs hm skip err copy msg =>
+    (gz_skip_run_fetch fetch i h fs s inv hfs hm msg err copy skip).mono fun _ _ _ x => by
+      obtain ⟨hr, kept, post, hsk, -, hrf, -, hent⟩ := x
+      obtain ⟨s', inv', -⟩ := post.2
+      have hrec := inv'.cur
+      have e := hent s' hrec
+      exact ⟨hr, kept, post, hrf, s', hrec, e.1, e.2.1, e.2.2, fun h0 => hsk h0 s' hrec⟩
+
 #print axioms GzInv.put_out
 #print axioms skipMeasureF_fetch
 #print axioms gz_skip_run_fetch
 #print axioms gz_skip_safe_fetch
+#print axioms gz_skip_read_fetch
 
 end ZlibF.Spec.Public.GzRead
