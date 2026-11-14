@@ -138,6 +138,7 @@ import ZlibF.Proof.«inflate.c.copy-public»
 import ZlibF.Proof.«public-inflate-copy»
 import ZlibF.Proof.«public-deflate-copy»
 import ZlibF.Proof.«public-stream-refusal»
+import ZlibF.Proof.«public-gz-refusal»
 import ZlibF.Proof.«inflate.c.leave-ret-codes»
 import ZlibF.Proof.«inflate.c.default-view-construction-rank»
 import ZlibF.Proof.«inflate.c.fast-view-dispatch-rank»
