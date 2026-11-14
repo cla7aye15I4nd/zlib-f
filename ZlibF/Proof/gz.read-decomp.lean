@@ -167,8 +167,8 @@ theorem inflate_step (head : InflateHeadUsesInput) {h : Heap} {i : Nat} {s : GzS
       (rc = Z_OK ∨ rc = Z_STREAM_END ∨ rc = Z_NEED_DICT ∨ rc = Z_STREAM_ERROR ∨
         rc = Z_DATA_ERROR ∨ rc = Z_MEM_ERROR ∨ rc = Z_BUF_ERROR) ∧
       (rc = Z_OK → used ≠ 0 ∨ produced ≠ 0) ∧
-      (rc = Z_BUF_ERROR → s.strm.avail_out ≠ 0 → used ≠ 0 ∨ produced ≠ 0) ∧
-      (InflateAtHead h s → used ≠ 0 ∨ rc = Z_STREAM_ERROR) ∧
+      (rc = Z_BUF_ERROR → s.strm.avail_out ≠ 0 → False) ∧
+      (InflateAtHead h s → s.strm.avail_out ≠ 0 → used ≠ 0) ∧
       (MsgLit s → MsgLit { s with strm := z' }) ∧
       GzPost h i s [⟨s.strm.next_out, produced⟩] fs after GzInvUpToOutput := by
   have hs : h.gzstates i = some s := hu.1
@@ -246,7 +246,7 @@ theorem inflate_step (head : InflateHeadUsesInput) {h : Heap} {i : Nat} {s : GzS
     cases hst2
     exact ⟨Or.inl hhead, fun _ _ j g hh _ => by rw [hhead] at hh; cases hh⟩
   -- the call
-  obtain ⟨rc, after, z', st', used, outb, run, good', acct, -, codes, progOK, -, -, -, progBUF, -, -, -, -, -,
+  obtain ⟨rc, after, z', st', used, outb, run, good', acct, -, codes, progOK, serr, -, bufE, progBUF, -, -, -, -, -,
     frame, ledger⟩ :=
     Zlib.Inflate.Proofs.inflate_public h (gzStrm i) k s.strm st Z_NO_FLUSH reach good1 fitH iinv.alloc bufs act
   have ctl := Zlib.Inflate.Proofs.call_keeps_control h (gzStrm i) k s.strm st Z_NO_FLUSH rc after z' st' reach
@@ -542,19 +542,26 @@ theorem inflate_step (head : InflateHeadUsesInput) {h : Heap} {i : Nat} {s : GzS
     · exact Or.inl u
     · exact Or.inr (ne_nil_length o)
   · intro e hao
-    rcases progBUF hav hao (by decide) (by decide) e with u | o
-    · exact Or.inl u
-    · exact Or.inr (ne_nil_length o)
-  · rintro ⟨k2, st2, hk2, hst2, hmode, hbits, hlast⟩
+    rcases bufE e with ⟨u0, o0⟩ | ff
+    · rcases progBUF hav hao (by decide) (by decide) e with u | o
+      · exact u u0
+      · exact o o0
+    · exact absurd ff (by decide)
+  · rintro ⟨k2, st2, hk2, hst2, hmode, hbits, hlast⟩ hao
     rw [hstate] at hk2
     cases hk2
     rw [hk] at hst2
     cases hst2
     rcases head good1 hmode hbits hlast hav run good'.live.hz with lt | e
-    · left
-      have := acct.2.2.1
+    · have := acct.2.2.1
       omega
-    · exact Or.inr e
+    · exfalso
+      rcases serr.1 e with hn | ⟨hn, -⟩ | hsy
+      · rcases hw with ⟨-, hz0⟩ | ⟨r', off', a', hp', -, -, -⟩
+        · exact hao (UInt32.toNat_inj.mp (by rw [hz0]; rfl))
+        · rw [hp'] at hn; cases hn
+      · rw [hnin] at hn; cases hn
+      · rw [hmode] at hsy; exact absurd hsy (by decide)
   · intro ml hz
     rcases msgOk with e | e | e
     · show z'.msg = _ ∨ _
@@ -783,6 +790,7 @@ theorem post_gz_error {H : Heap} {i : Nat} {s : GzState} {fs : Fs} (hu : GzInvUp
     (hmsg : msg = .null ∨ ∃ t, CString H msg t ∧ ∀ b, ¬ ByteRoot msg b) :
     ∃ after s', C.run (Zlib.Gzlib.gz_error (gzSt i) err msg) H = .ok ((), after) ∧ after.gzstates i = some s' ∧
       s' = { s with err := s'.err, msg := s'.msg } ∧ (s'.err = err ∨ s'.err = Z_MEM_ERROR) ∧
+      (InflateAtHead H s → InflateAtHead after s') ∧
       GzPost H i s [] fs after GzInvUpToOutput := by
   have hmsg' : msg = .null ∨ ∃ t, CString H msg t ∧
       ∀ b, ByteRoot msg b → ¬ GzOwned (putGz H i (clearOut s)) i (clearOut s) b := by
@@ -803,9 +811,22 @@ theorem post_gz_error {H : Heap} {i : Nat} {s : GzState} {fs : Fs} (hu : GzInvUp
   have msgOwned' : ∀ b, blkOf s'.msg = some b → GzOwned after i s' b := fun b hb =>
     (ownA b).1 (GzInv.msg_owned inv' hb)
   have fr' : Frame H after (fun b => b = i ∨ blkOf s.msg = some b) := frame_unput hs (Or.inl rfl) fr
-  refine ⟨after, s', run, hs', shape, errs.imp id (fun e => e.1), hfs, s', ⟨hs', inv'⟩, by rw [shape],
+  refine ⟨after, s', run, hs', shape, errs.imp id (fun e => e.1), ?_, hfs, s', ⟨hs', inv'⟩, by rw [shape],
     by rw [shape],
     BufferFrame.nil_of_frame (Frame.mono' fr' ?_), ?_, ?_⟩
+  · rintro ⟨k, st, hst, hk, hmd, hbt, hlt⟩
+    have hlk : H.live k := Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inl (by rw [hk]; intro x; cases x))))))
+    have so : StreamOwned H (gzStrm i) k :=
+      ⟨s.strm, by simp [ZStreamRef.get, gzStrm, hs], Or.inl ⟨k, st, hst, hk, Or.inl rfl⟩⟩
+    have so' : StreamOwned (putGz H i (clearOut s)) (gzStrm i) k :=
+      (Iff.of_eq (putGz_streamOwned (s' := clearOut s) hs rfl k)).2 so
+    have nc : ¬ (k = i ∨ blkOf s.msg = some k) := by
+      rintro (e | e)
+      · subst e; exact inv.common.recordFree so'
+      · exact (inv.common.distinct.2 s.msg (by simp [ownedPtrs, clearOut]) k e).2 so'
+    obtain ⟨-, -, -, -, -, e6, -⟩ := fr'.2.2.2.2.2 k hlk nc
+    refine ⟨k, st, ?_, by rw [e6]; exact hk, hmd, hbt, hlt⟩
+    rw [shape]; exact hst
   · rintro b (e | e)
     · exact Or.inl e
     · exact msgOwned b e
@@ -1221,8 +1242,8 @@ theorem inflate_trans (head : InflateHeadUsesInput) (St : Stat i out h0 s0) {fs 
       StreamAccounting s.strm z' used produced ∧
       (rc = Z_OK ∨ rc = Z_STREAM_END ∨ rc = Z_NEED_DICT ∨ rc = Z_STREAM_ERROR ∨
         rc = Z_DATA_ERROR ∨ rc = Z_MEM_ERROR ∨ rc = Z_BUF_ERROR) ∧
-      (rc = Z_OK → used ≠ 0 ∨ produced ≠ 0) ∧ (rc = Z_BUF_ERROR → used ≠ 0 ∨ produced ≠ 0) ∧
-      (InflateAtHead h s → used ≠ 0 ∨ rc = Z_STREAM_ERROR) := by
+      (rc = Z_OK → used ≠ 0 ∨ produced ≠ 0) ∧ rc ≠ Z_BUF_ERROR ∧
+      (InflateAtHead h s → used ≠ 0) := by
   have hm := B.mode St
   have hsz := B.size St
   have hfs : FileSystem fs := B.post.1
@@ -1241,7 +1262,8 @@ theorem inflate_trans (head : InflateHeadUsesInput) (St : Stat i out h0 s0) {fs 
   obtain ⟨rc, after, z', used, produced, run, hrec', acct, codes, pOK, pBUF, pHead, pMsg, post⟩ :=
     inflate_step head fs hfs B.inv hm hsz hav hw side
   rw [hd] at post
-  refine ⟨rc, after, z', used, produced, run, hrec', ?_, acct, codes, pOK, fun e => pBUF e hao, pHead⟩
+  refine ⟨rc, after, z', used, produced, run, hrec', ?_, acct, codes, pOK, fun e => pBUF e hao,
+    fun hd => pHead hd hao⟩
   refine Base.step B post hrec' (fun _ => Iff.rfl) (Or.inr ⟨d, produced, rfl, by have := acct.2.1; omega⟩)
     ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩ ?_ ?_ B.rb B.err (pMsg B.ml) St.hlen St.hm0 St.hsz0 St.outLen St.views
     (BudgetAcc.refl _ _)
@@ -1286,9 +1308,10 @@ theorem err_trans (St : Stat i out h0 s0) {fs : Fs} {h : Heap} {s : GzState} (B 
     (hmsg : msg = .null ∨ ∃ t, CString h msg t ∧ ∀ b, ¬ ByteRoot msg b) :
     ∃ after s', C.run (Zlib.Gzlib.gz_error (gzSt i) err msg) h = .ok ((), after) ∧ after.gzstates i = some s' ∧
       s' = { s with err := s'.err, msg := s'.msg } ∧ (s'.err = err ∨ s'.err = Z_MEM_ERROR) ∧
+      (InflateAtHead h s → InflateAtHead after s') ∧ inputLeft fs s' = inputLeft fs s ∧
       Base i out h0 fs0 s0 fs after s' := by
-  obtain ⟨after, s', run, hs', shape, errs, post⟩ := post_gz_error B.inv B.post.1 err msg hmsg
-  refine ⟨after, s', run, hs', shape, errs, ?_⟩
+  obtain ⟨after, s', run, hs', shape, errs, ahd, post⟩ := post_gz_error B.inv B.post.1 err msg hmsg
+  refine ⟨after, s', run, hs', shape, errs, ahd, by rw [shape]; rfl, ?_⟩
   obtain ⟨d, hd, hdl⟩ := B.pos
   refine Base.step B post hs' (fun _ => Iff.rfl) (Or.inl rfl)
     ⟨by rw [shape], by rw [shape], by rw [shape], by rw [shape], by rw [shape], by rw [shape], by rw [shape]⟩
@@ -1334,17 +1357,18 @@ def meas (fs : Fs) (s : GzState) : Nat := inputLeft fs s + s.strm.avail_out.toNa
 def LQ (l : Zlib.Gzread.DecompLoop) (fs : Fs) (h : Heap) : Prop :=
   ∃ s, Base i out h0 fs0 s0 fs h s ∧ (s.how = GZIP ∨ s.how = LOOK) ∧
     (l.ret = Z_OK → s.strm.avail_out = 0 ∨ (s.eof ≠ 0 ∧ s.strm.avail_in = 0)) ∧
-    (l.ret = Z_STREAM_END → Strict h0 fs0 s0 fs s)
+    (l.ret = Z_STREAM_END → Strict h0 fs0 s0 fs s) ∧
+    (s.how = GZIP → Hd h0 fs0 s0 fs h s) ∧ (l.ret ≠ Z_OK → l.ret ≠ Z_STREAM_END → s.err ≠ Z_OK)
 
 /-- Before a round. -/
 def LI (k : Nat) (l : Zlib.Gzread.DecompLoop) (fs : Fs) (h : Heap) : Prop :=
-  l.brk = false ∧ (l.ret = Z_OK ∨ l.ret = Z_BUF_ERROR) ∧ ∃ s, Base i out h0 fs0 s0 fs h s ∧ s.how = GZIP ∧
+  l.brk = false ∧ l.ret = Z_OK ∧ ∃ s, Base i out h0 fs0 s0 fs h s ∧ s.how = GZIP ∧
     s.strm.avail_out ≠ 0 ∧ Hd h0 fs0 s0 fs h s ∧ k = meas fs s
 
 /-- After a round. -/
 def LJ (k : Nat) (y : Zlib.Gzread.DecompLoop) (fs : Fs) (h : Heap) : Prop :=
   (y.brk = false ∧ ∃ s, Base i out h0 fs0 s0 fs h s ∧ s.how = GZIP ∧ Hd h0 fs0 s0 fs h s ∧
-    (y.ret = Z_OK ∨ y.ret = Z_BUF_ERROR ∨ y.ret = Z_STREAM_END) ∧ (y.ret = Z_STREAM_END → Strict h0 fs0 s0 fs s) ∧
+    (y.ret = Z_OK ∨ y.ret = Z_STREAM_END) ∧ (y.ret = Z_STREAM_END → Strict h0 fs0 s0 fs s) ∧
     (y.ret ≠ Z_STREAM_END → ReadsFinite fs0 s0.fd → meas fs s < k)) ∨
   (y.brk = true ∧ LQ i out h0 fs0 s0 y fs h)
 
@@ -1356,13 +1380,19 @@ variable {i : Nat} {out : Region} {h0 : Heap} {fs0 : Fs} {s0 : GzState}
 theorem lift_ok {α : Type} {m : M α} {fs : Fs} {h h' : Heap} {a : α} (e : m h = .ok (a, h')) :
     (StateT.lift m : G α) fs h = .ok ((a, fs), h') := by rw [g_lift_app, e]
 
+theorem hd_of_strict {fs : Fs} {h : Heap} {s : GzState} (st : Strict h0 fs0 s0 fs s) : Hd h0 fs0 s0 fs h s :=
+  fun a b c => Or.inr (st a b c)
+
+theorem strict_eq {fs : Fs} {s s' : GzState} (e : inputLeft fs s' = inputLeft fs s) (st : Strict h0 fs0 s0 fs s) :
+    Strict h0 fs0 s0 fs s' := fun a b c => by rw [e]; exact st a b c
+
 /-- The error checks after the call. -/
 theorem errs_run (St : Stat i out h0 s0) {fs : Fs} {h : Heap} {s : GzState} (B : Base i out h0 fs0 s0 fs h s)
     (hgz : s.how = GZIP) (k : Nat) (l : Zlib.Gzread.DecompLoop) (hl : l.brk = false) (rc : Int32)
     (codes : rc = Z_OK ∨ rc = Z_STREAM_END ∨ rc = Z_NEED_DICT ∨ rc = Z_STREAM_ERROR ∨
-      rc = Z_DATA_ERROR ∨ rc = Z_MEM_ERROR ∨ rc = Z_BUF_ERROR)
-    (hstr : rc ≠ Z_STREAM_ERROR → Strict h0 fs0 s0 fs s)
-    (hmeas : rc = Z_OK ∨ rc = Z_BUF_ERROR → ReadsFinite fs0 s0.fd → meas fs s < k) :
+      rc = Z_DATA_ERROR ∨ rc = Z_MEM_ERROR ∨ rc = Z_BUF_ERROR) (hbuf : rc ≠ Z_BUF_ERROR)
+    (hstr : Strict h0 fs0 s0 fs s)
+    (hmeas : rc = Z_OK → ReadsFinite fs0 s0.fd → meas fs s < k) :
     ∃ y fs' h', decompErrs i l rc fs h = .ok ((y, fs'), h') ∧ LJ i out h0 fs0 s0 k y fs' h' := by
   have hm := B.mode St
   have hsz := B.size St
@@ -1371,27 +1401,30 @@ theorem errs_run (St : Stat i out h0 s0) {fs : Fs} {h : Heap} {s : GzState} (B :
   · rw [if_pos c1]
     obtain ⟨p, hp, hmsg⟩ := lit_msg "internal error: inflate stream corrupt" (by decide +kernel)
       (by decide +kernel) (by decide +kernel) h
-    obtain ⟨after, s', run, hs', shape, -, B'⟩ := err_trans St B Z_STREAM_ERROR (by decide) p hmsg
+    obtain ⟨after, s', run, hs', shape, errs, -, hil, B'⟩ := err_trans St B Z_STREAM_ERROR (by decide) p hmsg
     have run' : Zlib.Gzlib.gz_error (gzSt i) Z_STREAM_ERROR p h = .ok ((), after) := run
+    simp only [Bool.or_eq_true, beq_iff_eq] at c1
     refine ⟨{ ret := rc, brk := true }, fs, after, by simp only [g_bind_app, lift_ok hp, lift_ok run', g_pure_app],
-      Or.inr ⟨rfl, s', B', Or.inl (by rw [shape]; exact hgz), fun e => ?_, fun e => ?_⟩⟩
-    · simp only [Bool.or_eq_true, beq_iff_eq] at c1
-      have e' : rc = Z_OK := e
+      Or.inr ⟨rfl, s', B', Or.inl (by rw [shape]; exact hgz), fun e => ?_, fun e => ?_,
+        fun _ => hd_of_strict (strict_eq hil hstr), fun _ _ => ?_⟩⟩
+    · have e' : rc = Z_OK := e
       rcases c1 with c | c <;> (rw [c] at e'; exact absurd e' (by decide))
-    · simp only [Bool.or_eq_true, beq_iff_eq] at c1
-      have e' : rc = Z_STREAM_END := e
+    · have e' : rc = Z_STREAM_END := e
       rcases c1 with c | c <;> (rw [c] at e'; exact absurd e' (by decide))
+    · rcases errs with e | e <;> (rw [e]; decide)
   rw [if_neg c1]
   by_cases c2 : (rc == Z_MEM_ERROR) = true
   · rw [if_pos c2]
     obtain ⟨p, hp, hmsg⟩ := lit_msg "out of memory" (by decide +kernel) (by decide +kernel) (by decide +kernel) h
-    obtain ⟨after, s', run, hs', shape, -, B'⟩ := err_trans St B Z_MEM_ERROR (by decide) p hmsg
+    obtain ⟨after, s', run, hs', shape, errs, -, hil, B'⟩ := err_trans St B Z_MEM_ERROR (by decide) p hmsg
     have run' : Zlib.Gzlib.gz_error (gzSt i) Z_MEM_ERROR p h = .ok ((), after) := run
     have c : rc = Z_MEM_ERROR := by simpa using c2
     subst c
     refine ⟨{ ret := Z_MEM_ERROR, brk := true }, fs, after,
       by simp only [g_bind_app, lift_ok hp, lift_ok run', g_pure_app], Or.inr ⟨rfl, s', B',
-      Or.inl (by rw [shape]; exact hgz), fun e => absurd e (by decide), fun e => absurd e (by decide)⟩⟩
+      Or.inl (by rw [shape]; exact hgz), fun e => absurd e (by decide), fun e => absurd e (by decide),
+      fun _ => hd_of_strict (strict_eq hil hstr), fun _ _ => ?_⟩⟩
+    rcases errs with e | e <;> (rw [e]; decide)
   rw [if_neg c2]
   by_cases c3 : (rc == Z_DATA_ERROR) = true
   · rw [if_pos c3]
@@ -1421,7 +1454,8 @@ theorem errs_run (St : Stat i out h0 s0) {fs : Fs} {h : Heap} {s : GzState} (B :
       have hu : (StateT.lift (updS (gzSt i) fun s => { s with eof := 1, how := LOOK }) : G Unit) fs (putGz h i s2) =
           .ok (((), fs), putGz (putGz h i s2) i s3) := lift_ok (updS_run hs2 _)
       refine ⟨{ ret := Z_OK, brk := true }, fs, _, by simp only [g_bind_app, hz, hu, g_pure_app], Or.inr ⟨rfl, s3, B3, Or.inr rfl,
-        fun _ => Or.inr ⟨show (1 : Int32) ≠ 0 by decide, rfl⟩, fun e => absurd e (by decide)⟩⟩
+        fun _ => Or.inr ⟨show (1 : Int32) ≠ 0 by decide, rfl⟩, fun e => absurd e (by decide),
+        fun e => absurd (show LOOK = GZIP from e) (by decide), fun hne => absurd rfl hne⟩⟩
     · rw [if_neg cj]
       have hz : (StateT.lift (ldZ (strmOf (gzSt i))) : G ZStream) fs h = .ok ((s.strm, fs), h) :=
         lift_ok (ldZ_run B.rcd)
@@ -1435,39 +1469,40 @@ theorem errs_run (St : Stat i out h0 s0) {fs : Fs} {h : Heap} {s : GzState} (B :
       by_cases cm : (s.strm.msg == .null) = true
       · obtain ⟨p, hp, hmsg⟩ := lit_msg "compressed data error" (by decide +kernel) (by decide +kernel)
           (by decide +kernel) h
-        obtain ⟨after, s', run, hs', shape, -, B'⟩ := err_trans St B Z_DATA_ERROR (by decide) p hmsg
+        obtain ⟨after, s', run, hs', shape, errs, -, hil, B'⟩ := err_trans St B Z_DATA_ERROR (by decide) p hmsg
         have run' : Zlib.Gzlib.gz_error (gzSt i) Z_DATA_ERROR p h = .ok ((), after) := run
         refine ⟨{ ret := Z_DATA_ERROR, brk := true }, fs, after, ?_, Or.inr ⟨rfl, s', B',
-          Or.inl (by rw [shape]; exact hgz), fun e => absurd e (by decide), fun e => absurd e (by decide)⟩⟩
-        rw [if_pos cm]
-        simp only [g_bind_app, lift_ok hp, lift_ok run', g_pure_app]
-      · obtain ⟨after, s', run, hs', shape, -, B'⟩ := err_trans St B Z_DATA_ERROR (by decide) s.strm.msg hmsgOk
+          Or.inl (by rw [shape]; exact hgz), fun e => absurd e (by decide), fun e => absurd e (by decide),
+          fun _ => hd_of_strict (strict_eq hil hstr), fun _ _ => ?_⟩⟩
+        · rw [if_pos cm]
+          simp only [g_bind_app, lift_ok hp, lift_ok run', g_pure_app]
+        · rcases errs with e | e <;> (rw [e]; decide)
+      · obtain ⟨after, s', run, hs', shape, errs, -, hil, B'⟩ :=
+          err_trans St B Z_DATA_ERROR (by decide) s.strm.msg hmsgOk
         have run' : Zlib.Gzlib.gz_error (gzSt i) Z_DATA_ERROR s.strm.msg h = .ok ((), after) := run
         refine ⟨{ ret := Z_DATA_ERROR, brk := true }, fs, after, ?_, Or.inr ⟨rfl, s', B',
-          Or.inl (by rw [shape]; exact hgz), fun e => absurd e (by decide), fun e => absurd e (by decide)⟩⟩
-        rw [if_neg cm]
-        simp only [g_bind_app, g_pure_app, lift_ok run']
+          Or.inl (by rw [shape]; exact hgz), fun e => absurd e (by decide), fun e => absurd e (by decide),
+          fun _ => hd_of_strict (strict_eq hil hstr), fun _ _ => ?_⟩⟩
+        · rw [if_neg cm]
+          simp only [g_bind_app, g_pure_app, lift_ok run']
+        · rcases errs with e | e <;> (rw [e]; decide)
   rw [if_neg c3]
-  -- `Z_OK`, `Z_STREAM_END` or `Z_BUF_ERROR`: the loop goes on, or stops at the end of a member
-  have hcode : rc = Z_OK ∨ rc = Z_BUF_ERROR ∨ rc = Z_STREAM_END := by
+  -- `Z_OK` or `Z_STREAM_END`: the loop goes on, or stops at the end of a member
+  have hcode : rc = Z_OK ∨ rc = Z_STREAM_END := by
     simp only [Bool.or_eq_true, beq_iff_eq, not_or] at c1 c2 c3
     rcases codes with e | e | e | e | e | e | e
     · exact Or.inl e
-    · exact Or.inr (Or.inr e)
+    · exact Or.inr e
     · exact absurd e c1.2
     · exact absurd e c1.1
     · exact absurd e c3
     · exact absurd e c2
-    · exact Or.inr (Or.inl e)
-  have hne : rc ≠ Z_STREAM_ERROR := by
-    rcases hcode with e | e | e <;> (rw [e]; decide)
-  refine ⟨{ l with ret := rc }, fs, h, rfl, Or.inl ⟨hl, s, B, hgz, ?_, hcode, fun _ => hstr hne, fun hse hb => ?_⟩⟩
-  · intro a b c
-    exact Or.inr (hstr hne a b c)
-  · rcases hcode with e | e | e
-    · exact hmeas (Or.inl e) hb
-    · exact hmeas (Or.inr e) hb
-    · exact absurd e hse
+    · exact absurd e hbuf
+  refine ⟨{ l with ret := rc }, fs, h, rfl, Or.inl ⟨hl, s, B, hgz, hd_of_strict hstr, hcode, fun _ => hstr,
+    fun hse hb => ?_⟩⟩
+  rcases hcode with e | e
+  · exact hmeas e hb
+  · exact absurd e hse
 
 end body
 
@@ -1493,21 +1528,17 @@ theorem run_run (head : InflateHeadUsesInput) (St : Stat i out h0 s0) (had : UIn
     simp only [s2]
     have := acct.2.2.1
     omega
-  have hstr : rc ≠ Z_STREAM_ERROR → Strict h0 fs0 s0 fs s2 := by
-    intro hne h1 h2' h3
+  have hstr : Strict h0 fs0 s0 fs s2 := by
+    intro h1 h2' h3
     have l1 := (B.rf h1).2
     rcases hd h1 h2' h3 with ah | lt
-    · rcases pHead ah with u | e
-      · omega
-      · exact absurd e hne
+    · have := pHead ah
+      omega
     · omega
-  have hmeas : rc = Z_OK ∨ rc = Z_BUF_ERROR → ReadsFinite fs0 s0.fd → meas fs s2 < k := by
+  have hmeas : rc = Z_OK → ReadsFinite fs0 s0.fd → meas fs s2 < k := by
     intro hc hb
     have hk' := hk hb
-    have p : used ≠ 0 ∨ produced ≠ 0 := by
-      rcases hc with e | e
-      · exact pOK e
-      · exact pBUF e
+    have p : used ≠ 0 ∨ produced ≠ 0 := pOK hc
     unfold meas at hk' ⊢
     have a1 : s2.strm.avail_out.toNat + produced = s.strm.avail_out.toNat := acct.2.2.2.1
     omega
@@ -1526,16 +1557,16 @@ theorem run_run (head : InflateHeadUsesInput) (St : Stat i out h0 s0) (had : UIn
     have hu : (StateT.lift (updS (gzSt i) fun s => { s with junk := 0 }) : G Unit) fs h2 =
         .ok (((), fs), putGz h2 i s3) := lift_ok (updS_run hrec2 _)
     simp only [g_bind_app, hu]
-    exact errs_run St B3 hgz k l hl rc codes (fun hne => hstr hne) (fun hc hb => hmeas hc hb)
+    exact errs_run St B3 hgz k l hl rc codes pBUF hstr hmeas
   · rw [if_neg cj]
-    exact errs_run St B2 hgz k l hl rc codes hstr hmeas
+    exact errs_run St B2 hgz k l hl rc codes pBUF hstr hmeas
 
 /-- The second input check. -/
 theorem mid_run (head : InflateHeadUsesInput) (St : Stat i out h0 s0) (had : UInt32) (hhad : had.toNat = out.length) {fs : Fs} {h : Heap}
     {s : GzState} (B : Base i out h0 fs0 s0 fs h s) (hgz : s.how = GZIP) (hao : s.strm.avail_out ≠ 0)
     (heof : s.strm.avail_in = 0 → s.eof ≠ 0) (hd : Hd h0 fs0 s0 fs h s) (k : Nat)
     (hk : ReadsFinite fs0 s0.fd → meas fs s ≤ k) (l : Zlib.Gzread.DecompLoop) (hl : l.brk = false)
-    (hret : l.ret = Z_OK ∨ l.ret = Z_BUF_ERROR) :
+    (hret : l.ret = Z_OK) :
     ∃ y fs' h', decompMid i had l fs h = .ok ((y, fs'), h') ∧ LJ i out h0 fs0 s0 k y fs' h' := by
   have hz : (StateT.lift (ldZ (strmOf (gzSt i))) : G ZStream) fs h = .ok ((s.strm, fs), h) := lift_ok (ldZ_run B.rcd)
   unfold decompMid
@@ -1546,23 +1577,27 @@ theorem mid_run (head : InflateHeadUsesInput) (St : Stat i out h0 s0) (had : UIn
     have hld : (StateT.lift (ldS (gzSt i)) : G GzState) fs h = .ok ((s, fs), h) := lift_ok (ldS_run B.rcd)
     simp only [g_bind_app, hld]
     have post : ∀ (h' : Heap) (s' : GzState), Base i out h0 fs0 s0 fs h' s' → s'.how = GZIP → s'.eof = s.eof →
-        s'.strm = s.strm → LJ i out h0 fs0 s0 k { l with brk := true } fs h' := by
-      intro h' s' B' hg he hst
+        s'.strm = s.strm → Hd h0 fs0 s0 fs h' s' → LJ i out h0 fs0 s0 k { l with brk := true } fs h' := by
+      intro h' s' B' hg he hst hd'
       refine Or.inr ⟨rfl, s', B', Or.inl hg, fun e => Or.inr ⟨by rw [he]; exact heof hav, by rw [hst]; exact hav⟩,
-        fun e => ?_⟩
+        fun e => ?_, fun _ => hd', fun hne => absurd hret hne⟩
       exfalso
       have e' : l.ret = Z_STREAM_END := e
-      rcases hret with r | r <;> (rw [r] at e'; exact absurd e' (by decide))
+      rw [hret] at e'; exact absurd e' (by decide)
     by_cases ca : (s.again == 0) = true
     · rw [if_pos ca]
       obtain ⟨p, hp, hmsg⟩ := lit_msg "unexpected end of file" (by decide +kernel) (by decide +kernel)
         (by decide +kernel) h
-      obtain ⟨after, s', run, hs', shape, -, B'⟩ := err_trans St B Z_BUF_ERROR (by decide) p hmsg
+      obtain ⟨after, s', run, hs', shape, -, ahd, hil, B'⟩ := err_trans St B Z_BUF_ERROR (by decide) p hmsg
       have run' : Zlib.Gzlib.gz_error (gzSt i) Z_BUF_ERROR p h = .ok ((), after) := run
-      exact ⟨{ l with brk := true }, fs, after, by simp only [g_bind_app, lift_ok hp, lift_ok run', g_pure_app],
-        post after s' B' (by rw [shape]; exact hgz) (by rw [shape]) (by rw [shape])⟩
+      refine ⟨{ l with brk := true }, fs, after, by simp only [g_bind_app, lift_ok hp, lift_ok run', g_pure_app],
+        post after s' B' (by rw [shape]; exact hgz) (by rw [shape]) (by rw [shape]) ?_⟩
+      intro a b c
+      rcases hd a b c with x | x
+      · exact Or.inl (ahd x)
+      · exact Or.inr (by rw [hil]; exact x)
     · rw [if_neg ca]
-      exact ⟨{ l with brk := true }, fs, h, rfl, post h s B hgz rfl rfl⟩
+      exact ⟨{ l with brk := true }, fs, h, rfl, post h s B hgz rfl rfl hd⟩
   · rw [if_neg c0]
     have hav : s.strm.avail_in ≠ 0 := by simpa using c0
     exact run_run head St had hhad B hgz hav hao hd k hk l hl
@@ -1581,31 +1616,33 @@ theorem body_run (head : InflateHeadUsesInput) (St : Stat i out h0 s0) (had : UI
     have e := hrec
     simp only [AvailRec] at e
     simp only [g_bind_app, run]
+    have hd1 : Hd h0 fs0 s0 fs1 h1 s1 := by
+      intro a b c
+      rcases hd a b c with ah | lt
+      · left
+        obtain ⟨k2, st2, hk2, hst2, hmode, hbits, hlast⟩ := ah
+        exact ⟨k2, st2, by rw [e]; exact hk2, by rw [hist k2]; exact hst2, hmode, hbits, hlast⟩
+      · right
+        exact Nat.lt_of_le_of_lt (hle a) lt
     by_cases c1 : (r == -1) = true
     · rw [if_pos c1]
       have rm : r = -1 := by simpa using c1
       have hld : (StateT.lift (ldS (gzSt i)) : G GzState) fs1 h1 = .ok ((s1, fs1), h1) := lift_ok (ldS_run hs1)
       refine ⟨{ ret := s1.err, brk := true }, fs1, h1, by simp only [g_bind_app, hld, g_pure_app], Or.inr ⟨rfl, s1, B1,
-        Or.inl (by rw [e]; exact hgz), fun he => absurd he (hflags.1 rm), fun he => ?_⟩⟩
+        Or.inl (by rw [e]; exact hgz), fun he => absurd he (hflags.1 rm), fun he => ?_, fun _ => hd1,
+        fun _ _ => hflags.1 rm⟩⟩
       intro _ _ hne
       exact absurd he (B1.err hne)
     · rw [if_neg c1]
       have r0 : r = 0 := hr.resolve_right (by simpa using c1)
-      refine mid_run head St had hhad B1 (by rw [e]; exact hgz) (by rw [e]; exact hao) (hflags.2.2.1 r0) ?_ k ?_ l hl hret
-      · intro a b c
-        rcases hd a b c with ah | lt
-        · left
-          obtain ⟨k2, st2, hk2, hst2, hmode, hbits, hlast⟩ := ah
-          exact ⟨k2, st2, by rw [e]; exact hk2, by rw [hist k2]; exact hst2, hmode, hbits, hlast⟩
-        · right
-          exact Nat.lt_of_le_of_lt (hle a) lt
-      · intro hb
-        have := hle hb.1
-        rw [hk]
-        unfold meas
-        have eo : s1.strm.avail_out = s.strm.avail_out := by rw [e]
-        rw [eo]
-        omega
+      refine mid_run head St had hhad B1 (by rw [e]; exact hgz) (by rw [e]; exact hao) (hflags.2.2.1 r0) hd1 k ?_ l hl hret
+      intro hb
+      have := hle hb.1
+      rw [hk]
+      unfold meas
+      have eo : s1.strm.avail_out = s.strm.avail_out := by rw [e]
+      rw [eo]
+      omega
   · rw [if_neg c0]
     exact mid_run head St had hhad B hgz hao (fun e => absurd (by simp [e]) c0) hd k (fun _ => by omega) l hl hret
 
@@ -1623,15 +1660,17 @@ theorem cond_run (k : Nat) (y : Zlib.Gzread.DecompLoop) {fs : Fs} {h : Heap}
     · have hao : s.strm.avail_out ≠ 0 := by intro e; rw [e] at hc; simp at hc
       have hne : y.ret ≠ Z_STREAM_END := by intro e; rw [e] at hc; simp at hc
       refine ⟨meas fs s, fun hfin => hmeas hne hfin, hb, ?_, s, B, hgz, hao, hd, rfl⟩
-      rcases hret with r | r | r
-      · exact Or.inl r
-      · exact Or.inr r
+      rcases hret with r | r
+      · exact r
       · exact absurd r hne
-    · refine ⟨s, B, Or.inl hgz, fun hok => Or.inl ?_, hse⟩
-      apply Classical.byContradiction
-      intro hne
-      rw [hb, hok] at hc
-      simp (config := { decide := true }) [hne, Z_OK, Z_STREAM_END] at hc
+    · refine ⟨s, B, Or.inl hgz, fun hok => Or.inl ?_, hse, fun _ => hd, fun h1 h2 => ?_⟩
+      · apply Classical.byContradiction
+        intro hne
+        rw [hb, hok] at hc
+        simp (config := { decide := true }) [hne, Z_OK, Z_STREAM_END] at hc
+      · rcases hret with r | r
+        · exact absurd r h1
+        · exact absurd r h2
   · obtain ⟨s, B, -⟩ := id hq
     have hz : (StateT.lift (ldZ (strmOf (gzSt i))) : G ZStream) fs h = .ok ((s.strm, fs), h) :=
       lift_ok (ldZ_run B.rcd)
@@ -1666,10 +1705,43 @@ def DecompPost (i : Nat) (out : Region) (h : Heap) (fs : Fs) (s : GzState) (r : 
         (HasBudget fs s.fd → inputLeft fs' s' ≤ inputLeft fs s) ∧
         (s.err ≠ Z_STREAM_END → s'.err ≠ Z_STREAM_END) ∧
         (s'.x.have ≠ 0 → ∃ c, s'.x.next = padv out.pointer c ∧ c + s'.x.have.toNat ≤ out.length) ∧
-        (s'.how = GZIP ∨ s'.how = LOOK) ∧
+        (s'.how = GZIP ∨ s'.how = LOOK) ∧ (r = -1 → s'.err ≠ Z_OK) ∧
         (r = 0 → s'.x.have ≠ 0 ∨ (s'.eof ≠ 0 ∧ s'.strm.avail_in = 0) ∨
           (s'.how = LOOK ∧ (HasBudget fs s.fd → InflateAtHead h s → s.err ≠ Z_STREAM_END →
-            inputLeft fs' s' < inputLeft fs s)))
+            inputLeft fs' s' < inputLeft fs s))) ∧
+        (HasBudget fs s.fd → s.err ≠ Z_STREAM_END → fetchRank fs' after s' ≤ fetchRank fs h s) ∧
+        (HasBudget fs s.fd → s.err ≠ Z_STREAM_END → s'.x.have.toNat = out.length ∨ r = -1 ∨
+          (s'.eof ≠ 0 ∧ s'.strm.avail_in = 0) ∨ fetchRank fs' after s' + 2 ≤ fetchRank fs h s)
+
+/-- The rank at the end of `gz_decomp`: it does not rise, and it falls by 2 at a member end. -/
+theorem rank_tail {fs0 fs : Fs} {h0 h : Heap} {s0 s : GzState} (g0 : s0.how = GZIP) (hb0 : HasBudget fs0 s0.fd)
+    (hfd : s.fd = s0.fd) (hil : inputLeft fs s ≤ inputLeft fs0 s0) (hbud : BudgetAcc s0.fd fs0 fs 0)
+    (hw : s.how = GZIP ∨ s.how = LOOK)
+    (hd : InflateAtHead h0 s0 → (s.how = GZIP → InflateAtHead h s) ∨ inputLeft fs s < inputLeft fs0 s0) :
+    fetchRank fs h s ≤ fetchRank fs0 h0 s0 ∧
+      (s.how = LOOK → (InflateAtHead h0 s0 → inputLeft fs s < inputLeft fs0 s0) →
+        fetchRank fs h s + 2 ≤ fetchRank fs0 h0 s0) := by
+  have b := budOf_acc hbud hb0
+  rw [fetchRank_eq, fetchRank_eq, hfd, flagW_gzip g0]
+  have fw : flagW s = 2 := by
+    rcases hw with e | e
+    · exact flagW_gzip e
+    · exact flagW_look e
+  rw [fw]
+  have f0 := flagF_le h s
+  refine ⟨?_, fun hl hs => ?_⟩
+  · by_cases a0 : InflateAtHead h0 s0
+    · rw [flagF_head a0]
+      rcases hd a0 with x | x
+      · rcases hw with e | e
+        · rw [flagF_head (x e)]; omega
+        · rw [flagF_look e]; omega
+      · omega
+    · rw [flagF_gzip g0 a0]; omega
+  · rw [flagF_look hl]
+    by_cases a0 : InflateAtHead h0 s0
+    · rw [flagF_head a0]; have := hs a0; omega
+    · rw [flagF_gzip g0 a0]; omega
 
 section tail
 variable {i : Nat} {out : Region} {h0 : Heap} {fs0 : Fs} {s0 : GzState}
@@ -1678,11 +1750,15 @@ variable {i : Nat} {out : Region} {h0 : Heap} {fs0 : Fs} {s0 : GzState}
 theorem final_post {fs : Fs} {h : Heap} {s : GzState} (B : Base i out h0 fs0 s0 fs h s) (r : Int32)
     (hr : r = 0 ∨ r = -1) (hgl : s.how = GZIP ∨ s.how = LOOK)
     (hx : s.x.have ≠ 0 → ∃ c, s.x.next = padv out.pointer c ∧ c + s.x.have.toNat ≤ out.length)
-    (prog : r = 0 → s.x.have ≠ 0 ∨ (s.eof ≠ 0 ∧ s.strm.avail_in = 0) ∨ (s.how = LOOK ∧ Strict h0 fs0 s0 fs s)) :
+    (herr1 : r = -1 → s.err ≠ Z_OK)
+    (prog : r = 0 → s.x.have ≠ 0 ∨ (s.eof ≠ 0 ∧ s.strm.avail_in = 0) ∨ (s.how = LOOK ∧ Strict h0 fs0 s0 fs s))
+    (rkA : HasBudget fs0 s0.fd → s0.err ≠ Z_STREAM_END → fetchRank fs h s ≤ fetchRank fs0 h0 s0)
+    (rkB : HasBudget fs0 s0.fd → s0.err ≠ Z_STREAM_END → s.x.have.toNat = out.length ∨ r = -1 ∨
+      (s.eof ≠ 0 ∧ s.strm.avail_in = 0) ∨ fetchRank fs h s + 2 ≤ fetchRank fs0 h0 s0) :
     DecompPost i out h0 fs0 s0 r fs h := by
   obtain ⟨em, efd, esk, epos, esz, eout, ein⟩ := B.keep
   refine ⟨hr, B.kept, B.post, fun f => (B.rf f).1, B.rb, B.bud, s, B.rcd, ⟨em, efd, esk, epos, fun _ => ⟨esz, eout, ein⟩⟩,
-    B.ml, fun f => (B.rf f).2, B.err, hx, hgl, ?_⟩
+    B.ml, fun f => (B.rf f).2, B.err, hx, hgl, herr1, ?_, rkA, rkB⟩
   intro r0
   rcases prog r0 with a | a | ⟨hl, st⟩
   · exact Or.inl a
@@ -1690,10 +1766,10 @@ theorem final_post {fs : Fs} {h : Heap} {s : GzState} (B : Base i out h0 fs0 s0 
   · exact Or.inr (Or.inr ⟨hl, fun a b c => st a b c⟩)
 
 /-- **After the loop**: `x.have`, `x.next`, and at a member end `junk` and `how`. -/
-theorem tail_run (St : Stat i out h0 s0) (had : UInt32) (hhad : had.toNat = out.length)
+theorem tail_run (St : Stat i out h0 s0) (g0 : s0.how = GZIP) (had : UInt32) (hhad : had.toNat = out.length)
     (l : Zlib.Gzread.DecompLoop) {fs : Fs} {h : Heap} (hq : LQ i out h0 fs0 s0 l fs h) :
     ∃ r fs' h', decompTail i had l fs h = .ok ((r, fs'), h') ∧ DecompPost i out h0 fs0 s0 r fs' h' := by
-  obtain ⟨s, B, hgl, hok, hse⟩ := hq
+  obtain ⟨s, B, hgl, hok, hse, hhd, herr⟩ := hq
   have hm := B.mode St
   have hsz := B.size St
   obtain ⟨d, hd, hdl⟩ := B.pos
@@ -1754,19 +1830,37 @@ theorem tail_run (St : Stat i out h0 s0) (had : UInt32) (hhad : had.toNat = out.
     have B3 := put_trans St B2 hu3 ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩ ⟨rfl, rfl, rfl⟩ rfl rfl (Nat.le_refl _) rfl B2.ml
     have hu4 : (StateT.lift (updS (gzSt i) fun s => { s with junk := 0, how := LOOK }) : G Unit) fs
         (putGz (putGz h i s1) i s2) = .ok (((), fs), putGz (putGz (putGz h i s1) i s2) i s3) := lift_ok (updS_run hs2 _)
-    refine ⟨0, fs, _, by simp only [g_bind_app, hu4, g_pure_app], final_post B3 0 (Or.inl rfl) (Or.inr rfl) hxc ?_⟩
+    have rk := fun (hb : HasBudget fs0 s0.fd) (hse0 : s0.err ≠ Z_STREAM_END) =>
+      rank_tail (h := putGz (putGz (putGz h i s1) i s2) i s3) g0 hb B3.keep.2.1 (B3.rf hb).2 B3.bud (Or.inr rfl)
+        (fun a0 => Or.inr (hse ret hb a0 hse0))
+    refine ⟨0, fs, _, by simp only [g_bind_app, hu4, g_pure_app], final_post B3 0 (Or.inl rfl) (Or.inr rfl) hxc
+      (fun e => absurd e (by decide)) ?_ (fun hb hse0 => (rk hb hse0).1)
+      (fun hb hse0 => Or.inr (Or.inr (Or.inr ((rk hb hse0).2 rfl (fun a0 => hse ret hb a0 hse0)))))⟩
     intro _
     exact Or.inr (Or.inr ⟨rfl, hse ret⟩)
   · rw [if_neg ce]
     have ret : l.ret ≠ Z_STREAM_END := by simpa using ce
-    refine ⟨_, fs, _, rfl, final_post B2 _ ?_ hgl hxc ?_⟩
-    · by_cases c : (l.ret != Z_OK) = true
-      · rw [if_pos c]; exact Or.inr rfl
-      · rw [if_neg c]; exact Or.inl rfl
-    · intro r0
-      by_cases c : (l.ret != Z_OK) = true
-      · rw [if_pos c] at r0; exact absurd r0 (by decide)
-      · have e : l.ret = Z_OK := by simpa using c
+    have hdF : HasBudget fs0 s0.fd → s0.err ≠ Z_STREAM_END → InflateAtHead h0 s0 →
+        (s2.how = GZIP → InflateAtHead (putGz (putGz h i s1) i s2) s2) ∨ inputLeft fs s2 < inputLeft fs0 s0 := by
+      intro hb hse0 a0
+      by_cases g : s.how = GZIP
+      · rcases hhd g hb a0 hse0 with x | x
+        · exact Or.inl (fun _ => atHead_put (atHead_put x rfl) rfl)
+        · exact Or.inr x
+      · exact Or.inl (fun g' => absurd g' g)
+    have rkA : HasBudget fs0 s0.fd → s0.err ≠ Z_STREAM_END →
+        fetchRank fs (putGz (putGz h i s1) i s2) s2 ≤ fetchRank fs0 h0 s0 := fun hb hse0 =>
+      (rank_tail g0 hb B2.keep.2.1 (B2.rf hb).2 B2.bud hgl (hdF hb hse0)).1
+    by_cases c : (l.ret != Z_OK) = true
+    · refine ⟨_, fs, _, rfl, ?_⟩
+      rw [if_pos c]
+      have hne : l.ret ≠ Z_OK := by simpa using c
+      exact final_post B2 (-1) (Or.inr rfl) hgl hxc (fun _ => herr hne ret) (fun e => absurd e (by decide)) rkA
+        (fun _ _ => Or.inr (Or.inl rfl))
+    · refine ⟨_, fs, _, rfl, ?_⟩
+      rw [if_neg c]
+      have e : l.ret = Z_OK := by simpa using c
+      have hav0 : s2.x.have ≠ 0 ∨ (s2.eof ≠ 0 ∧ s2.strm.avail_in = 0) := by
         rcases hok e with a0 | a0
         · left
           show (had - s.strm.avail_out) ≠ 0
@@ -1775,7 +1869,15 @@ theorem tail_run (St : Stat i out h0 s0) (had : UInt32) (hhad : had.toNat = out.
           have z' : had = 0 := by simpa using z
           have : had.toNat = 0 := by rw [z']; rfl
           exact St.hlen (by omega)
-        · exact Or.inr (Or.inl a0)
+        · exact Or.inr a0
+      refine final_post B2 0 (Or.inl rfl) hgl hxc (fun e => absurd e (by decide))
+        (fun _ => hav0.elim Or.inl (fun a => Or.inr (Or.inl a))) rkA (fun _ _ => ?_)
+      rcases hok e with a0 | a0
+      · left
+        show (had - s.strm.avail_out).toNat = out.length
+        have : s.strm.avail_out.toNat = 0 := by rw [a0]; rfl
+        omega
+      · exact Or.inr (Or.inr (Or.inl a0))
 
 end tail
 
@@ -1846,7 +1948,7 @@ theorem gz_decomp_safe_of (head : InflateHeadUsesInput) : GzDecompSpec := by
         · exact absurd (upTo_live hu b ho) hn
     · exact hside
   have I0 : LI i out h fs s (meas fs s) { ret := Z_OK, brk := false } fs h :=
-    ⟨rfl, Or.inl rfl, s, B0, hgz, fun e => hlen (by rw [← hao, e]; rfl), fun _ head _ => Or.inl head, rfl⟩
+    ⟨rfl, rfl, s, B0, hgz, fun e => hlen (by rw [← hao, e]; rfl), fun _ head _ => Or.inl head, rfl⟩
   have hhad : s.strm.avail_out.toNat = out.length := hao
   -- the run
   have hz : (StateT.lift (ldZ (strmOf (gzSt i))) : G ZStream) fs h = .ok ((s.strm, fs), h) := lift_ok (ldZ_run hs)
@@ -1872,7 +1974,7 @@ theorem gz_decomp_safe_of (head : InflateHeadUsesInput) : GzDecompSpec := by
       decompTail i s.strm.avail_out) fs h (ReadsFinite fs s.fd) (DecompPost i out h fs s) := by
     refine RunSafe.bind loop ?_
     intro l fs1 h1 hq
-    obtain ⟨r, fs2, h2, e, post⟩ := tail_run St s.strm.avail_out hhad l hq
+    obtain ⟨r, fs2, h2, e, post⟩ := tail_run St hgz s.strm.avail_out hhad l hq
     exact runSafe_of_ok e post
   unfold RunSafe
   rw [e0]
