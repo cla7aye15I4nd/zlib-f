@@ -1,4 +1,4 @@
-<!-- source-sha256: 5df279fdeab282652aa9c50d01843ece6b95200dbf80f826c2ae21897327a3bd -->
+<!-- source-sha256: 3aeb4ba65b6acd728a22ee39e0403fdbbfdbd95c2ca697f5e0d7efaed84822a7 -->
 # 调用者定义域与表示限制
 
 超出模型能力的定理不是 C 正确性结果。本登记记录 API 适配器的受限定义域和缺口。每个强于 `zlib.h` 的前置条件，也必须写入定理文档字符串。聚焦手册中的狭窄例子不改变固定公开目标，也不把排除调用判为未定义。见[契约约定](spec/api/contracts.md)。[Sanitizer 报告](sanitizer-reports.md)列出 sanitizer 在真实 C 上报告的每种调用者布局，以及排除它的前提。
@@ -64,7 +64,7 @@ gz 世界是堆之外的可信语义。目前范围小于 C 调用的系统接�
 
 | 领域 | 当前限制 | 影响 |
 | --- | --- | --- |
-| gz 读取终止（M7） | gz 序列安全目标终止的那一半，对 `gzread`、`gzfread`、`gzgetc`、`gzgetc_`、`gzgets` 和 `gzungetc` 假设句柄的描述符编号具有小于 `2^61` 字节的有限读取额度（`fs.readBudget fd = some b` 且 `b < 2^61`，前提 `ReadsFinite`）：即该描述符还能交付的总字节数。关闭后重用的编号继承剩余额度 | zlib.h 不限制输入。永远交付只解码为空内容的数据（空 gzip 成员）的来源会让 `gz_fetch` 一直循环；对无穷来源进行巨大待跳过量的 `gz_skip` 会永远读取：这是 C 真实的不终止，任何有限额度都覆盖不了。有额度时每个循环都有界。`2^61` 这个数是模型的限制，不是 zlib 的：模型的每个循环有 `2^64` 次燃料，读取循环的每一轮要么消耗输入要么结束，额度小于 `2^61` 使它们留在燃料之内。该前提不排除任何故障：无故障的那一半和后置条件对每个世界成立，不需要额度。`gzdirect`、写入一侧和 `gzseek` 不需要它。 |
+| gz 读取终止（M7） | gz 序列安全目标终止的那一半，对 `gzread`、`gzfread`、`gzgetc`、`gzgetc_`、`gzgets` 和 `gzungetc` 假设句柄的描述符编号具有小于 `2^61` 字节的有限读取额度（`fs.readBudget fd = some b` 且 `b < 2^61`，前提 `ReadsFinite`）：即该描述符还能交付的总字节数。关闭后重用的编号继承剩余额度 | zlib.h 不限制输入。永远交付只解码为空内容的数据（空 gzip 成员）的来源会让 `gz_fetch` 一直循环；对无穷来源进行巨大待跳过量的 `gz_skip` 会永远读取：这是 C 真实的不终止，任何有限额度都覆盖不了。有额度时每个循环都有界。`2^61` 这个数是模型的限制，不是 zlib 的：模型的每个循环有 `2^64` 次燃料。读取循环由输入剩余量、读取额度与尚待交付的字节数构成的度量限定（`fetchRank`，以及 `gz_read` 与 `gz_skip` 的度量）。一次取数填满缓冲区，除非失败、输入结束、到达 `GZ_OFF_MAX` 或降低 `fetchRank`，因此额度小于 `2^61` 使这些度量以及循环次数都小于 `2^64`。该前提不排除任何故障：无故障的那一半和后置条件对每个世界成立，不需要额度。`gzdirect`、写入一侧和 `gzseek` 不需要它。 |
 | gz 操作系统事实 | 非空 `write` 从不返回 0；`close` 失败时也释放描述符 | Linux 行为，可信，未检查。`write` 永远返回 0 会让 C 中的 `gz_comp` 无限循环（`docs/progress.md` 中的观察记录）。 |
 | gz 文件数据 | 功能性的 gz 契约（`FileData`、`CloseContract`、`GzWriterFormat`、读写结果值）以及已登记目标 `Goal.gzoffset64`、`Goal.gzoffset` 和 `Goal.gzrewind`（自 `caad9db4` 起带前提 `RegularOs fs`）针对系统调用预言的普通文件实例（`RegularOs`）陈述 | 它们描述普通文件。预言的 `lseek` 可以返回而不移动描述符，某些 Linux 设备即如此；此时偏移与回绕的结果值不成立（[回归](../tests/verification/regressions/gz-offset-regular-world.lean)）。安全目标不使用这些契约。`gzoffset64`、`gzoffset` 和 `gzrewind` 在每个世界上的安全属于 `Goal.gz_sequence_safety`，经由步骤引理 `gzoffset64_step`、`gzoffset_step` 和 `gzrewind_step`（分支 `skeleton/gz`，对每个 `fs` 陈述，无 `RegularOs`；未完成）。文件系统权限、父目录、链接、所有权和锁未被表示；预言的失败覆盖它们对每次调用的影响。 |
 | 格式化 | 表示出的整数、字符和字符串参数，以及支持的标志、宽度、精度和长度修饰符 | 浮点、指针、写计数和其他未表示转换需要扩展模型。草案契约显式要求可表示的有效格式化结果。 |
