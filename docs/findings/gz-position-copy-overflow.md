@@ -2,7 +2,9 @@
 
 Status: confirmed in the model and by reading the C. Not reproducible in practice: it needs about
 2^63 decoded bytes. Not confirmed by a sanitizer. It is a gap in the local
-[patch 0004](../../patches/README.md), the fix of [gzread-pos-overflow](gzread-pos-overflow/README.md).
+[patch 0004](../../patches/README.md), the fix of [gzread-pos-overflow](gzread-pos-overflow/README.md). Patch 0004 now also bounds
+`gz_look`'s COPY branch: it buffers only `gz_room(state, avail_in)` bytes and records
+`Z_DATA_ERROR` "position overflow" when the input goes past that.
 
 ## What goes wrong
 

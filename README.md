@@ -88,7 +88,7 @@ returns with `x.pos + x.have` past `GZ_OFF_MAX`, and the `gzgetc()` macro then o
 ([finding](docs/findings/gz-position-copy-overflow.md)). Confirmed in the model and by reading the
 C; not reproducible in practice (about 2^63 decoded bytes); not confirmed by a sanitizer.
 Confidence is high for the patched source as written. Scope: patch 0004 readers within `size`
-bytes of `GZ_OFF_MAX` after that history.
+bytes of `GZ_OFF_MAX` after that history. Patch 0004 now bounds that branch too.
 
 ## Source fix
 

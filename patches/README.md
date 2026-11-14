@@ -60,7 +60,12 @@ Local, not yet submitted upstream; approved by the owner on 2026-11-12.
 Keep the uncompressed position `state->x.pos` within `z_off64_t`. Reading: `gz_fetch` fills the
 output buffer only with bytes whose position is representable (at least one, to find the end of
 the input), and `gz_read` and `gzgets` deliver no byte past `GZ_OFF_MAX`; data beyond it gives
-`Z_DATA_ERROR` "position overflow". Writing: `gz_write`, the fast path of `gzputc` and `gzprintf`
+`Z_DATA_ERROR` "position overflow". `gz_look`'s transparent COPY branch also buffers only the
+room left, and records the same error when its input goes past it, so that every reading call
+returns with `x.pos + x.have <= GZ_OFF_MAX`, as the `gzgetc()` macro needs
+([gz-position-copy-overflow](../docs/findings/gz-position-copy-overflow.md); this extension was
+approved by the owner on 2026-11-13 and is local and pending upstream, like the rest of the
+patch). Writing: `gz_write`, the fast path of `gzputc` and `gzprintf`
 refuse a write that would carry the position past `GZ_OFF_MAX`, with the same error. Findings:
 [gzread-pos-overflow](../docs/findings/gzread-pos-overflow/README.md) (F-1) and
 [gzwrite-pos-overflow](../docs/findings/gzwrite-pos-overflow/README.md) (W7). Evidence:
