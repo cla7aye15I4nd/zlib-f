@@ -1704,6 +1704,7 @@ import ZlibF.Proof.«gzwrite.c.write-calls»
 import ZlibF.Proof.«deflate.c.universal-params-accounting»
 import ZlibF.Proof.«gzwrite.c.flush-params»
 import ZlibF.Proof.«gzwrite.c.close»
+import ZlibF.Proof.«gzwrite.c.printf»
 import ZlibF.Proof.«gz.inv-seek»
 
 /-!
