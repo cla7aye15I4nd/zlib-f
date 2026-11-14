@@ -219,7 +219,8 @@ theorem entry_state_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n :
     {first : List UInt8}
     (firstB : if z.next_in = .null then first = [] else Bytes h z.next_in z.avail_in.toNat first)
     (sep : Separate z.next_in first.length window n)
-    (inv0 : pr.invariant h (entryLog z first)) :
+    (inv0 : pr.invariant h (entryLog z first)) (fit0 : ZlibF.PlatformMemory.ByteObjectsFit h)
+    (platform : BackPlatform pr) (firstChunk : BackFirstChunk z first) (st0 : s.sane ≠ 0 ∧ s.wnext = 0) :
     PInv c pr h (setI h i (entryState s)) (entryRegs z s) (entryLog z first) := by
   have hs := valid.2.1
   have hz := valid.1
@@ -267,7 +268,12 @@ theorem entry_state_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n :
       live := fun b _ => live_setI hs _ b,
       mode := fun s1 g => by
         simp [setI] at g; subst g
-        exact ⟨Or.inl rfl, fun e => absurd (show TYPE = LEN from e) (by decide)⟩ }
+        exact ⟨Or.inl rfl, fun e => absurd (show TYPE = LEN from e) (by decide)⟩,
+      platform := platform, fit := fun ref a g => fit0 ref a (by rw [get_setI] at g; exact g),
+      chunkBlk := firstChunk,
+      stOk := fun s1 g => by
+        simp [setI] at g; subst g
+        exact ⟨st0.1, st0.2, by show (0 : UInt32).toNat ≤ _; exact Nat.zero_le _⟩ }
 
 /-- A write of the state record and a write of the stream record commute. -/
 theorem put_setI (h : Heap) (r : ZStreamRef) (z : ZStream) (i : Nat) (s : InflateState) :
@@ -320,7 +326,9 @@ theorem PInv.putZ {c : BCtx} {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat
       bits := I.bits, proto := proto',
       frame := CallbackFrame.trans I.frame (callbackFrame_put _) (fun d => window_views writable I.winRoot d),
       live := fun b o => (Zlib.Inflate.Proofs.Shape.live shape b).trans (I.live b o),
-      mode := fun s1 g => I.mode s1 (by rw [ist] at g; exact g) }
+      mode := fun s1 g => I.mode s1 (by rw [ist] at g; exact g),
+      platform := I.platform, fit := fun ref a g => I.fit ref a (by rw [get_put] at g; exact g),
+      chunkBlk := I.chunkBlk, stOk := fun s1 g => I.stOk s1 (by rw [ist] at g; exact g) }
 
 /-- The end of `inflateBack()` after the dispatch loop (`inf_leave:`). -/
 def backTail (strm : ZStreamPtr) (st : InflateStatePtr) (outCb : OutCb) (out_desc : BPtr) (l : IL) : M Int32 := do
@@ -412,7 +420,7 @@ def CallPost {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat} {input : InCb}
     {outDesc : BPtr} (protocol : CallbackProtocol r i window n input inDesc output outDesc) (h : Heap)
     (s : InflateState) (rc : Int32) (after : Heap) : Prop :=
   ∃ z' s' log, BackValid after r i z' s' ∧ s'.window = window ∧ s'.wsize = s.wsize ∧
-    protocol.invariant after log ∧
+    (s'.sane ≠ 0 ∧ s'.wnext = 0) ∧ protocol.invariant after log ∧
     (rc = Z_STREAM_END ∨ rc = Z_DATA_ERROR ∨ rc = Z_BUF_ERROR) ∧
     CallbackFrame protocol.own h after r i window n ∧
     (∀ b, ¬ protocol.own b → (after.live b ↔ h.live b))
@@ -439,7 +447,8 @@ theorem tail_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
     have I5 := I4.putZ hz4 { z4 with next_in := l.next, avail_in := l.have_ } rfl rfl rfl
     obtain ⟨z5, s5, valid5, win5, sz5⟩ := I5.valid
     refine ⟨r.put h4 { z4 with next_in := l.next, avail_in := l.have_ }, ?_, z5, s5, log4, valid5, win5,
-      UInt32.toNat_inj.mp (by rw [sz5, size0]), I5.proto, hrc, I5.frame, I5.live⟩
+      UInt32.toNat_inj.mp (by rw [sz5, size0]), ⟨(I5.stOk s5 valid5.2.1).1, (I5.stOk s5 valid5.2.1).2.1⟩,
+      I5.proto, hrc, I5.frame, I5.live⟩
     rw [I.cstrm, bind_ok (show wrZ (some r) (fun z => { z with next_in := l.next, avail_in := l.have_ }) h4 =
       .ok ((), r.put h4 { z4 with next_in := l.next, avail_in := l.have_ }) by rw [wrZ_eq, hz4])]
     rfl
@@ -453,6 +462,7 @@ theorem tail_p (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
       pr.outStep h log s.window (s.wsize - l.left) xs I.proto bytes (by rw [subN, ← sz]; omega)
     let log4 : BackLog := { log with chunks := log.chunks ++ [xs], failed := log.failed || rc != 0 }
     have I4 : PInv c pr h0 h4 l log4 := PInv.callback I ext winSame held inv' rfl rfl
+      (I.platform.2 h log s.window (s.wsize - l.left) rc h4 I.proto I.fit run4)
     by_cases f : (rc != 0 && l.ret == Z_STREAM_END) = true
     · obtain ⟨after, run5, post⟩ := final I4 Z_BUF_ERROR (Or.inr (Or.inr rfl))
       refine ⟨Z_BUF_ERROR, after, ?_, post⟩
@@ -485,10 +495,13 @@ theorem entry_p {h : Heap} {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat} 
     {w woff : Nat} (hw : window = .ref (.blk w) woff)
     (firstB : if z.next_in = .null then first = [] else Bytes h z.next_in z.avail_in.toNat first)
     (sep : Separate z.next_in first.length window n)
-    (inv0 : protocol.invariant h { supplied := first, chunks := [], active := z.next_in, held := first }) :
+    (inv0 : protocol.invariant h { supplied := first, chunks := [], active := z.next_in, held := first })
+    (fit0 : ZlibF.PlatformMemory.ByteObjectsFit h) (platform : BackPlatform protocol)
+    (firstChunk : BackFirstChunk z first) (st0 : s.sane ≠ 0 ∧ s.wnext = 0) :
     PInv (callCtx r i input inDesc output outDesc) protocol h (entryHeap h r z i s) (entryRegs z s)
       (entryLog z first) := by
   have I0 := entry_state_p (callCtx r i input inDesc output outDesc) protocol rfl rfl valid win size hw firstB sep inv0
+    fit0 platform firstChunk st0
   have hz : r.get (setI h i (entryState s)) = some z := by cases r <;> exact valid.1
   have I1 := I0.putZ hz { z with msg := .null } rfl rfl rfl
   unfold entryHeap
@@ -505,11 +518,13 @@ theorem back_call_partial {h : Heap} {r : ZStreamRef} {i : Nat} {window : BPtr} 
     (firstB : if z.next_in = .null then first = [] else Bytes h z.next_in z.avail_in.toNat first)
     (sep : Separate z.next_in first.length window n)
     (inv0 : protocol.invariant h { supplied := first, chunks := [], active := z.next_in, held := first })
+    (fit0 : ZlibF.PlatformMemory.ByteObjectsFit h) (platform : BackPlatform protocol)
+    (firstChunk : BackFirstChunk z first) (st0 : s.sane ≠ 0 ∧ s.wnext = 0)
     (fast : LenFast (callCtx r i input inDesc output outDesc) protocol h)
     {rc : Int32} {after : Heap}
     (run : C.run (Zlib.Infback.inflateBack (some r) input inDesc output outDesc) h = .ok (rc, after)) :
     CallPost protocol h s rc after := by
-  have I0 := entry_p protocol valid win size hw firstB sep inv0
+  have I0 := entry_p protocol valid win size hw firstB sep inv0 fit0 platform firstChunk st0
   unfold C.run at run
   rw [call_prologue valid] at run
   obtain ⟨v, hL⟩ : ∃ v, runX (xwhile (pure true) (back_dispatch (callCtx r i input inDesc output outDesc)))
@@ -537,11 +552,13 @@ theorem back_call_total {h : Heap} {r : ZStreamRef} {i : Nat} {window : BPtr} {n
     (firstB : if z.next_in = .null then first = [] else Bytes h z.next_in z.avail_in.toNat first)
     (sep : Separate z.next_in first.length window n)
     (inv0 : protocol.invariant h { supplied := first, chunks := [], active := z.next_in, held := first })
+    (fit0 : ZlibF.PlatformMemory.ByteObjectsFit h) (platform : BackPlatform protocol)
+    (firstChunk : BackFirstChunk z first) (st0 : s.sane ≠ 0 ∧ s.wnext = 0)
     (fast : LenFast (callCtx r i input inDesc output outDesc) protocol h)
     (bound : protocol.inputBound < 2 ^ 48) :
     ∃ rc after, C.run (Zlib.Infback.inflateBack (some r) input inDesc output outDesc) h = .ok (rc, after) ∧
       CallPost protocol h s rc after := by
-  have I0 := entry_p protocol valid win size hw firstB sep inv0
+  have I0 := entry_p protocol valid win size hw firstB sep inv0 fit0 platform firstChunk st0
   obtain ⟨l3, h3, log3, hL, I3, ret3⟩ := loop_p (callCtx r i input inDesc output outDesc) protocol I0 hw fast (Short.of_bits (l := entryRegs z s) (show (0 : UInt32).toNat < 8 by decide)) bound
   obtain ⟨rc, after, run', post⟩ := tail_p (callCtx r i input inDesc output outDesc) protocol I3 ret3 size
   refine ⟨rc, after, ?_, post⟩

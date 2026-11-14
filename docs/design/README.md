@@ -13,6 +13,7 @@ Start with [architecture](architecture.md). Then use the page that answers your 
 | What do the heap-free API relations describe? | [API model and concrete boundary](api-model.md) |
 | Where are internal helper preconditions specified? | [Internal-call specifications](../spec/internal-contracts.md) |
 | What file, formatting and error behaviors does the external world represent? | [External I/O](external-io.md) |
+| How are the safety goals separated from the functional ones? | [Safety and functional specifications](safety-functional-split.md) |
 | Which records and pointer kinds exist? | [Generated runtime schema](../runtime-schema.md) |
 
 The [API manual](../spec/api/README.md) describes public calls. The [proof guide](../proof/README.md)

@@ -119,6 +119,48 @@ end Zlib.Gzlib.Spec
 namespace Zlib.Gzlib.Proofs
 open C Zlib.GzFs Zlib.Gzguts Zlib.Gzlib Zlib.Gzlib.Spec
 
+/-- The part of `GzGood` the run lemmas of `gzseek64` use: the record, the mode, the message block and the
+memory-error rule. It does not ask anything of `in` and `out`, which may dangle while `size = 0`. -/
+structure SeekGood (h : Heap) (gs : Nat) (s : GzState) : Prop where
+  hs : h.gzstates gs = some s
+  mode : s.mode = GZ_READ ∨ s.mode = GZ_WRITE
+  msg : s.msg = .null ∨ ∃ mb, s.msg = .ref (.blk mb) 0 ∧ ∃ a : Array UInt8, h.bytes mb = some a ∧ h.ro mb = false
+  memerr : s.err = Z_MEM_ERROR → s.msg = .null
+
+theorem _root_.Zlib.Gzlib.Spec.GzGood.toSeek {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) : Zlib.Gzlib.Proofs.SeekGood h gs s := by
+  refine ⟨hG.hs, hG.mode, ?_, hG.memerr⟩
+  rcases hG.msg with hn | ⟨mb, hm, a, ha, hro, _⟩
+  · exact Or.inl hn
+  · exact Or.inr ⟨mb, hm, a, ha, hro⟩
+
+/-- `gz_reset` (as `gz_reset_run`) from `SeekGood`. -/
+theorem gz_reset_run_seek {h : Heap} {gs : Nat} {s : GzState} (hG : SeekGood h gs s) :
+    gz_reset (some (.tab gs)) h = .ok ((), setS (freeStr h s.msg) gs (resetRec s)) := by
+  have hs := hG.hs
+  unfold gz_reset
+  rcases hG.msg with hn | ⟨mb, hm, a, ha, hro⟩
+  · by_cases hmo : s.mode = GZ_READ
+    · gsimp [hs, hn, hmo, gz_error, resetRec]
+    · gsimp [hs, hn, hmo, gz_error, resetRec]
+  · have hne : s.err ≠ Z_MEM_ERROR := fun h' => by have := hG.memerr h'; rw [hm] at this; cases this
+    by_cases hmo : s.mode = GZ_READ
+    · gsimp [hs, hm, hne, hmo, freeB_blk_setS ha hro, gz_error, resetRec]
+    · gsimp [hs, hm, hne, hmo, freeB_blk_setS ha hro, gz_error, resetRec]
+
+/-- `gzrewind` (as `gzrewind_run`) from `SeekGood`. -/
+theorem gzrewind_run_seek {h : Heap} {gs : Nat} {s : GzState} (hG : SeekGood h gs s) (fs : Fs) :
+    gzrewind (hnd gs) fs h =
+      if s.mode ≠ GZ_READ ∨ (s.err ≠ Z_OK ∧ s.err ≠ Z_BUF_ERROR) then .ok ((-1, fs), h)
+      else if (lseekRes s.fd s.start SEEK_SET fs).1 = -1 then .ok ((-1, (lseekRes s.fd s.start SEEK_SET fs).2), h)
+      else .ok ((0, (lseekRes s.fd s.start SEEK_SET fs).2), setS (freeStr h s.msg) gs (resetRec s)) := by
+  have hs := hG.hs
+  unfold gzrewind
+  by_cases hc : s.mode ≠ GZ_READ ∨ (s.err ≠ Z_OK ∧ s.err ≠ Z_BUF_ERROR)
+  · ggsimp [hs, hc]
+  · by_cases hl : (lseekRes s.fd s.start SEEK_SET fs).1 = -1
+    · ggsimp [hs, hc, hl]
+    · ggsimp [hs, hc, hl, gz_reset_run_seek hG]
+
 theorem GZ_OFF_MAX_toInt : GZ_OFF_MAX.toInt = OffMax := by
   unfold GZ_OFF_MAX OffMax
   exact i64_toInt_ofInt (by omega) (by omega)
@@ -186,7 +228,7 @@ theorem seek_checks {p0 : Int64} (offset : Int64) (hp0 : 0 ≤ p0.toInt) (h : He
 any position, also a negative one after `gzungetc` at the start (`hlo` excludes only `gztell64 = -2^63` for
 `SEEK_CUR`): the checks do not fault, and the function is `seekTail` at the target when the target is `SeekOkAt`,
 otherwise -1 with the heap unchanged. -/
-theorem gzseek64_head_any {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (hP : PosInv s)
+theorem gzseek64_head_any {h : Heap} {gs : Nat} {s : GzState} (hG : SeekGood h gs s) (hP : PosInv s)
     (he : s.err = Z_OK ∨ s.err = Z_BUF_ERROR) {whence : Int32} (hw : whence = SEEK_SET ∨ whence = SEEK_CUR)
     (hlo : whence = SEEK_CUR → -9223372036854775808 < tellPos s) (offset : Int64) (fs : Fs) :
     gzseek64 (hnd gs) offset whence fs h =
@@ -329,7 +371,7 @@ theorem gzseek64_head_any {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs 
             ggsimp [hs, hmo, hne, hpg, f3, c2', eT, hSC, f5, hxn, f9, c9, seekTail]
 
 /-- `gzseek64` on a handle with `GzGood` and `PosInv`, `x.pos >= 0`, no serious error and `whence` in {SEEK_SET, SEEK_CUR}: it is the checks followed by `seekTail`. The result is -1 with the heap unchanged when the target is outside `[0, GZ_OFF_MAX]`, otherwise `seekTail` at the target. -/
-theorem gzseek64_head {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (hP : PosInv s)
+theorem gzseek64_head {h : Heap} {gs : Nat} {s : GzState} (hG : SeekGood h gs s) (hP : PosInv s)
     (hnn : 0 ≤ s.x.pos.toInt) (he : s.err = Z_OK ∨ s.err = Z_BUF_ERROR) {whence : Int32}
     (hw : whence = SEEK_SET ∨ whence = SEEK_CUR) (offset : Int64) (fs : Fs) :
     gzseek64 (hnd gs) offset whence fs h =
@@ -342,7 +384,7 @@ theorem gzseek64_head {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (
   · rw [ite_eq_right (fun hh : SeekOkAt s (seekT s offset whence) => hk hh.1), ite_eq_right hk]
 
 /-- `gzseek64` on a writer (preconditions as in `gzseek64_head`): the result is the target `t` and `skip` becomes `t - x.pos` when `t` is in range and not before `x.pos`; otherwise -1 and nothing changes. The world is unchanged. -/
-theorem gzseek64_write_run {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (hP : PosInv s)
+theorem gzseek64_write_run {h : Heap} {gs : Nat} {s : GzState} (hG : SeekGood h gs s) (hP : PosInv s)
     (hnn : 0 ≤ s.x.pos.toInt) (he : s.err = Z_OK ∨ s.err = Z_BUF_ERROR) {whence : Int32}
     (hw : whence = SEEK_SET ∨ whence = SEEK_CUR) (hm : s.mode = GZ_WRITE) (offset : Int64) (fs : Fs) :
     gzseek64 (hnd gs) offset whence fs h =
@@ -383,8 +425,9 @@ theorem OffMax_lt : OffMax < 9223372036854775808 := by decide
 the buffer is dropped (`have = 0`), the error is cleared (the message block is freed), `x.pos = t`. The hypothesis
 `hraw` is the signed-overflow condition of the C expression `pos - x.pos - have` (it fails only for positions within
 `2^32` of `2^63`). -/
-theorem seekTail_copy {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (hm : s.mode = GZ_READ)
-    (hcopy : s.how = GZ_COPY) (hnn : 0 ≤ s.x.pos.toInt) {t : Int} (ht : SeekOk t)
+theorem seekTail_copy {h : Heap} {gs : Nat} {s : GzState} (hG : SeekGood h gs s) (hm : s.mode = GZ_READ)
+    (hcopy : s.how = GZ_COPY) {t : Int} (ht : SeekOk t)
+    (hd : t - s.x.pos.toInt ≤ OffMax)
     (hraw : -9223372036854775808 ≤ t - s.x.pos.toInt - s.x.«have».toNat) (fs : Fs) :
     seekTail (hnd gs) s (Int64.ofInt t) fs h =
       if (lseekRes s.fd (Int64.ofInt (t - s.x.pos.toInt - s.x.«have».toNat)) SEEK_CUR fs).1 = -1 then
@@ -416,7 +459,7 @@ theorem seekTail_copy {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (
   · rw [ite_eq_left hl]
     ggsimp [hs, hm, hcopy, fa, fb, hl]
   · rw [ite_eq_right hl]
-    rcases hG.msg with hn | ⟨mb, hmm, a, ha, hro, k, hz⟩
+    rcases hG.msg with hn | ⟨mb, hmm, a, ha, hro⟩
     · ggsimp [hs, hm, hcopy, fa, fb, hl, hn, gz_error, copyRec, ← hqd]
     · have hne : s.err ≠ Z_MEM_ERROR := fun h' => by have := hG.memerr h'; rw [hmm] at this; cases this
       ggsimp [hs, hm, hcopy, fa, fb, hl, hmm, hne, freeB_blk_setS ha hro, freeB_blk_run ha hro, gz_error, copyRec, ← hqd]
@@ -432,22 +475,21 @@ theorem i64_toU32_toNat (x : Int64) (hx : 0 ≤ x.toInt) : x.toUInt64.toUInt32.t
 theorem padv_zero (p : BPtr) : padv p 0 = p := by cases p <;> rfl
 
 /-- `x.next + n` for `n ≤ x.have`: the pointer advanced by `n`. -/
-theorem next_add_run {h : Heap} {s : GzState} (hN : NextOk h s) {n : Nat} (hn : n ≤ s.x.«have».toNat) (gs : Nat) (s' : GzState) :
+theorem next_add_run {h : Heap} {s : GzState} (hN : NextOk h s) {n : Nat} (hn : n ≤ s.x.«have».toNat) (hn0 : n ≠ 0)
+    (gs : Nat) (s' : GzState) :
     Ptr.add s.x.next (n : Int) (setS h gs s') = .ok (padv s.x.next n, setS h gs s') := by
-  rcases hN.1 with ⟨hnl, hh0⟩ | ⟨r, a, off, hr, hg, hle⟩
-  · have : n = 0 := by rw [hh0] at hn; simpa using hn
-    subst this
-    rw [hnl]
-    simp [Ptr.add, padv]
-  · rw [hr]
-    have hg' : Space.get (setS h gs s') r = some a := by rw [space_get_setS]; exact hg
-    have := Ptr.add_nat_ok (R := BRef) (h := setS h gs s') hg' (n := n) (off := off) (by omega)
-    exact this
+  have hh : s.x.«have» ≠ 0 := fun e => hn0 (by rw [e] at hn; simpa using hn)
+  obtain ⟨r, a, off, hr, hg, hle⟩ := hN.1 hh
+  rw [hr]
+  have hg' : Space.get (setS h gs s') r = some a := by rw [space_get_setS]; exact hg
+  have := Ptr.add_nat_ok (R := BRef) (h := setS h gs s') hg' (n := n) (off := off) (by omega)
+  exact this
 
 
 /-- The part of `gzseek64` after the checks, for a reader that is not in the raw area, with the target not before `x.pos`, `x.pos >= 0` and `NextOk`: the buffered bytes before the target are consumed (`have`, `next`, `pos` advance by `n`), the rest of the distance becomes `skip`; the result is the target; no fault. -/
-theorem seekTail_fwd {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (hm : s.mode = GZ_READ)
-    (hhow : s.how ≠ GZ_COPY) (hnn : 0 ≤ s.x.pos.toInt) {t : Int} (ht : SeekOk t) (hfw : s.x.pos.toInt ≤ t)
+theorem seekTail_fwd {h : Heap} {gs : Nat} {s : GzState} (hG : SeekGood h gs s) (hm : s.mode = GZ_READ)
+    (hhow : s.how ≠ GZ_COPY) {t : Int} (ht : SeekOk t)
+    (hd : t - s.x.pos.toInt ≤ OffMax) (hfw : s.x.pos.toInt ≤ t)
     (hN : NextOk h s) (fs : Fs) :
     seekTail (hnd gs) s (Int64.ofInt t) fs h = Except.ok ((Int64.ofInt t, fs), setS h gs (skipFwd s t)) := by
   have hs := hG.hs
@@ -486,7 +528,8 @@ theorem seekTail_fwd {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (h
       refine ⟨s.x.«have», fun hh => absurd hh hc, fun _ => rfl, ?_, Nat.le_refl _, ?_⟩
       · unfold fwdN; rw [ite_eq_right hc']
       · omega
-  have fn := next_add_run hN hn1 gs
+  have fn := fun hz0 : nU ≠ 0 =>
+    next_add_run hN hn1 (fun e => hz0 (UInt32.toNat_inj.mp (by rw [e]; rfl))) gs
   have fpos : ∀ h', i64add s.x.pos (u32ToI64 nU) h' =
       .ok (Int64.ofInt (s.x.pos.toInt + nU.toNat), h') := fun h' => by
     have := i64add_run s.x.pos (u32ToI64 nU) (by rw [u32ToI64_toInt]; omega) (by rw [u32ToI64_toInt]; have := ht.2; omega) h'
@@ -502,12 +545,12 @@ theorem seekTail_fwd {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (h
     by_cases hz : nU = 0
     · subst hz
       ggsimp [hs, fpos, fsk, skipFwd, ← hnU, padv_zero]
-    · ggsimp [hs, hz, fn, fpos, fsk, skipFwd, ← hnU]
+    · ggsimp [hs, hz, fn hz, fpos, fsk, skipFwd, ← hnU]
   · rw [ite_eq_right hc, ← hB hc]
     by_cases hz : nU = 0
     · subst hz
       ggsimp [hs, fpos, fsk, skipFwd, ← hnU, padv_zero]
-    · ggsimp [hs, hz, fn, fpos, fsk, skipFwd, ← hnU]
+    · ggsimp [hs, hz, fn hz, fpos, fsk, skipFwd, ← hnU]
 
 
 theorem freeStr_get_other (h : Heap) (p : BPtr) (r : BRef) (hr : ∀ b, r ≠ .blk b) :
@@ -519,20 +562,17 @@ theorem freeStr_get_other (h : Heap) (p : BPtr) (r : BRef) (hr : ∀ b, r ≠ .b
     | ref q o => cases q <;> rfl
 
 /-- `x.next + n` after `gz_reset` freed the message block: the pointer does not point into it. -/
-theorem next_add_run_reset {h : Heap} {s : GzState} (hN : NextOk h s) {n : Nat} (hn : n ≤ s.x.«have».toNat) (gs : Nat)
-    (s' : GzState) :
+theorem next_add_run_reset {h : Heap} {s : GzState} (hN : NextOk h s) {n : Nat} (hn : n ≤ s.x.«have».toNat)
+    (hn0 : n ≠ 0) (gs : Nat) (s' : GzState) :
     Ptr.add s.x.next (n : Int) (setS (freeStr h s.msg) gs s') = .ok (padv s.x.next n, setS (freeStr h s.msg) gs s') := by
-  rcases hN.1 with ⟨hnl, hh0⟩ | ⟨r, a, off, hr, hg, hle⟩
-  · have : n = 0 := by rw [hh0] at hn; simpa using hn
-    subst this
-    rw [hnl]
-    simp [Ptr.add, padv]
+  have hh : s.x.«have» ≠ 0 := fun e => hn0 (by rw [e] at hn; simpa using hn)
+  obtain ⟨r, a, off, hr, hg, hle⟩ := hN.1 hh
   · rw [hr]
     have hg' : Space.get (setS (freeStr h s.msg) gs s') r = some a := by
       rw [space_get_setS]
       cases r with
       | blk b =>
-        have hb := hN.2 b (by rw [hr]; rfl)
+        have hb := hN.2 hh b (by rw [hr]; rfl)
         cases hm : s.msg with
         | null => simpa [hm, freeStr] using hg
         | ref q o =>
@@ -549,7 +589,7 @@ theorem next_add_run_reset {h : Heap} {s : GzState} (hN : NextOk h s) {n : Nat} 
 
 
 /-- The part of `gzseek64` after the checks, for a reader that is not in the raw area, with the target before `x.pos` and `NextOk`: `gzrewind`, which fails with -1 and no change of the heap if `lseek` fails, otherwise the state is reset and the whole distance becomes `skip`; no fault. -/
-theorem seekTail_back {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (hm : s.mode = GZ_READ)
+theorem seekTail_back {h : Heap} {gs : Nat} {s : GzState} (hG : SeekGood h gs s) (hm : s.mode = GZ_READ)
     (hhow : s.how ≠ GZ_COPY) (he : s.err = Z_OK ∨ s.err = Z_BUF_ERROR) (hnn : 0 ≤ s.x.pos.toInt) {t : Int}
     (ht : SeekOk t) (hlt : t < s.x.pos.toInt) (hN : NextOk h s) (fs : Fs) :
     seekTail (hnd gs) s (Int64.ofInt t) fs h =
@@ -564,7 +604,7 @@ theorem seekTail_back {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (
   obtain ⟨q, hqd⟩ : ∃ q : Int64, q = Int64.ofInt t := ⟨_, rfl⟩
   have hqi' : q.toInt = t := by rw [hqd]; exact hqi
   have c6 : q < s.x.pos := by rw [i64_lt_iff, hqi']; omega
-  have hrw := gzrewind_run hG fs
+  have hrw := gzrewind_run_seek hG fs
   have hcond : ¬ (s.mode ≠ GZ_READ ∨ (s.err ≠ Z_OK ∧ s.err ≠ Z_BUF_ERROR)) := by
     rintro (h1 | ⟨h1, h2⟩)
     · exact h1 hm
@@ -588,12 +628,9 @@ theorem seekTail_back {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (
       simpa [u32ToI64] using this
     have fc0 : ∀ h', i64add 0 (u32ToI64 0) h' = .ok (0, h') := fun h' => by
       simp [i64add, i64chk, u32ToI64]
-    have fn0 : ∀ s', Ptr.add s.x.next 0 (setS (freeStr h s.msg) gs s') = .ok (s.x.next, setS (freeStr h s.msg) gs s') := fun s' => by
-      have := next_add_run_reset hN (n := 0) (Nat.zero_le _) gs s'
-      simpa [padv_zero] using this
     have hGT : ¬ (u32ToI64 0 > q) := by rw [i64_gt_iff, u32ToI64_toInt, hqi']; simp; omega
     have hnt : ¬ t < 0 := by omega
-    ggsimp [hs, hm, hhow, c6, hrw, hl, fa0, fb0, fc0, fn0, hGT, skipFwd, fwdN, resetRec, padv_zero, GT_OFF_run, hnt, ← hqd]
+    ggsimp [hs, hm, hhow, c6, hrw, hl, fa0, fb0, fc0, hGT, skipFwd, fwdN, resetRec, padv_zero, GT_OFF_run, hnt, ← hqd]
 
 
 /-! ### The invariants after a seek -/
@@ -641,14 +678,14 @@ theorem PosInv_skipFwd {s : GzState} (hnn : 0 ≤ s.x.pos.toInt) {t : Int} (ht :
 
 theorem NextOk_skipFwd {h : Heap} {s : GzState} (hN : NextOk h s) (t : Int) : NextOk h (skipFwd s t) := by
   have hle := fwdN_le (s := s) (t - s.x.pos.toInt)
-  refine ⟨?_, ?_⟩
-  · rcases hN.1 with ⟨hnl, hh0⟩ | ⟨r, a, off, hr, hg, hl⟩
-    · have : fwdN s (t - s.x.pos.toInt) = 0 := by rw [hh0] at hle; simpa using hle
-      left; refine ⟨?_, ?_⟩
-      · show padv s.x.next _ = _; rw [hnl, this]; rfl
-      · show s.x.«have» - UInt32.ofNat _ = 0; rw [hh0, this]; rfl
-    · right
-      refine ⟨r, a, off + fwdN s (t - s.x.pos.toInt), ?_, hg, ?_⟩
+  have hh : (skipFwd s t).x.«have» ≠ 0 → s.x.«have» ≠ 0 := by
+    intro h1 hh0
+    apply h1
+    have : fwdN s (t - s.x.pos.toInt) = 0 := by rw [hh0] at hle; simpa using hle
+    show s.x.«have» - UInt32.ofNat _ = 0; rw [hh0, this]; rfl
+  refine ⟨fun h1 => ?_, fun h1 => ?_⟩
+  · obtain ⟨r, a, off, hr, hg, hl⟩ := hN.1 (hh h1)
+    · refine ⟨r, a, off + fwdN s (t - s.x.pos.toInt), ?_, hg, ?_⟩
       · show padv s.x.next _ = _; rw [hr]; rfl
       · show _ + (s.x.«have» - UInt32.ofNat _).toNat ≤ a.size
         have hh := s.x.«have».toNat_lt
@@ -664,7 +701,7 @@ theorem NextOk_skipFwd {h : Heap} {s : GzState} (hN : NextOk h s) (t : Int) : Ne
       cases hp : s.x.next with
       | null => rw [hp] at hb; simp [padv, ptrBlk] at hb
       | ref r o => rw [hp] at hb; cases r <;> simp [padv, ptrBlk] at hb ⊢ <;> exact hb
-    have := hN.2 b hb'
+    have := hN.2 (hh h1) b hb'
     exact this
 
 
@@ -693,10 +730,15 @@ theorem NextOk_free {h : Heap} {s s' : GzState} (hN : NextOk h s) (gs : Nat) (z 
     (hnx : s'.x.next = s.x.next) (hhv : s'.x.«have».toNat ≤ s.x.«have».toNat)
     (hnull : s'.x.next = .null → s'.x.«have» = 0) (hm : s'.msg = .null) :
     NextOk (setS (freeStr h s.msg) gs z) s' := by
-  refine ⟨?_, ?_⟩
-  · rcases hN.1 with ⟨hnl, hh0⟩ | ⟨r, a, off, hr, hg, hl⟩
-    · exact Or.inl ⟨by rw [hnx]; exact hnl, hnull (by rw [hnx]; exact hnl)⟩
-    · exact Or.inr ⟨r, a, off, by rw [hnx]; exact hr, get_after_free hN.2 hr hg gs z, by omega⟩
+  have _ := hnull
+  refine ⟨fun h1 => ?_, fun _ => ?_⟩
+  · have h0 : s.x.«have» ≠ 0 := by
+      intro e
+      apply h1
+      have : s'.x.«have».toNat = 0 := by rw [e] at hhv; simpa using hhv
+      exact UInt32.toNat_inj.mp (by rw [this]; rfl)
+    obtain ⟨r, a, off, hr, hg, hl⟩ := hN.1 h0
+    exact ⟨r, a, off, by rw [hnx]; exact hr, get_after_free (hN.2 h0) hr hg gs z, by omega⟩
   · intro b hb; rw [hm]; simp [ptrBlk]
 
 theorem PosInv_resetRec (s : GzState) : PosInv (resetRec s) ∧ tellPos (resetRec s) = 0 := by
@@ -745,16 +787,15 @@ theorem sameCfg_copyRec (s : GzState) (t : Int) : SameCfg s (copyRec s t) :=
   ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
 
 theorem NextOk_setS {h : Heap} {s' : GzState} (hN : NextOk h s') (gs : Nat) (z : GzState) : NextOk (setS h gs z) s' := by
-  refine ⟨?_, hN.2⟩
-  rcases hN.1 with hn | ⟨r, a, off, hr, hg, hl⟩
-  · exact Or.inl hn
-  · exact Or.inr ⟨r, a, off, hr, by rw [space_get_setS]; exact hg, hl⟩
+  refine ⟨fun h1 => ?_, hN.2⟩
+  obtain ⟨r, a, off, hr, hg, hl⟩ := hN.1 h1
+  exact ⟨r, a, off, hr, by rw [space_get_setS]; exact hg, hl⟩
 
 theorem seek_write_safe {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (hP : PosInv s)
     (hnn : 0 ≤ s.x.pos.toInt) (he : s.err = Z_OK ∨ s.err = Z_BUF_ERROR) {whence : Int32}
     (hw : whence = SEEK_SET ∨ whence = SEEK_CUR) (hm : s.mode = GZ_WRITE) (hN : NextOk h s) (offset : Int64) (fs : Fs) :
     ∃ r h' s', gzseek64 (hnd gs) offset whence fs h = .ok ((r, fs), h') ∧ SeekPost h gs s (seekT s offset whence) r h' s' := by
-  have hrun := gzseek64_write_run hG hP hnn he hw hm offset fs
+  have hrun := gzseek64_write_run hG.toSeek hP hnn he hw hm offset fs
   have hOM := OffMax_val
   by_cases hc : SeekOk (seekT s offset whence) ∧ s.x.pos.toInt ≤ seekT s offset whence
   · rw [ite_eq_left hc] at hrun
@@ -802,8 +843,8 @@ theorem seek_fwd_safe {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (
     (hw : whence = SEEK_SET ∨ whence = SEEK_CUR) (hm : s.mode = GZ_READ) (hhow : s.how ≠ GZ_COPY) (hN : NextOk h s)
     (offset : Int64) (fs : Fs) (ht : SeekOk (seekT s offset whence)) (hfw : s.x.pos.toInt ≤ seekT s offset whence) :
     ∃ r h' s', gzseek64 (hnd gs) offset whence fs h = .ok ((r, fs), h') ∧ SeekPost h gs s (seekT s offset whence) r h' s' := by
-  have hhead := gzseek64_head hG hP hnn he hw offset fs
-  rw [ite_eq_left ht, seekTail_fwd hG hm hhow hnn ht hfw hN fs] at hhead
+  have hhead := gzseek64_head hG.toSeek hP hnn he hw offset fs
+  rw [ite_eq_left ht, seekTail_fwd hG.toSeek hm hhow ht (by have := ht.2; omega) hfw hN fs] at hhead
   have hpp := PosInv_skipFwd hnn ht hfw
   have hps := skipFwd_pos hnn ht hfw
   have hq : (Int64.ofInt (seekT s offset whence)).toInt = seekT s offset whence :=
@@ -822,8 +863,8 @@ theorem seek_copy_safe {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) 
     (hraw : -9223372036854775808 ≤ seekT s offset whence - s.x.pos.toInt - s.x.«have».toNat) :
     ∃ r fs' h', gzseek64 (hnd gs) offset whence fs h = .ok ((r, fs'), h') ∧
       (∃ s', SeekPost h gs s (seekT s offset whence) r h' s') := by
-  have hhead := gzseek64_head hG hP hnn he hw offset fs
-  rw [ite_eq_left ht, seekTail_copy hG hm hcopy hnn ht hraw fs] at hhead
+  have hhead := gzseek64_head hG.toSeek hP hnn he hw offset fs
+  rw [ite_eq_left ht, seekTail_copy hG.toSeek hm hcopy ht (by have := ht.2; omega) hraw fs] at hhead
   have hq : (Int64.ofInt (seekT s offset whence)).toInt = seekT s offset whence :=
     i64_toInt_ofInt (by have := ht.1; omega) (by have := ht.2; have := OffMax_val; omega)
   by_cases hl : (lseekRes s.fd (Int64.ofInt (seekT s offset whence - s.x.pos.toInt - s.x.«have».toNat)) SEEK_CUR fs).1 = -1
@@ -847,8 +888,8 @@ theorem seek_back_safe {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) 
     (offset : Int64) (fs : Fs) (ht : SeekOk (seekT s offset whence)) (hlt : seekT s offset whence < s.x.pos.toInt) :
     ∃ r fs' h', gzseek64 (hnd gs) offset whence fs h = .ok ((r, fs'), h') ∧
       (∃ s', SeekPost h gs s (seekT s offset whence) r h' s') := by
-  have hhead := gzseek64_head hG hP hnn he hw offset fs
-  rw [ite_eq_left ht, seekTail_back hG hm hhow he hnn ht hlt hN fs] at hhead
+  have hhead := gzseek64_head hG.toSeek hP hnn he hw offset fs
+  rw [ite_eq_left ht, seekTail_back hG.toSeek hm hhow he hnn ht hlt hN fs] at hhead
   have hq : (Int64.ofInt (seekT s offset whence)).toInt = seekT s offset whence :=
     i64_toInt_ofInt (by have := ht.1; omega) (by have := ht.2; have := OffMax_val; omega)
   by_cases hl : (lseekRes s.fd s.start SEEK_SET fs).1 = -1
@@ -905,13 +946,13 @@ theorem gzseek64_safe {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (
           exact ⟨r, fs, h', s', e, hp⟩
     · obtain ⟨r, h', s', e, hp⟩ := seek_write_safe hG hP hnn he hw hm hN offset fs
       exact ⟨r, fs, h', s', e, hp⟩
-  · have hhead := gzseek64_head hG hP hnn he hw offset fs
+  · have hhead := gzseek64_head hG.toSeek hP hnn he hw offset fs
     rw [ite_eq_right ht] at hhead
     exact ⟨_, _, _, s, hhead, hG, hP, hN, sameCfg_refl s, Or.inl ⟨rfl, rfl, rfl⟩⟩
 
 /-- `gzseek64` refuses a handle with a serious error, and a `whence` other than `SEEK_SET` and `SEEK_CUR`: `-1`,
 nothing changes. -/
-theorem gzseek64_refuse {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) {whence : Int32} (offset : Int64) (fs : Fs)
+theorem gzseek64_refuse {h : Heap} {gs : Nat} {s : GzState} (hG : SeekGood h gs s) {whence : Int32} (offset : Int64) (fs : Fs)
     (hb : (s.err ≠ Z_OK ∧ s.err ≠ Z_BUF_ERROR) ∨ (whence ≠ SEEK_SET ∧ whence ≠ SEEK_CUR)) :
     gzseek64 (hnd gs) offset whence fs h = .ok ((-1, fs), h) := by
   have hs := hG.hs
@@ -942,7 +983,7 @@ the start of a file), and in `pos - x.pos` for `SEEK_SET` with a negative `x.pos
 
 /-- `SEEK_SET` at a negative `x.pos` with `offset - x.pos >= 2^63`, where the unpatched C overflowed in `pos - x.pos`:
 the patched function refuses, `-1`, and nothing changes. -/
-theorem gzseek64_set_negpos_refuse {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (hP : PosInv s)
+theorem gzseek64_set_negpos_refuse {h : Heap} {gs : Nat} {s : GzState} (hG : SeekGood h gs s) (hP : PosInv s)
     (he : s.err = Z_OK ∨ s.err = Z_BUF_ERROR) (hneg : s.x.pos.toInt < 0) (offset : Int64)
     (hbig : 9223372036854775808 ≤ offset.toInt - s.x.pos.toInt) (fs : Fs) :
     gzseek64 (hnd gs) offset SEEK_SET fs h = .ok ((-1, fs), h) := by
@@ -959,8 +1000,9 @@ theorem gzseek64_set_negpos_refuse {h : Heap} {gs : Nat} {s : GzState} (hG : GzG
 whose `x.next` may point to an object that no longer exists (the caller's buffer after a direct decompression, freed by
 the caller) or may never have been written (R-3): a forward seek does not fault. Without patch 0005 the translation
 computed `x.next + 0` here and faulted on a dangling `x.next`. No hypothesis on `x.next`. -/
-theorem seekTail_fwd_empty {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (hm : s.mode = GZ_READ)
-    (hhow : s.how ≠ GZ_COPY) (hnn : 0 ≤ s.x.pos.toInt) {t : Int} (ht : SeekOk t) (hfw : s.x.pos.toInt ≤ t)
+theorem seekTail_fwd_empty {h : Heap} {gs : Nat} {s : GzState} (hG : SeekGood h gs s) (hm : s.mode = GZ_READ)
+    (hhow : s.how ≠ GZ_COPY) {t : Int} (ht : SeekOk t)
+    (hd : t - s.x.pos.toInt ≤ OffMax) (hfw : s.x.pos.toInt ≤ t)
     (h0 : s.x.«have» = 0) (fs : Fs) :
     seekTail (hnd gs) s (Int64.ofInt t) fs h = Except.ok ((Int64.ofInt t, fs), setS h gs (skipFwd s t)) := by
   have hs := hG.hs
@@ -1007,18 +1049,18 @@ theorem seekTail_fwd_empty {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs
 /-- `gzseek64` forward on a reader outside the raw area with nothing buffered: no fault, whatever `x.next` holds
 (dangling after a direct read and a `free` by the caller, R-4, or never written, R-3). With patch 0005; before it,
 the translation faulted on a dangling `x.next`. -/
-theorem gzseek64_dangling_next_ok {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (hP : PosInv s)
+theorem gzseek64_dangling_next_ok {h : Heap} {gs : Nat} {s : GzState} (hG : SeekGood h gs s) (hP : PosInv s)
     (hnn : 0 ≤ s.x.pos.toInt) (he : s.err = Z_OK ∨ s.err = Z_BUF_ERROR) {whence : Int32}
     (hw : whence = SEEK_SET ∨ whence = SEEK_CUR) (hm : s.mode = GZ_READ) (hhow : s.how ≠ GZ_COPY)
     (offset : Int64) (fs : Fs) (ht : SeekOk (seekT s offset whence)) (hfw : s.x.pos.toInt ≤ seekT s offset whence)
     (h0 : s.x.«have» = 0) :
     gzseek64 (hnd gs) offset whence fs h =
       .ok ((Int64.ofInt (seekT s offset whence), fs), setS h gs (skipFwd s (seekT s offset whence))) := by
-  rw [gzseek64_head hG hP hnn he hw offset fs, ite_eq_left ht, seekTail_fwd_empty hG hm hhow hnn ht hfw h0 fs]
+  rw [gzseek64_head hG hP hnn he hw offset fs, ite_eq_left ht, seekTail_fwd_empty hG hm hhow ht (by have := ht.2; omega) hfw h0 fs]
 
 /-- A seek inside the raw area faults exactly when `hraw` of `seekTail_copy` fails: the C expression
 `pos - x.pos - have` overflows (positions within `2^32` of `2^63`). -/
-theorem seekTail_copy_ub {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (hm : s.mode = GZ_READ)
+theorem seekTail_copy_ub {h : Heap} {gs : Nat} {s : GzState} (hG : SeekGood h gs s) (hm : s.mode = GZ_READ)
     (hcopy : s.how = GZ_COPY) (hnn : 0 ≤ s.x.pos.toInt) {t : Int} (ht : SeekOk t)
     (hraw : t - s.x.pos.toInt - s.x.«have».toNat < -9223372036854775808) (fs : Fs) :
     seekTail (hnd gs) s (Int64.ofInt t) fs h = .error (.ub "signed overflow (long)") := by

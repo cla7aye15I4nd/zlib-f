@@ -19,7 +19,7 @@ theorem mask15 : ∀ x : UInt8, (x.toUInt32 &&& 15).toNat = (x &&& 15).toNat :=
 theorem toNat32 : ∀ x : UInt8, x.toUInt32.toNat = x.toNat :=
   u8_forall _ (by decide +kernel)
 
-variable {e : Env} {c : Ctx}
+variable {α : Bool} {e : EnvG α} {c : Ctx}
 
 theorem LS.congr {l l' : L} {i o : Nat} (hl : LS e l i o) (h1 : l'.in_ = l.in_) (h2 : l'.out = l.out)
     (h3 : l'.hold = l.hold) (h4 : l'.bits = l.bits) : LS e l' i o := by
@@ -84,10 +84,10 @@ theorem i64_toU32 (n : Nat) (h : n < 2 ^ 32) :
 theorem i64_toInt (n : Nat) (h : n < 2 ^ 62) : (Int64.ofInt (n : Int)).toInt = n := by
   rw [Int64.ofInt_eq_ofNat]; exact Int64.toInt_ofNat_of_lt (by omega)
 
-theorem Env.bg_le (e : Env) : e.bg ≤ e.o0 := by unfold Env.bg; omega
+theorem EnvG.bg_le {α : Bool} (e : EnvG α) : e.bg ≤ e.o0 := by unfold EnvG.bg; omega
 
 /-- `strm->avail_in`-style facts used everywhere. -/
-theorem Env.hroomA (e : Env) : e.o0 + e.sm0.avail_out.toNat ≤ e.A0.size := e.hAsz
+theorem EnvG.hroomA {α : Bool} (e : EnvG α) : e.o0 + e.sm0.avail_out.toNat ≤ e.A0.size := e.hAsz
 
 /-- The continuation of the distance block after the extra bits were read: add the extra bits to the base, drop them,
 compute how much of the output of this call there is, and copy. -/
@@ -110,7 +110,7 @@ theorem distCont_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m : UInt32)
       ∃ xv rest, readBits l.op.toNat (Sg e l.hold.toNat l.bits.toNat i) = some (xv, rest) ∧
         l'.in_ = l.in_ ∧ l'.againD = l.againD ∧
         ((l'.broke = false ∧ LS e l' i (o + l.len.toNat) ∧ Sg e l'.hold.toNat l'.bits.toNat i = rest ∧
-            h' = e.heap (matchArr e.s0.wsize.toNat e.s0.wnext.toNat e.woff e.W e.bg o (l.dist.toNat + xv) l.len.toNat A) msg m) ∨
+            h' = e.heap (e.mArr e.bg o (l.dist.toNat + xv) l.len.toNat A) msg m) ∨
          (l'.broke = true ∧ LS e l' i o ∧ Sg e l'.hold.toNat l'.bits.toNat i = rest ∧ ∃ p, h' = e.heap A p BAD))) := by
   have hbgo : e.bg ≤ o := by have := e.bg_le; have := hls.ho0; omega
   have hoA : o ≤ A.size := by omega
@@ -144,7 +144,7 @@ theorem distCont_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m : UInt32)
     { in_ := l.in_, out := l.out, hold := l.hold >>> l.op.toUInt64, bits := l.bits - l.op, here := l.here,
       op := (Int64.ofInt (((o - e.bg : Nat)) : Int)).toUInt64.toUInt32, len := l.len,
       dist := l.dist + (l.hold.toUInt32 &&& 1 <<< l.op - 1), from_ := l.from_, broke := l.broke, againL := l.againL,
-      againD := l.againD } o hls.hout hbgo hopn (by simp only [hdist']; omega) hlen.1 (by simp; omega) hbroke) ?_
+      againD := l.againD } o hls.hout hbgo hopn (by simp only [hdist']; omega) hlen.1 (by simp; omega) hA hbroke) ?_
   intro l' h' hq
   have hho0 := hls.ho0
   obtain ⟨hin, hhold, hbits, -, hagD, hres⟩ := hq
@@ -167,7 +167,7 @@ theorem distCont_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m : UInt32)
       · rw [hhold, hbits]; rfl
 
 
-theorem Env.heap_cget (e : Env) (A : Array UInt8) (msg : BPtr) (m : UInt32) (r : CodeRef) :
+theorem EnvG.heap_cget {α : Bool} (e : EnvG α) (A : Array UInt8) (msg : BPtr) (m : UInt32) (r : CodeRef) :
     Space.get (e.heap A msg m) r = Space.get e.h0 r := by
   cases r with
   | istate_codes id =>
@@ -178,27 +178,27 @@ theorem Env.heap_cget (e : Env) (A : Array UInt8) (msg : BPtr) (m : UInt32) (r :
   | st_lenfix => simp [Space.get, e.heap_static]
   | st_distfix => simp [Space.get, e.heap_static]
 
-theorem Env.heap_cget_DCA (e : Env) (A : Array UInt8) (msg : BPtr) (m : UInt32) :
+theorem EnvG.heap_cget_DCA {α : Bool} (e : EnvG α) (A : Array UInt8) (msg : BPtr) (m : UInt32) :
     Space.get (e.heap A msg m) e.rd = some e.DCA := by rw [e.heap_cget]; exact e.hDCA
 
-theorem Env.heap_cget_LCA (e : Env) (A : Array UInt8) (msg : BPtr) (m : UInt32) :
+theorem EnvG.heap_cget_LCA {α : Bool} (e : EnvG α) (A : Array UInt8) (msg : BPtr) (m : UInt32) :
     Space.get (e.heap A msg m) e.rl = some e.LCA := by rw [e.heap_cget]; exact e.hLCA
 
 
 /-- How a distance-table entry is treated by `dodist`. -/
-abbrev DistClass (e : Env) (E : Code) : Prop :=
+abbrev DistClass {α : Bool} (e : EnvG α) (E : Code) : Prop :=
   (E.op &&& 16 ≠ 0 ∧ (E.op &&& 15).toNat ≤ 13 ∧ 1 ≤ E.val.toNat) ∨
   (E.op &&& 16 = 0 ∧ E.op &&& 64 = 0 ∧ 1 ≤ E.op.toNat ∧ E.op.toNat ≤ 15 ∧ e.od + E.val.toNat + 2 ^ E.op.toNat ≤ e.DCA.size) ∨
   (E.op &&& 16 = 0 ∧ E.op &&& 64 ≠ 0)
 
 /-- A distance block that ended (no link): a match of length `len` was copied, or an error was found. `S` is the bit
 stream after the code of the distance symbol. -/
-def DistEnd (e : Env) (A : Array UInt8) (msg : BPtr) (m : UInt32) (S : List Bool) (i o len : Nat) (E : Code) (l' : L)
+def DistEnd {α : Bool} (e : EnvG α) (A : Array UInt8) (msg : BPtr) (m : UInt32) (S : List Bool) (i o len : Nat) (E : Code) (l' : L)
     (h' : Heap) : Prop :=
   ¬ DistLink E ∧ l'.againD = false ∧
   ((∃ i' xv rest, i ≤ i' ∧ i' ≤ i + 2 ∧ readBits (E.op &&& 15).toNat S = some (xv, rest) ∧
       l'.broke = false ∧ LS e l' i' (o + len) ∧ Sg e l'.hold.toNat l'.bits.toNat i' = rest ∧
-      h' = e.heap (matchArr e.s0.wsize.toNat e.s0.wnext.toNat e.woff e.W e.bg o (E.val.toNat + xv) len A) msg m) ∨
+      h' = e.heap (e.mArr e.bg o (E.val.toNat + xv) len A) msg m) ∨
    (∃ i' p, i ≤ i' ∧ i' ≤ i + 2 ∧ l'.broke = true ∧ LS e l' i' o ∧ h' = e.heap A p BAD))
 
 
@@ -222,7 +222,7 @@ theorem dodistBase_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m : UInt3
       ∃ i' xv rest, i ≤ i' ∧ i' ≤ i + 2 ∧ readBits l.op.toNat (Sg e l.hold.toNat l.bits.toNat i) = some (xv, rest) ∧
         l'.againD = l.againD ∧
         ((l'.broke = false ∧ LS e l' i' (o + l.len.toNat) ∧ Sg e l'.hold.toNat l'.bits.toNat i' = rest ∧
-            h' = e.heap (matchArr e.s0.wsize.toNat e.s0.wnext.toNat e.woff e.W e.bg o (l.dist.toNat + xv) l.len.toNat A) msg m) ∨
+            h' = e.heap (e.mArr e.bg o (l.dist.toNat + xv) l.len.toNat A) msg m) ∨
          (l'.broke = true ∧ LS e l' i' o ∧ ∃ p, h' = e.heap A p BAD))) := by
   unfold dodistBase
   by_cases h1 : l.bits < l.op

@@ -6,11 +6,11 @@ open C Zlib.Inffast Zlib.Inffast.Spec
 
 /-- A complete nonterminal fast call strictly consumes output room.
 The state and stream are the actual records on the returned heap. -/
-def FastProgress (e : Env) (after : Heap) : Prop :=
+def FastProgress {α : Bool} (e : EnvG α) (after : Heap) : Prop :=
   ∃ stream state, e.r.get after = some stream ∧ after.istates e.stid = some state ∧
     (state.mode ≠ TYPE → state.mode ≠ BAD → stream.avail_out.toNat < e.sm0.avail_out.toNat)
 
-theorem fast_finish_progress_wp (e : Env) (A : Array UInt8) (msg : BPtr) (mode : UInt32)
+theorem fast_finish_progress_wp {α : Bool} (e : EnvG α) (A : Array UInt8) (msg : BPtr) (mode : UInt32)
     (l : L) (i o : Nat) (hl : LS e l i o) (hAsz : A.size = e.A0.size)
     (ho : o ≤ e.o0 + e.sm0.avail_out.toNat)
     (hf : ∀ j, (j < e.o0 ∨ o ≤ j) → A[j]? = e.A0[j]?)
@@ -119,7 +119,7 @@ theorem fast_finish_progress_wp (e : Env) (A : Array UInt8) (msg : BPtr) (mode :
       omega
 
 /-- The actual complete fast decoder retains safety and strict nonterminal output progress. -/
-theorem inflate_fast_safe_progress (e : Env) :
+theorem inflate_fast_safe_progress {α : Bool} (e : EnvG α) :
     ∃ after, C.run (inflate_fast e.strm e.start) e.h0 = .ok ((), after) ∧
       FastPost e after ∧ FastProgress e after := by
   have hw : Wp (inflate_fast e.strm e.start) e.h0 (fun _ after => FastPost e after ∧ FastProgress e after) := by
@@ -159,7 +159,7 @@ theorem inflate_fast_safe_progress (e : Env) :
       have hr := subn_ok (h := e.h0) (r := BRef.blk e.ob) (a := e.A0)
         (off := e.o0) (n := e.start - e.sm0.avail_out) e.hA0 (by rw [hn]; exact e.hbeg)
         (by have := e.hAsz; omega)
-      simpa only [hn, Env.bg] using hr
+      simpa only [hn, EnvG.bg] using hr
     have hend : OkOn e.h0 (Ptr.add e.sm0.next_out (e.sm0.avail_out - 257).toNat)
         (.ref (BRef.blk e.ob) (e.o0 + e.sm0.avail_out.toNat - 257)) := by
       rw [e.hnout, u32_toNat_sub (by change 257 ≤ e.sm0.avail_out.toNat; have := e.hao; omega)]

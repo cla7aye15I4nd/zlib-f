@@ -216,7 +216,7 @@ theorem zcalloc_ok_run (h : Heap) (op : BPtr) (items sz : UInt32) (hok : h.alloc
     (hF : Fresh h) :
     zcalloc op items sz h = .ok (.ref (.blk h.nextBlk) 0, allocHeap h (items * sz).toNat) := by
   unfold zcalloc
-  exact allocB_some _ hok
+  exact allocB_some _ hok (C.UInt32.toNat_lt_mallocLimit _)
 
 theorem zcalloc_fail_run (h : Heap) (op : BPtr) (items sz : UInt32) (hok : ¬ h.allocOk h.nalloc = true) :
     zcalloc op items sz h = .ok (.null, failHeap h) := by

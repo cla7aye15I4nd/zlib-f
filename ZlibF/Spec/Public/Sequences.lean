@@ -347,7 +347,10 @@ def BackFirstChunk (z : ZStream) (first : List UInt8) : Prop :=
 /-- Callback histories of the safety goal: those of `BackReachable` whose window is a slice of a
 heap byte block, and whose calls start on a heap whose byte objects fit, with a protocol that
 keeps them fitting and hands out chunks in heap byte blocks (`docs/deviations.md`, "Callback
-decoder window" and "Callback decoder input chunks"). -/
+decoder window" and "Callback decoder input chunks"). A caller's edit between calls keeps the
+read-only flag of every block that stays live, as `ExternalFrame` does for the call-backs: C code
+cannot make memory read-only, and `Rebuffer` alone lets a window at a nonzero offset (a block the
+stream does not own) become read-only in the model. -/
 inductive BackSafeReachable : Heap → ZStreamRef → Nat → BPtr → Nat → Prop
   | init {h after r version wb window} : InitDomain h r version →
       8 ≤ wb.toInt → wb.toInt ≤ 15 → Writable h window (2 ^ wb.toInt.toNat) → window ≠ .null →
@@ -355,7 +358,8 @@ inductive BackSafeReachable : Heap → ZStreamRef → Nat → BPtr → Nat → P
       C.run (Zlib.Infback.inflateBackInit_ (some r) wb window version 112) h = .ok (Z_OK, after) →
       BackSafeReachable after r h.nextBlk window (2 ^ wb.toInt.toNat)
   | caller {h after r i window n} : BackSafeReachable h r i window n → Rebuffer h after r →
-      SameBytePrefix h after window window n → BackSafeReachable after r i window n
+      SameBytePrefix h after window window n →
+      (∀ b, h.live b → after.live b → after.ro b = h.ro b) → BackSafeReachable after r i window n
   | step {h after r i window n z input inDesc output outDesc first rc}
       (protocol : CallbackProtocol r i window n input inDesc output outDesc) :
       BackSafeReachable h r i window n → r.get h = some z →

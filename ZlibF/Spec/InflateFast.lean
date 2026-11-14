@@ -14,7 +14,7 @@ open C Zlib.Inffast
 /-- The loop's six-byte and 258-byte margins, and the existing concrete heap/table context.
 `A` is the current output array, with its original allocation size. No function contract occurs
 in this precondition. -/
-structure StepPre (e : Proofs.Env) (c : Ctx) (A : Array UInt8) (l : L) (i o : Nat) : Prop where
+structure StepPre {α : Bool} (e : Proofs.EnvG α) (c : Ctx) (A : Array UInt8) (l : L) (i o : Nat) : Prop where
   context : Proofs.CtxOK e c
   locals : Proofs.LS e l i o
   outputSize : A.size = e.A0.size
@@ -28,7 +28,7 @@ structure StepPre (e : Proofs.Env) (c : Ctx) (A : Array UInt8) (l : L) (i o : Na
 iteration writes at least one byte. Only the newly written output interval and the stream's
 message/state mode may change; table storage, input and other allocations are framed by `heap`.
 This is a safety/progress contract, not the still-required Huffman-format refinement. -/
-def StepPost (e : Proofs.Env) (A : Array UInt8) (msg : BPtr) (mode : UInt32)
+def StepPost {α : Bool} (e : Proofs.EnvG α) (A : Array UInt8) (msg : BPtr) (mode : UInt32)
     (i o : Nat) (l' : L) (h' : Heap) : Prop :=
   ∃ i' o' A' msg' mode',
     Proofs.LS e l' i' o' ∧
@@ -50,7 +50,7 @@ def Goal.step_safe : Prop :=
 Only the produced output interval, stream buffer fields/message, and state bits/mode change.
 The internal `Env` table predicates must be established by the main decoder; they do not
 assert RFC decoding for arbitrary safe tables. -/
-def FastPost (e : Proofs.Env) (after : Heap) : Prop :=
+def FastPost {α : Bool} (e : Proofs.EnvG α) (after : Heap) : Prop :=
   ∃ (inputUsed outputUsed bufferedBytes : Nat) (bytes : Array UInt8) (msg : BPtr)
     (mode bits : UInt32) (hold : UInt64),
     inputUsed + bufferedBytes ≤ e.sm0.avail_in.toNat ∧ bufferedBytes ≤ 3 ∧

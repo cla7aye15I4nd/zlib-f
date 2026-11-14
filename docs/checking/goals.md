@@ -7,8 +7,9 @@ The project also targets every configuration built by upstream CI.
 `tests/audit/public-api.json` fixes the public inventory against the pinned `zlib.h`. Each
 entry names a translated function, a manual section and its required final target. There are
 95 default-build entries and eight family obligations: four lifecycle contracts and four
-initialisation-domain contracts. Its `safety_goals` group lists the ten safety targets of the
-current scope: the `inflate` and `deflate` call sequences, `uncompress*` and `compress*`. The
+initialisation-domain contracts. Its `safety_goals` group lists the safety targets of the
+current scope: the `inflate`, `deflate` and `inflateBack` call sequences, `uncompress*` and
+`compress*`. The
 Windows-only `gzopen_w` is identified separately.
 An inventory entry is a requirement, not a proof.
 

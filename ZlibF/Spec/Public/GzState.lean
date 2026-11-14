@@ -73,7 +73,9 @@ def GzArguments (h : Heap) (i : Nat) (s : GzState) : Call → Prop
       if size.toNat * n.toNat ≥ 2 ^ 64 then True else GzRange h i s p (size.toNat * n.toNat) false
   | .gzgets _ p n => if n.toInt < 1 ∨ p = .null then True else GzRange h i s p n.toInt.toNat true
   | .gzputs _ p => ∃ xs, CString h p xs ∧ GzRange h i s p (xs.length + 1) false
-  | .gzprintf _ p args | .gzvprintf _ p args => ∃ xs, Formatted h p args xs
+  | .gzprintf _ p args | .gzvprintf _ p args => (∃ xs, Formatted h p args xs) ∧
+      (∀ b, ByteRoot p b → ¬ GzOwned h i s b) ∧
+      ∀ q, VaArg.str q ∈ args → ∀ b, ByteRoot q b → ¬ GzOwned h i s b
   | .gzerror _ p => p = .null ∨ GzRange h i s p 4 true
   | _ => True
 

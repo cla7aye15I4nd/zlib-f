@@ -1,4 +1,6 @@
 import ZlibF.Proof.«gz.skeleton-model»
+import ZlibF.Proof.«gz.read-close»
+import ZlibF.Proof.«gzread.c.skip-have»
 
 /-!
 # gz file interface, safety skeleton: the read side (skeleton)
@@ -72,8 +74,8 @@ theorem gz_fetch_safe (i : Nat) (h : Heap) (fs : Fs) (s : GzState)
 (`x.next += 0` on a pointer that was never written or that points into freed caller memory) and F-1. -/
 theorem gz_skip_have_safe (i : Nat) (h : Heap) (s : GzState) (inv : GzInv h i s) (hm : s.mode = GZ_READ) :
     ∃ after s', C.run (Zlib.Gzread.gz_skip_have (gzSt i)) h = .ok ((), after) ∧ GzInv after i s' ∧
-      after = putGz h i s' ∧ s'.skip.toInt + s'.x.pos.toInt = s.skip.toInt + s.x.pos.toInt := by
-  sorry
+      after = putGz h i s' ∧ s'.skip.toInt + s'.x.pos.toInt = s.skip.toInt + s.x.pos.toInt :=
+  ZlibF.Spec.Public.gz_skip_have_safe i h s inv hm
 
 /-- `gz_skip(state)`: skip decreases, or end of input; termination needs M7. -/
 theorem gz_skip_safe (i : Nat) (h : Heap) (fs : Fs) (s : GzState)
@@ -130,8 +132,9 @@ theorem gzdirect_step (i : Nat) : GzCallSafe i (.gzdirect (some (.in_gzstate_x i
 
 /-- `gzclose_r`: refuses a writer; otherwise `inflateEnd` (part 3 of the inflate sequence goal) when buffers
 exist, frees `out`, `in`, the message, the path and the record, and closes the descriptor, which is released
-whatever `close` returns (M4). -/
-theorem gzclose_r_step (i : Nat) : GzCloseSafe i (.gzclose_r (some (.in_gzstate_x i))) := by
-  sorry
+whatever `close` returns (M4). Closed on `dev`: `GzRead.gzclose_r_step_safe` (`gz.read-close`) is this statement
+written out, with `GzRead.Close.Released`, which is `GzReleased` by definition. -/
+theorem gzclose_r_step (i : Nat) : GzCloseSafe i (.gzclose_r (some (.in_gzstate_x i))) :=
+  GzRead.gzclose_r_step_safe i
 
 end ZlibF.Spec.Public.GzSkeleton

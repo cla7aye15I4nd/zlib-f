@@ -48,6 +48,19 @@ def handle (fn : String) (args : List String) : Except String String :=
     return match C.run m C.Heap.empty with
       | .ok (s, _) => s
       | .error f => showFault f
+  | "malloc", [n] => do
+    -- `malloc((size_t)n)` through the runtime allocator on a heap whose oracle always succeeds: only the size test
+    -- can refuse. The rows stay below 2^32 or at or above 2^63, so no huge block is built.
+    let n ← parseNat n
+    if n ≥ 2 ^ 64 then throw "does not fit size_t"
+    let m : C.M String := do
+      let p ← C.allocB n
+      if p == .null then return "null"
+      C.freeB p
+      pure "ok"
+    return match C.run m C.Heap.empty with
+      | .ok (s, _) => s
+      | .error f => showFault f
   | _, _ => throw s!"unknown function or wrong arity: {fn}"
 
 def main : IO UInt32 := mainLoop handle

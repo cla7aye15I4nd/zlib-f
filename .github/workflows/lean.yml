@@ -90,6 +90,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: No sorry
         run: scripts/check-sorry.sh
+      - name: Every string literal of the translations is in strTable
+        run: python3 scripts/check-strlit.py
 
   # The audit: axioms, doc strings and the goals.
   audit_core:

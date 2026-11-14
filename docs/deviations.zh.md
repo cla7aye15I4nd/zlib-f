@@ -1,4 +1,4 @@
-<!-- source-sha256: 6452aecd813f83158978dc293e5b43f01d63c88e66e3e08c0be33faad2e788f2 -->
+<!-- source-sha256: 2a3e52345f20816ca97277260ab0ed81773750e624aa78a14dd81c7efacbae17 -->
 # 调用者定义域与表示限制
 
 超出模型能力的定理不是 C 正确性结果。本登记记录 API 适配器的受限定义域和缺口。每个强于 `zlib.h` 的前置条件，也必须写入定理文档字符串。聚焦手册中的狭窄例子不改变固定公开目标，也不把排除调用判为未定义。见[契约约定](spec/api/contracts.md)。[Sanitizer 报告](sanitizer-reports.md)列出 sanitizer 在真实 C 上报告的每种调用者布局，以及排除它的前提。
@@ -12,7 +12,7 @@
 | 领域 | 当前限制 | 影响 |
 | --- | --- | --- |
 | 初始配置 | 默认 x86_64 Linux、LP64、静态构建和默认分配器 | 其他上游配置和自定义分配器需要独立覆盖。默认分配失败仍在范围内。 |
-| 平台字节对象范围 | 每个表示出的字节对象小于 `2^63` 字节，包括调用者、静态和内嵌存储 | 这是接受的[系统环境前提](spec/platform.md)，由 `Goal.inflate`、内部快速入口，以及通过共享契约定义的八个压缩／解压便利入口显式使用。限制逐对象成立，没有总内存或总流长度限制。它也在调用历史的每个堆上成立：对 inflate 流，`StreamReachable` 在每次流调用前的堆上、以及调用者修改后的堆上假设它（deflate 一侧在证明 deflate 调用保持它之后再加入），`StreamSequenceSafety` 的单次调用条款也假设它。`Goal.inflate_sequence` 的 inflate 协议历史（`InflateDataTrace`、`InflateProtocolTrace`）在相同位置带有它，`InflateCompletes` 在调用所在的堆上假设它。该前提可满足：公开调用者见证堆满足它（`inflate_default_witness_platform`）。执行证明保持它，因此以它开始的历史只在调用者提供新存储时需要再次满足它。对回调解码器，`Goal.inflate_back_sequence_safety` 在历史中每次 `inflateBack` 调用所在的堆上（`BackSafeReachable.step`）和它所陈述的那次调用的堆上假设它，并在每个回调步骤之后假设它（`BackPlatform`）。证明操作系统限制不属于 zlib 证明。 |
+| 平台字节对象范围 | 每个表示出的字节对象小于 `2^63` 字节，包括调用者、静态和内嵌存储 | 这是接受的[系统环境前提](spec/platform.md)，由 `Goal.inflate`、内部快速入口、通过共享契约定义的八个压缩／解压便利入口，以及 gzip 打开入口 `Goal.gzopen`、`Goal.gzopen64` 和 `Goal.gz_initialisation_domain`（调用者的路径和模式字符串；[回归](../tests/verification/regressions/gzopen-path-ptrdiff.lean)）显式使用。限制逐对象成立，没有总内存或总流长度限制。它也在调用历史的每个堆上成立：对 inflate 流，`StreamReachable` 在每次流调用前的堆上、以及调用者修改后的堆上假设它（deflate 一侧在证明 deflate 调用保持它之后再加入），`StreamSequenceSafety` 的单次调用条款也假设它。`Goal.inflate_sequence` 的 inflate 协议历史（`InflateDataTrace`、`InflateProtocolTrace`）在相同位置带有它，`InflateCompletes` 在调用所在的堆上假设它。该前提可满足：公开调用者见证堆满足它（`inflate_default_witness_platform`）。执行证明保持它，因此以它开始的历史只在调用者提供新存储时需要再次满足它。对回调解码器，`Goal.inflate_back_sequence_safety` 在历史中每次 `inflateBack` 调用所在的堆上（`BackSafeReachable.step`）和它所陈述的那次调用的堆上假设它，并在每个回调步骤之后假设它（`BackPlatform`）。证明操作系统限制不属于 zlib 证明。 |
 | Adler 初始化查询 | `AdlerBufferBytes` 只允许零长度时为 NULL；非空可读对象保留原定义域 | 该显式限制窄于固定头文件对 NULL 不加限定的表述。它适用于 `Goal.adler32_z` 和 `Goal.adler32`；CRC 契约保留 `BufferBytes` 不变。上游 [PR #1364](https://github.com/madler/zlib/pull/1364) 报告了对 NULL `buf` 的单字节读取；维护者于 2026 年 11 月 6 日关闭该请求，保留代码，并宣布将在 zlib.h 中加入对 `len` 的限制。`develop` 头 `99623ef7097352da7993ba614161fd6a311e046e` 尚未包含该文字；文字合入后需按其复核本行。 |
 | 聚焦函数手册 | 条目可能要求有效句柄、分离缓冲区、实际字符串的校验和、生成的操作符或特定调用顺序 | 这些是明确的文字范围，不缩小更广泛 Lean 公开目标。 |
 | 压缩器长度单元 | `Concrete.compress2_z` 和 `Concrete.compress2` 使用可选标量输入及返回的存储值 | 不表示该单元与输入或输出的别名。若 C API 允许，完整指针定义域结论需要解决它。`_z` 与兼容包装的空单元效果仍不同。 |
@@ -36,6 +36,8 @@
 | 流缓冲区（`StreamBuffers`） | 输入范围（`next_in`、`avail_in`）与输出范围（`next_out`、`avail_out`）互相分离，且都不在流自己拥有的存储内。每个范围或为 NULL，或可读，输出范围还须可写。 | `Goal.inflate` 与 `Goal.deflate` 以它为前提。输入与输出重叠，或缓冲区落在流自身状态内的调用不在覆盖范围内。 |
 | 整缓冲区压缩（`CompressArguments`） | 源与目标不重叠：`Separate source n dest c`。 | 适用于 `compress`、`compress2` 及其 `_z` 形式。源与目标重叠的调用不在覆盖范围内。 |
 | 计数解压（`UtilitySeparation`、`UncompressSingle`） | 源、目标、目标长度单元和源长度单元两两分离。`uncompress` 与 `uncompress_z` 需要源与目标、长度单元与数据的分离。 | 适用于 `uncompress`、`uncompress2` 及其 `_z` 形式。长度单元与数据缓冲区或另一个单元重叠的调用不在覆盖范围内。 |
+| 被拒绝的流（`RefusedInflate`、`RefusedDeflate`；`Goal.inflate_refusal`、`Goal.deflate_refusal`） | 被拒绝的流是 `NULL`，或者是一个可读记录，其状态为 `NULL`、其 `zalloc` 或 `zfree` 为 `NULL`，或其状态是一个被检查拒绝的存活状态记录（反向指针、模式或状态错误）。 | 这包括 `End` 之后、初始化失败之后、复制失败的目标，以及存活记录的结构体副本。状态字段为垃圾指针的记录在定义域之外，例如从未初始化的自动 `z_stream`。检查会经由该指针读取，在 C 中这是未定义行为。模型同样无法表达它：在模型中，新内存里的指针为 `NULL`（`docs/trusted-base.md`，“Uninitialised pointers become NULL”一行）。 |
+| 复制目标（`Goal.inflateCopy`、`Goal.deflateCopy`、`Goal.deflateCopy_safety`） | 目标记录不是源记录（`source ≠ dest`）。模型把 `z_stream` 记录放在自己的表中，与字节和字缓冲区以及状态记录分开。因此无法表达部分重叠源记录、缓冲区或源所拥有的状态记录的目标。 | 当 `dest == source` 时，C 的 `zmemcpy(dest, source, sizeof(z_stream))` 把对象复制到自身上，这是未定义行为；该情况不在覆盖范围内。部分重叠的目标同样在定理之外：独立的记录表把它假设掉了（`docs/trusted-base.md`，地址与布局模型）。zlib.h 没有说明是否允许这种布局。 |
 | 字典缓冲区 | 字典的目标或源与流的窗口分离。 | 适用于 `inflateGetDictionary`、`deflateGetDictionary`、`inflateSetDictionary` 与 `deflateSetDictionary`。 |
 | inflate gzip extra 字段（`InflateHeaderProgress`） | `inflate` 把 gzip 头（`HEAD` .. `HCRC`）读入挂接的 `gz_header` 时，其 `extra` 缓冲区（`extra_max` 字节）与未读输入分离；在 `EXTRA` 中，头记录的 `extra_len` 不小于 `state->length`。 | `ActiveHeader` 的一个合取项，因此是 `Goal.inflate` 及 `Goal.inflate_sequence` 中每次 `inflate` 调用的前提。每个被排除的情形都是真实 C 在 EXTRA 的 `zmemcpy` 中的未定义行为（[复现](../tests/regression/inflate-gzip-extra/README.md)）：重叠复制，或调用者在 extra 字段内调低 `extra_len` 后越过 `extra_max` 写入。zlib.h 没有说明这两种布局是否允许。 |
 | deflate gzip 头区域（`DeflateHeaderApart`） | `deflate` 写入挂接的 `gz_header`（`GZIP_STATE` .. `HCRC_STATE`）期间，输入范围、输出范围、extra 字段（`extra_len mod 2^16` 字节）、name 与 comment（各含其 NUL）两两为分离的字节范围，可以位于同一块中；extra、name 与 comment 位于流所拥有的存储之外。 | `ActiveHeader` 的一个合取项，因此是 `Goal.deflate` 及 `Goal.deflate_sequence` 中每次 `deflate` 调用的前提。这些区域没有重叠的理由。其中两种被排除的情形是真实 C 的未定义行为（[复现](../tests/regression/deflate-gzip-name-output/README.md)）：位于输出范围或 `pending_buf` 中的 name，其 NUL 被刷新或头字节覆盖，name 循环越过缓冲区读取。zlib.h 没有说明这些布局是否允许。 |
@@ -51,7 +53,7 @@
 | 高级操作组合 | Priming、头部和恢复保留具体逐入口目标 | 目标集合不是每种组合的完整操作细化。证明不能选择或清除历史资格标记来逃避义务。 |
 | 快速解码辅助函数 | 局部执行和位来源引理假设输入与输出为原始字节块（互异，或同一块中不相交的范围）、窗口块不同于输出块、六个输入字节、258 个输出字节、入口位数小于八及 sane 模式 | 这些是构造和 init 不变量必须建立的内部前提，既不限制也不证明公开 inflate 目标。 |
 | 内部首次公开 deflate 路径 | 默认级别六，Z_NO_FLUSH，原始输出且至少包含三个字节以及显式的块前字节预算 | 该作用域组合涵盖了初始化兼容的首次调用，包括空输入。它不替代或缩小 Goal.deflate 的范围。头部片段执行还包括一个字节分割的头部。 |
-| 回调 | 回调返回、输入有有限界限、保留调用者窗口切片 | 描述符对象可共享窗口分配中切片以外的部分。观察不变量只忽略窗口字节，保留对其余字节的效果。这些外部假设必须显式保留。 |
+| 回调 | 回调返回、输入有有限界限、保留调用者窗口切片 | 描述符对象可共享窗口分配中切片以外的部分。观察不变量只忽略窗口字节，保留对其余字节的效果。这些外部假设必须显式保留。在回调解码器历史的两次调用之间（`BackSafeReachable.caller`），调用者的修改保持每个仍存活的块的只读标志，与回调相同（`ExternalFrame`）；C 代码不能改变它。 |
 | 回调输入总量 | `Goal.inflate_back_sequence_safety` 假设 `protocol.inputBound < 2^48`：一次 `inflateBack` 调用的所有 `in` 调用共提供少于 `2^48` 字节 | zlib.h 对一次调用的总输入没有限制。运行时把每个循环限制在 `2^64` 次迭代（`docs/trusted-base.md`），解码循环每轮至少读一位，因此提供更多输入的调用可能在 C 仍会继续时耗尽额度。`2^48` 字节远超一次调用实际能处理的输入。`Goal.inflateBack`（功能性，未计划）没有这个前提。 |
 | 回调解码器窗口 | `Goal.inflate_back_sequence_safety`（通过 `BackSafeReachable.init`）假设调用者的窗口是一个堆字节块的切片 | zlib.h 只要求 `2^windowBits` 字节的可写窗口。模型中另一种可写字节视图只有 deflate 状态内部的 depth 数组，那是调用者无法指名的库存储；窗口位于那里不在已证明的定义域内。 |
 | 回调解码器输入块 | `Goal.inflate_back_sequence_safety` 假设每个输入块位于一个堆字节块中：调用者的第一个输入块（`BackFirstChunk`）以及 `in` 交出的每个输入块（`BackPlatform`） | C 能处理位于任何可读存储中的输入块。位于其他存储中的输入块，例如调用者结构体的字段或静态数据，不在已证明的定义域内。这与 `inflate` 快速入口的限制相同（"快速解码辅助函数"）：`inflate_fast` 在该输入块上运行。把两个解码器推广到任意字节引用是 `docs/progress.md` 中的候选工作。 |
@@ -64,7 +66,7 @@ gz 世界是堆之外的可信语义。目前范围小于 C 调用的系统接�
 | --- | --- | --- |
 | gz 读取终止（M7） | gz 序列安全目标终止的那一半，对 `gzread`、`gzfread`、`gzgetc`、`gzgetc_`、`gzgets` 和 `gzungetc` 假设句柄的描述符编号具有有限读取额度（`fs.readBudget fd ≠ none`，前提 `ReadsFinite`）。关闭后重用的编号继承剩余额度 | zlib.h 不限制输入。永远交付只解码为空内容的数据（空 gzip 成员）的来源会让 `gz_fetch` 一直循环；对无穷来源进行巨大待跳过量的 `gz_skip` 会永远读取：这是 C 真实的不终止，任何有限额度都覆盖不了。有额度时每个循环都有界。该前提不排除任何故障：无故障的那一半和后置条件对每个世界成立，不需要额度。`gzdirect`、写入一侧和 `gzseek` 不需要它。 |
 | gz 操作系统事实 | 非空 `write` 从不返回 0；`close` 失败时也释放描述符 | Linux 行为，可信，未检查。`write` 永远返回 0 会让 C 中的 `gz_comp` 无限循环（`docs/progress.md` 中的观察记录）。 |
-| gz 文件数据 | 功能性的 gz 契约（`FileData`、`CloseContract`、`GzWriterFormat`、读写结果值、偏移与回绕值）针对系统调用预言的普通文件实例（`RegularOs`）陈述 | 它们描述普通文件；安全目标不使用它们。文件系统权限、父目录、链接、所有权和锁未被表示；预言的失败覆盖它们对每次调用的影响。 |
+| gz 文件数据 | 功能性的 gz 契约（`FileData`、`CloseContract`、`GzWriterFormat`、读写结果值）以及已登记目标 `Goal.gzoffset64`、`Goal.gzoffset` 和 `Goal.gzrewind`（自 `caad9db4` 起带前提 `RegularOs fs`）针对系统调用预言的普通文件实例（`RegularOs`）陈述 | 它们描述普通文件。预言的 `lseek` 可以返回而不移动描述符，某些 Linux 设备即如此；此时偏移与回绕的结果值不成立（[回归](../tests/verification/regressions/gz-offset-regular-world.lean)）。安全目标不使用这些契约。`gzoffset64`、`gzoffset` 和 `gzrewind` 在每个世界上的安全属于 `Goal.gz_sequence_safety`，经由步骤引理 `gzoffset64_step`、`gzoffset_step` 和 `gzrewind_step`（分支 `skeleton/gz`，对每个 `fs` 陈述，无 `RegularOs`；未完成）。文件系统权限、父目录、链接、所有权和锁未被表示；预言的失败覆盖它们对每次调用的影响。 |
 | 格式化 | 表示出的整数、字符和字符串参数，以及支持的标志、宽度、精度和长度修饰符 | 浮点、指针、写计数和其他未表示转换需要扩展模型。草案契约显式要求可表示的有效格式化结果。 |
 | 外部错误字符串 | `strerror` 返回带有调用代次的只读外部视图，不消耗分配尝试，也不增加库拥有的存活块；下一次调用使旧借用视图失效 | 模型选取顺序调用和固定区域设置下的文本，不表示并发调用、区域设置更改或旧指针身份的再次复用。文本复制与借用保持是独立证明义务。这不是完整的 libc 对应结论。 |
 | 循环额度 | 每个翻译循环使用固定运行时额度 | 即使每个外部操作都返回，也不能据此证明任意有限回调或外部世界行为终止。 |

@@ -204,11 +204,27 @@ class ProgressTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'before generating'):
             progress.target_url(graph, graph['nodes'][0])
 
-    def test_recorded_revision_is_stable_until_proof_inputs_change(self):
-        (self.root / 'docs/progress.md').write_text(
-            '<!-- proof-link-revision: ' + 'a' * 40 + ' -->\nInput fingerprint: `123abc`.\n')
-        self.assertEqual(progress.recorded_link_revision('123abc'), 'a' * 40)
-        self.assertIsNone(progress.recorded_link_revision('456def'))
+    def test_recorded_revision_is_kept_whatever_the_proof_inputs(self):
+        (self.root / 'docs/progress.md').write_text('<!-- proof-link-revision: ' + 'a' * 40 + ' -->\n')
+        self.assertEqual(progress.recorded_link_revision(), 'a' * 40)
+        (self.root / 'docs/progress.md').write_text('# Status\n')
+        self.assertIsNone(progress.recorded_link_revision())
+
+    def test_staleness_is_content_based(self):
+        # A Lean edit that changes no shown fact changes only the input fingerprint: same page.
+        page = progress.outputs(self.graph())['docs/progress.md']
+        edited = progress.outputs(progress.build_graph(self.export, 'another-fingerprint'))['docs/progress.md']
+        self.assertEqual(page, edited)
+        self.assertNotIn('input-fingerprint', page)
+        # A proof status that changes is shown: the page differs.
+        self.export['goals'][2]['proofs'] = [{'name': 'Proof.c', 'source': 'ZlibF/Proof/exact.lean',
+                                              'registered': False, 'allowedAxioms': True, 'axioms': []}]
+        proved = progress.outputs(self.graph())['docs/progress.md']
+        self.assertNotEqual(page, proved)
+        # A registration that changes is shown: the page differs.
+        self.export['goals'][2]['proofs'][0]['registered'] = True
+        registered = progress.outputs(self.graph())['docs/progress.md']
+        self.assertNotEqual(proved, registered)
 
     def test_github_remote_formats(self):
         for remote in ['git@github.com:example/project.git', 'ssh://git@github.com/example/project.git',

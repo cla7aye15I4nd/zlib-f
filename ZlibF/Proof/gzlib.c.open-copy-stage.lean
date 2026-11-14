@@ -73,8 +73,9 @@ theorem openCopyPath_run (h : Heap) (fs : Fs) (i : Nat) (s : GzState)
     (allocatedPathBytes h name.length) fmt path name hp hfmt hbytes hro
     (by simp [allocatedPathBytes]) hlen (Fresh.slotUsed_next hpfresh)
   unfold openCopyPath
+  have hlim : name.length + 1 < C.mallocLimit := by unfold C.mallocLimit; omega
   offsetsimp [hs, hstr, hcapNat,
-    allocB, hok, Fresh.slotUsed_next hf, setS, upd_upd, hmod]
+    allocB, hok, hlim, Fresh.slotUsed_next hf, setS, upd_upd, hmod]
   dsimp only [pathAllocatedHeap, allocatedPathBytes] at hliteral hformat
   simp only [Zlib.GzFs.strLit] at hliteral ⊢
   erw [hliteral]

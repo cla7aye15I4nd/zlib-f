@@ -1,7 +1,11 @@
+import ZlibF.Proof.«gz.skeleton-model»
 import ZlibF.Proof.«gz.skeleton-read»
-import ZlibF.Proof.«gz.skeleton-write»
-import ZlibF.Proof.«public-gzeof»
-import ZlibF.Proof.«gzlib.c.seek»
+import ZlibF.Proof.«gzwrite.c.safety»
+import ZlibF.Proof.«gzwrite.c.upto-input»
+import ZlibF.Proof.«gz.inv-queries»
+import ZlibF.Proof.«gz.inv-seek»
+import ZlibF.Proof.«gz.inv-clearerr»
+import ZlibF.Proof.«gz.inv-frame»
 
 /-!
 # gz file interface, safety skeleton: open, close, seek, tell, the queries, and the goal (skeleton)
@@ -9,6 +13,11 @@ import ZlibF.Proof.«gzlib.c.seek»
 Batch 1's open lemmas (`gzopen`, `gzopen64`, `gzdopen`, `gzclose`, `gzseek*`, `gztell*`, the registered queries)
 and the proof of `Goal.gz_sequence_safety` from all the leaf lemmas: induction over `GzHistory` for the
 invariant, then dispatch over the call. Only the leaf lemmas are `sorry`; the assembly below is complete.
+
+Closed on `dev` with exactly the skeleton's statement, and deleted here: `gzclose_dispatch_inv`, `gztell64_step`,
+`gztell_step`, `post_unchanged`, `safe_of_unchanged`, `gzeof_step`, `gzbuffer_step` (`gz.inv-queries`),
+`gzseek64_step`, `gzseek_step` (`gz.inv-seek`), `gzclearerr_step` (`gz.inv-clearerr`), `gzerror_step`
+(`gz.inv-frame`), and the write leaves (`gzwrite.c.safety`).
 -/
 
 namespace ZlibF.Spec.Public.GzSkeleton
@@ -33,13 +42,6 @@ theorem gzdopen_safe : GzDopenSafe := by
   sorry
 
 /-! ## Closing -/
-
-/-- `gzclose` reads the mode and calls `gzclose_r` or `gzclose_w` (`gzclose_dispatch`, restated to `GzInv`). -/
-theorem gzclose_dispatch_inv {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) (fs : Fs) :
-    Zlib.Gzclose.gzclose (some (.in_gzstate_x i)) fs h =
-      if s.mode = GZ_READ then Zlib.Gzread.gzclose_r (some (.in_gzstate_x i)) fs h
-      else Zlib.Gzwrite.gzclose_w (some (.in_gzstate_x i)) fs h := by
-  sorry
 
 /-- `gzclose` from the dispatch and the two close lemmas. -/
 theorem gzclose_step (i : Nat) : GzCloseSafe i (.gzclose (some (.in_gzstate_x i))) := by
@@ -66,95 +68,7 @@ theorem gzclose_step (i : Nat) : GzCloseSafe i (.gzclose (some (.in_gzstate_x i)
       · exact absurd hw hc
       · exact hrel
 
-/-! ## Seek and tell -/
-
-/-- `gzseek64`: from `gzseek64_safe` restated to `GzInv`: result -1 or the target, positions bounded, the COPY
-path's `lseek` (M3: any result, unrelated to reads), the rewind path. Relies on patch 0002 (R-1) and the local
-patches for R-3, R-4 (`x.next += 0`) and F-1. -/
-theorem gzseek64_step (i : Nat) (offset : Int64) (whence : Int32) :
-    GzCallSafe i (.gzseek64 (some (.in_gzstate_x i)) offset whence) := by
-  sorry
-
-/-- `gzseek` is `gzseek64` (`gzseek_eq`). -/
-theorem gzseek_step (i : Nat) (offset : Int64) (whence : Int32) :
-    GzCallSafe i (.gzseek (some (.in_gzstate_x i)) offset whence) := by
-  intro h fs s inv hfs ha
-  have e : Call.execute (.gzseek (some (.in_gzstate_x i)) offset whence) fs h =
-      Call.execute (.gzseek64 (some (.in_gzstate_x i)) offset whence) fs h :=
-    Zlib.Gzlib.Proofs.gzseek_eq _ offset whence fs h
-  rw [e]
-  exact gzseek64_step i offset whence h fs s inv hfs ha
-
-/-- `gztell64`: `x.pos + (past ? 0 : skip)` is in range by `GzCommon.pos`; nothing changes (`gztell64_spec`). -/
-theorem gztell64_step (i : Nat) : GzCallSafe i (.gztell64 (some (.in_gzstate_x i))) := by
-  sorry
-
-/-- `gztell`: as `gztell64` (`gztell_run`). -/
-theorem gztell_step (i : Nat) : GzCallSafe i (.gztell (some (.in_gzstate_x i))) := by
-  sorry
-
 /-! ## The registered queries -/
-
-/-- Nothing changed: the post-condition of a call that leaves heap and world alone and writes no region. -/
-theorem post_unchanged {h : Heap} {i : Nat} {s : GzState} {fs : Fs} {call : Call} (inv : GzInv h i s)
-    (hfs : FileSystem fs) (hr : GzWriteRegions call = []) : FdsKept fs fs ∧ GzStepPost h i s call fs h := by
-  unfold FdsKept GzStepPost
-  refine ⟨fun _ => Iff.rfl, hfs, s, inv, rfl, rfl, ?_, ?_⟩
-  · rw [hr]
-    unfold BufferFrame Frame
-    refine ⟨⟨rfl, rfl, rfl, Nat.le_refl _, Nat.le_refl _, fun _ _ _ => ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩⟩, ?_⟩
-    intro region hm
-    cases hm
-  · unfold LiveChange
-    intro b
-    constructor
-    · intro hb
-      exact Or.inl ⟨hb, fun hn => hn.2 hn.1⟩
-    · rintro (⟨hb, _⟩ | ⟨ho, hn⟩)
-      · exact hb
-      · exact absurd (inv.common.live b ho) hn
-
-/-- A call that returns with heap and world unchanged and writes no region is safe. -/
-theorem safe_of_unchanged {i : Nat} {call : Call} {h : Heap} {fs : Fs} {s : GzState} {v : call.Result}
-    (inv : GzInv h i s) (hfs : FileSystem fs) (hr : GzWriteRegions call = [])
-    (e : call.execute fs h = .ok ((v, fs), h)) :
-    (∀ err, call.execute fs h = .error err → err = .outOfFuel) ∧
-    ((NeedsReadBound call → ReadsFinite fs s.fd) →
-      ∃ value fs' after, call.execute fs h = .ok ((value, fs'), after)) ∧
-    (∀ value fs' after, call.execute fs h = .ok ((value, fs'), after) →
-      FdsKept fs fs' ∧ GzStepPost h i s call fs' after) := by
-  refine ⟨?_, fun _ => ⟨v, fs, h, e⟩, ?_⟩
-  · intro err he
-    rw [e] at he
-    cases he
-  · intro value fs' after he
-    rw [e] at he
-    cases he
-    exact post_unchanged inv hfs hr
-
-/-- `gzeof`, from the registered `gzeof_public`: nothing changes. -/
-theorem gzeof_step (i : Nat) : GzCallSafe i (.gzeof (some (.in_gzstate_x i))) := by
-  intro h fs s inv hfs _
-  have hr : Zlib.Gzlib.gzeof (some (.in_gzstate_x i)) h =
-      .ok (((if s.mode = GZ_READ then s.past else (0 : Int32)) : Int32), h) :=
-    ZlibF.Spec.Public.Proofs.gzeof_public.2 h i s inv.common.record
-  have e : Call.execute (.gzeof (some (.in_gzstate_x i))) fs h =
-      .ok ((((if s.mode = GZ_READ then s.past else (0 : Int32)) : Int32), fs), h) := by
-    show heapCall _ fs h = _
-    simp only [heapCall, hr]
-  exact safe_of_unchanged inv hfs rfl e
-
-/-- `gzbuffer`, from `gzbuffer_public` and `GzInv.put_scalars` (only `want` changes, and only while `size = 0`). -/
-theorem gzbuffer_step (i : Nat) (size : UInt32) : GzCallSafe i (.gzbuffer (some (.in_gzstate_x i)) size) := by
-  sorry
-
-/-- `gzerror`, from the registered `gzerror` goal: stores the code in `[errnum, errnum + 4)`. -/
-theorem gzerror_step (i : Nat) (errnum : BPtr) : GzCallSafe i (.gzerror (some (.in_gzstate_x i)) errnum) := by
-  sorry
-
-/-- `gzclearerr`, from the registered `gzclearerr` goal and `GzInv.gz_error`. -/
-theorem gzclearerr_step (i : Nat) : GzCallSafe i (.gzclearerr (some (.in_gzstate_x i))) := by
-  sorry
 
 /-- `gzoffset64`, from `gzoffset64_public_goal` restated to `GzInv` (one `lseek`, M3). -/
 theorem gzoffset64_step (i : Nat) : GzCallSafe i (.gzoffset64 (some (.in_gzstate_x i))) := by

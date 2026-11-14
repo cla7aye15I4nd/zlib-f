@@ -1,4 +1,4 @@
-<!-- source-sha256: 55ddcbfe1519679deeac6c797f9063e43b396a6b64c97cc2575a0579a0096242 -->
+<!-- source-sha256: deebca68b693820fd86fac95eeab21fa9e89dff01a79b9808cbf31a045f0a016 -->
 
 # 证明变异
 
@@ -45,7 +45,7 @@ bash tests/audit/proofmut.sh tests/audit/proofmut/crc32.tsv '^combine'
 - 对自由变量做机器算术的修改，例如把 `x - left` 改成 `x - len`。为驳倒它，内核把 `UInt64` 和 `UInt32` 运算一直展开到 `Nat` 取模，却没有可计算的值。`uncompress2_z` 上实测：806 s 后达到 12 GiB 预算。
 - `cdoWhile` 循环体内的任何修改，哪怕只是去掉一个测试。两个循环体比较失败后，惰性 delta 在两边展开 `cdoWhile`。它的燃料递归随后一次展开一轮迭代，并在每一步再次比较循环体。`compress2_z` 上实测：467 s 后达到 12 GiB 预算；去掉一个测试的变异 214 s 后达到 16 GiB。
 
-循环外的修改很快被拒绝：去掉或替换的调用、去掉的存储、改变的常量。在 `uncompress2_z` 和 `compress2_z` 上，每个这样的行用 120 s 到 200 s，约 10.5 GB。因此公开记录指定结构性变异。表中也保留算术变异和循环体变异，每个变异分片都用重新繁饰检查它们，证明必须在语义引理处失败。`tests/proof-mutants/api-boundary.tsv` 是一个例子：`uncompress2_z-destLen-count` 和两个 `refill-off-by-one` 行由重新繁饰检查。意图相同、修改是结构性的行承担内核重放：`uncompress2_z-destLen-drop`（错误的 `destLen` 计数），以及两个 `initial-room` 行（输出空间超过剩余量）。
+循环外的修改很快被拒绝：去掉或替换的调用、去掉的存储、改变的常量。在 `uncompress2_z` 和 `compress2_z` 上，每个这样的行用 120 s 到 200 s，约 10.5 GB。因此公开记录指定结构性变异。**规则：**`tests/audit/public-mutants.json` 中指定的变异不得修改循环体或机器算术；这类变异只放在源码级的表中。超出预算的重放会在失败信息中说明这一点。表中也保留算术变异和循环体变异，每个变异分片都用重新繁饰检查它们，证明必须在语义引理处失败。`tests/proof-mutants/api-boundary.tsv` 是一个例子：`uncompress2_z-destLen-count` 和两个 `refill-off-by-one` 行由重新繁饰检查。意图相同、修改是结构性的行承担内核重放：`uncompress2_z-destLen-drop`（错误的 `destLen` 计数），以及两个 `initial-room` 行（输出空间超过剩余量）。
 
 ## 列表格式
 

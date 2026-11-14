@@ -58,7 +58,7 @@ theorem stateOf_rebuffer {h after : Heap} {r : ZStreamRef} (reach : StreamReacha
 no output byte. -/
 theorem quiet_silent {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState} {flush : Int32}
     (inv : DInv h r ds z d) (facts : CallFacts d) (buffers : StreamBuffers h r)
-    (q : QuietD flush d) (lower : 0 ≤ flush.toInt) (upper : flush.toInt ≤ 4) (empty : z.avail_in = 0) :
+    (q : QuietD flush d) (lower : 0 ≤ flush.toInt) (upper : flush.toInt ≤ 5) (empty : z.avail_in = 0) :
     ∃ rc after z', C.run (deflate (some r) flush) h = .ok (rc, after) ∧ r.get after = some z' ∧
       z'.avail_out = z.avail_out := by
   by_cases refused : DeflateRefuses z d flush

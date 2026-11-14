@@ -56,7 +56,7 @@ private theorem distCont_origin_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPt
     { in_ := l.in_, out := l.out, hold := l.hold >>> l.op.toUInt64, bits := l.bits - l.op, here := l.here,
       op := (Int64.ofInt (((o - e.bg : Nat)) : Int)).toUInt64.toUInt32, len := l.len,
       dist := l.dist + (l.hold.toUInt32 &&& 1 <<< l.op - 1), from_ := l.from_, broke := l.broke, againL := l.againL,
-      againD := l.againD } o hls.hout hbgo hopn (by simp only [hdist']; omega) hlen.1 (by simp; omega) hbroke) ?_
+      againD := l.againD } o hls.hout hbgo hopn (by simp only [hdist']; omega) hlen.1 (by simp; omega) hA hbroke) ?_
   intro l' h' hq
   obtain ⟨hin, hhold, hbits, _, _, _⟩ := hq
   refine ⟨hin.trans hls.hin, ?_⟩

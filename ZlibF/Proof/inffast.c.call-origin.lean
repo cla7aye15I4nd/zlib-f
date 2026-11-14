@@ -216,7 +216,7 @@ theorem actual_fast_preserves_origin : CallOrigin.Goal.actual_fast_preserves_ori
       have hr := subn_ok (h := e.h0) (r := BRef.blk e.ob) (a := e.A0)
         (off := e.o0) (n := e.start - e.sm0.avail_out) e.hA0 (by rw [hn]; exact e.hbeg)
         (by have := e.hAsz; omega)
-      simpa only [hn, Env.bg] using hr
+      simpa only [hn, EnvG.bg] using hr
     have hend : OkOn e.h0 (Ptr.add e.sm0.next_out (e.sm0.avail_out - 257).toNat)
         (.ref (BRef.blk e.ob) (e.o0 + e.sm0.avail_out.toNat - 257)) := by
       rw [e.hnout, u32_toNat_sub (by change 257 ≤ e.sm0.avail_out.toNat; have := e.hao; omega)]

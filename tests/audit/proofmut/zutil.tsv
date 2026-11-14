@@ -19,3 +19,9 @@ calloc-size-minus-1	ZlibF/Zlib/zutil.c.lean	allocB (items * size).toNat	allocB (
 calloc-product-wide	ZlibF/Zlib/zutil.c.lean	allocB (items * size).toNat	allocB (items.toNat * size.toNat)	zutil.c
 calloc-size-items-only	ZlibF/Zlib/zutil.c.lean	allocB (items * size).toNat	allocB items.toNat	zutil.c
 cfree-noop	ZlibF/Zlib/zutil.c.lean	  freeB ptr\n	  pure ()\n	zutil.c
+# The runtime allocator's PTRDIFF_MAX test (ZlibF/Runtime/Libc.lean). The runtime rules do not depend on the test, so
+# the error is in the semantic lemmas: every allocated block is below 2^63 (PlatformMemory) and gz_error's Z_MEM_ERROR
+# path for an oversized message (gzlib.c.error-message-oversize, which unfolds the allocator itself).
+malloc-no-ptrdiff	ZlibF/Runtime/Libc.lean	if h.allocOk h.nalloc = true ∧ n < mallocLimit then	if h.allocOk h.nalloc = true then	PlatformMemory,gzlib.c.error-message-oversize
+malloc-no-ptrdiff-gz-error	ZlibF/Runtime/Libc.lean	if h.allocOk h.nalloc = true ∧ n < mallocLimit then	if h.allocOk h.nalloc = true then	gzlib.c.error-message-oversize
+malloc-words-no-ptrdiff	ZlibF/Runtime/Libc.lean	if h.allocOk h.nalloc = true ∧ 2 * n < mallocLimit then	if h.allocOk h.nalloc = true then	PlatformMemory

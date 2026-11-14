@@ -27,7 +27,8 @@ class HarnessIsolation(unittest.TestCase):
             library = root / 'library'
             library.mkdir()
             (library / 'libz.a').touch()
-            for filename in ('selftest.sh', 'mutate.py'):
+            (library / 'PATCHES_SHA256').touch()  # built from the (empty) patch set of this tree
+            for filename in ('selftest.sh', 'mutate.py', 'build-zlib.sh', 'zlib-build-current.sh'):
                 shutil.copy2(ROOT / 'tests' / filename, tests / filename)
             expected = []
             for suite, count in [('a', 11), ('b', 7), ('c', 5)]:
@@ -97,7 +98,9 @@ class HarnessIsolation(unittest.TestCase):
             library = root / "library"
             library.mkdir()
             (library / "libz.a").touch()
-            for name in ("selftest.sh", "selftest-parallel.sh", "mutate.py"):
+            (library / "PATCHES_SHA256").touch()  # built from the (empty) patch set of this tree
+            for name in ("selftest.sh", "selftest-parallel.sh", "mutate.py", "build-zlib.sh",
+                         "zlib-build-current.sh"):
                 shutil.copy2(ROOT / "tests" / name, tests / name)
             for name in ("a", "b"):
                 (root / "ZlibF" / f"{name}.lean").write_text(

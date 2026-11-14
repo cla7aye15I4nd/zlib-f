@@ -168,6 +168,7 @@ import ZlibF.Spec.Public.Lifecycle
 import ZlibF.Spec.Public.History
 import ZlibF.Spec.Public.Streams
 import ZlibF.Spec.Public.Copy
+import ZlibF.Spec.Public.Refusals
 import ZlibF.Spec.Public.GzState
 import ZlibF.Spec.Public.GzControl
 import ZlibF.Spec.Public.GzOpen
@@ -511,6 +512,7 @@ import ZlibF.Proof.«deflate.c.universal-params-trees»
 import ZlibF.Proof.«deflate.c.universal-params-publish»
 import ZlibF.Proof.«deflate.c.universal-params-strategies»
 import ZlibF.Proof.«deflate.c.universal-params-deflate»
+import ZlibF.Proof.«deflate.c.universal-params-gz»
 import ZlibF.Proof.«trees.c.universal-spec»
 import ZlibF.Proof.«trees.c.universal-flushsafe»
 import ZlibF.Proof.«deflate.c.universal-strategy-specs»
@@ -607,4 +609,5 @@ import ZlibF.Proof.«infback.c.safety-copy»
 import ZlibF.Proof.«infback.c.safety-len»
 import ZlibF.Proof.«infback.c.safety-dispatch»
 import ZlibF.Proof.«infback.c.safety-call»
+import ZlibF.Proof.«infback.c.safety-reach»
 import ZlibF.Proof.«deflate.c.universal-flush-cursor»

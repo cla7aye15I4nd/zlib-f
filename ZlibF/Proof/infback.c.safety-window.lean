@@ -189,6 +189,15 @@ theorem PInv.storeWindow {c : BCtx} {r : ZStreamRef} {i : Nat} {window : BPtr} {
     { cstrm := I.cstrm, cst := I.cst, valid := ⟨z, s, valid', win, sz⟩, winRoot := I.winRoot, put := I.put,
       chunk := I.chunk, held := held', bits := I.bits, proto := proto', frame := frame',
       live := fun b o => (Zlib.Inflate.Proofs.Shape.live shape b).trans (I.live b o),
-      mode := fun s1 g => I.mode s1 g }
+      mode := fun s1 g => I.mode s1 g,
+      platform := I.platform, chunkBlk := I.chunkBlk, stOk := fun s1 g => I.stOk s1 g,
+      fit := by
+        intro ref b g
+        by_cases e : ref = .blk w
+        · subst e
+          have g' : b = a' := by simpa [Space.get, winHeap] using g.symm
+          subst g'
+          rw [size]; exact I.fit (.blk w) a get
+        · rw [get_winHeap_ne e] at g; exact I.fit ref b g }
 
 end Zlib.Infback.Safety

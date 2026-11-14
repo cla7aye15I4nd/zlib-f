@@ -6,8 +6,14 @@ import ZlibF.Zlib.«zutil.c»
 /-!
 # Consequences of the explicit byte-object platform bound
 
-The environment premise is used as stated. It is not derived from the
-unrestricted runtime allocator or from stream reachability.
+The environment premise is used as stated. The runtime allocator refuses
+requests above `PTRDIFF_MAX`, so library allocations preserve the premise
+(`ByteObjectsFit.allocB`); it is not derived for caller storage or from
+stream reachability.
+
+The lemmas that state the allocator's size test (`allocB_large`,
+`allocB_small` and their word forms) live here, in a proof module, and not in
+the runtime: a mutant of the runtime that drops the test fails here.
 -/
 
 namespace ZlibF.PlatformMemory
@@ -102,17 +108,45 @@ theorem ByteObjectsFit.with_bytes {h : Heap} (fit : ByteObjectsFit h)
   | st_dist_code => exact fit .st_dist_code xs get
   | st_length_code => exact fit .st_length_code xs get
 
+/-- `void *malloc(size_t n)` with `n ≥ PTRDIFF_MAX + 1`: the request returns NULL whatever the oracle says, and
+consumes one oracle number. -/
+theorem allocB_large {h : Heap} (n : Nat) (hn : C.mallocLimit ≤ n) :
+    C.allocB n h = .ok (.null, { h with nalloc := h.nalloc + 1 }) := by
+  simp [C.allocB, Nat.not_lt.mpr hn]
+
+/-- `malloc(2 * n)` for `n` words with `2 * n ≥ PTRDIFF_MAX + 1`: NULL whatever the oracle says. -/
+theorem allocW_large {h : Heap} (n : Nat) (hn : C.mallocLimit ≤ 2 * n) :
+    C.allocW n h = .ok (.null, { h with nalloc := h.nalloc + 1 }) := by
+  simp [C.allocW, Nat.not_lt.mpr hn]
+
+/-- Every block the byte allocator creates has fewer than `2^63` bytes: a non-NULL result comes from a request
+below the limit. -/
+theorem allocB_small {h after : Heap} {n : Nat} {r : BRef} {off : Nat}
+    (run : C.allocB n h = .ok (.ref r off, after)) : n < C.mallocLimit := by
+  unfold C.allocB at run
+  split at run
+  · rename_i c; exact c.2
+  · cases run
+
+/-- The same for word blocks: `2 * n` bytes, below the limit. -/
+theorem allocW_small {h after : Heap} {n : Nat} {r : WRef} {off : Nat}
+    (run : C.allocW n h = .ok (.ref r off, after)) : 2 * n < C.mallocLimit := by
+  unfold C.allocW at run
+  split at run
+  · rename_i c; exact c.2
+  · cases run
+
 /-- `void *malloc(size_t n)`.
-For an explicitly bounded request, every returning outcome of the actual
-runtime allocator preserves the byte-object scope. Allocation failure is
-included. This theorem does not change the unrestricted allocator or claim
-that its oracle enforces the platform bound for oversized requests. -/
+Every returning outcome of the runtime allocator preserves the byte-object scope, allocation failure included. The
+runtime refuses a request at or above the limit, so no size premise is needed. -/
 theorem ByteObjectsFit.allocB {h after : Heap} (fit : ByteObjectsFit h)
-    {n : Nat} {pointer : BPtr} (bound : n < byteObjectLimit)
+    {n : Nat} {pointer : BPtr}
     (run : C.allocB n h = .ok (pointer, after)) : ByteObjectsFit after := by
   unfold C.allocB at run
   split at run
-  · split at run
+  · rename_i c
+    have bound : n < byteObjectLimit := c.2
+    split at run
     · contradiction
     · cases run
       have arrayBound : (Array.ofFn (n := n)
@@ -124,17 +158,13 @@ theorem ByteObjectsFit.allocB {h after : Heap} (fit : ByteObjectsFit h)
 
 /-- `voidpf zcalloc(voidpf opaque, unsigned items, unsigned size)`.
 The translated default allocator computes the request with 32-bit unsigned
-multiplication. Thus every returning byte allocation preserves the platform
-size scope, including NULL returns, without an extra size premise. This
-does not establish that a wrapped product provides the intended capacity. -/
+multiplication; every returning byte allocation preserves the platform size
+scope, including NULL returns, as for every `malloc` (`ByteObjectsFit.allocB`).
+This does not establish that a wrapped product provides the intended capacity. -/
 theorem ByteObjectsFit.zcalloc {h after : Heap} (fit : ByteObjectsFit h)
     {context pointer : BPtr} {items size : UInt32}
     (run : Zlib.Zutil.zcalloc context items size h = .ok (pointer, after)) :
-    ByteObjectsFit after := by
-  have bound : (items * size).toNat < byteObjectLimit := by
-    have := UInt32.toNat_lt (items * size)
-    unfold byteObjectLimit
-    omega
-  exact fit.allocB bound run
+    ByteObjectsFit after :=
+  fit.allocB run
 
 end ZlibF.PlatformMemory

@@ -49,22 +49,69 @@ theorem ZSame.refl (z : ZStream) : ZSame z z := ⟨rfl, rfl, rfl⟩
 theorem ZSame.trans {a b c : ZStream} (first : ZSame a b) (second : ZSame b c) : ZSame a c :=
   ⟨second.state.trans first.state, second.zalloc.trans first.zalloc, second.zfree.trans first.zfree⟩
 
-/-- Every deflate state record and every stream record keeps its parameters. -/
+/-- Every gz record keeps every field but `strm`, the deflate or inflate stream embedded in it.
+`gz_comp` (`gzwrite.c`) writes the gz record around its `deflate` calls; this relation says what a
+deflate call on any stream, among them `ZStreamRef.in_gzstate_strm i`, leaves of the gz records. -/
+def GzRecordsKept (h h' : Heap) : Prop :=
+  ∀ i s, h.gzstates i = some s → ∃ s', h'.gzstates i = some s' ∧ s' = { s with strm := s'.strm }
+
+theorem GzRecordsKept.refl (h : Heap) : GzRecordsKept h h :=
+  fun _ s get => ⟨s, get, rfl⟩
+
+theorem GzRecordsKept.of_eq {h h' : Heap} (gz : h'.gzstates = h.gzstates) : GzRecordsKept h h' :=
+  fun _ s get => ⟨s, by rw [gz]; exact get, rfl⟩
+
+theorem GzRecordsKept.trans {a b c : Heap} (first : GzRecordsKept a b) (second : GzRecordsKept b c) :
+    GzRecordsKept a c := by
+  intro i s get
+  obtain ⟨s1, get1, e1⟩ := first i s get
+  obtain ⟨s2, get2, e2⟩ := second i s1 get1
+  refine ⟨s2, get2, ?_⟩
+  calc s2 = { s1 with strm := s2.strm } := e2
+    _ = { ({ s with strm := s1.strm } : GzState) with strm := s2.strm } :=
+        congrArg (fun t : GzState => { t with strm := s2.strm }) e1
+    _ = { s with strm := s2.strm } := rfl
+
+/-- Writing a stream record, a table stream or the stream of a gz record, changes no gz record but
+in its `strm` field. -/
+theorem GzRecordsKept.put_stream (h : Heap) (r : ZStreamRef) (v : ZStream) :
+    GzRecordsKept h (r.put h v) := by
+  intro j s get
+  cases r with
+  | tab i =>
+    refine ⟨s, ?_, rfl⟩
+    simp only [ZStreamRef.put]
+    split <;> exact get
+  | in_gzstate_strm i =>
+    simp only [ZStreamRef.put]
+    split
+    · next t ht =>
+      by_cases same : j = i
+      · subst same
+        have eq : s = t := Option.some.inj (get.symm.trans ht)
+        subst eq
+        exact ⟨{ s with strm := v }, by simp, rfl⟩
+      · exact ⟨s, by simpa [upd_ne _ _ _ _ same] using get, rfl⟩
+    · exact ⟨s, get, rfl⟩
+
+/-- Every deflate state record and every stream record keeps its parameters; every gz record keeps
+everything but its stream. -/
 def ParRel (keep : Bool) (h h' : Heap) : Prop :=
   (∀ ds d, h.dstates ds = some d → ∃ d', h'.dstates ds = some d' ∧ Same keep d d') ∧
-  (∀ (r : ZStreamRef) z, r.get h = some z → ∃ z', r.get h' = some z' ∧ ZSame z z')
+  (∀ (r : ZStreamRef) z, r.get h = some z → ∃ z', r.get h' = some z' ∧ ZSame z z') ∧
+  GzRecordsKept h h'
 
 theorem ParRel.refl (keep : Bool) (h : Heap) : ParRel keep h h :=
-  ⟨fun _ d get => ⟨d, get, Same.refl keep d⟩, fun _ z get => ⟨z, get, ZSame.refl z⟩⟩
+  ⟨fun _ d get => ⟨d, get, Same.refl keep d⟩, fun _ z get => ⟨z, get, ZSame.refl z⟩, GzRecordsKept.refl h⟩
 
 theorem ParRel.trans {keep : Bool} {a b c : Heap} (first : ParRel keep a b) (second : ParRel keep b c) :
     ParRel keep a c := by
-  refine ⟨fun ds d get => ?_, fun r z get => ?_⟩
+  refine ⟨fun ds d get => ?_, fun r z get => ?_, first.2.2.trans second.2.2⟩
   · obtain ⟨d1, get1, same1⟩ := first.1 ds d get
     obtain ⟨d2, get2, same2⟩ := second.1 ds d1 get1
     exact ⟨d2, get2, same1.trans same2⟩
-  · obtain ⟨z1, get1, same1⟩ := first.2 r z get
-    obtain ⟨z2, get2, same2⟩ := second.2 r z1 get1
+  · obtain ⟨z1, get1, same1⟩ := first.2.1 r z get
+    obtain ⟨z2, get2, same2⟩ := second.2.1 r z1 get1
     exact ⟨z2, get2, same1.trans same2⟩
 
 theorem ParRel.weaken {a b : Heap} (rel : ParRel true a b) : ParRel false a b :=
@@ -77,7 +124,8 @@ theorem ParRel.weaken {a b : Heap} (rel : ParRel true a b) : ParRel false a b :=
 /-- A heap change outside the state and stream tables. -/
 theorem ParRel.quiet {keep : Bool} {h h' : Heap} (states : h'.dstates = h.dstates)
     (streams : h'.streams = h.streams) (gz : h'.gzstates = h.gzstates) : ParRel keep h h' := by
-  refine ⟨fun ds d get => ⟨d, by rw [states]; exact get, Same.refl keep d⟩, fun r z get => ⟨z, ?_, ZSame.refl z⟩⟩
+  refine ⟨fun ds d get => ⟨d, by rw [states]; exact get, Same.refl keep d⟩, fun r z get => ⟨z, ?_, ZSame.refl z⟩,
+    GzRecordsKept.of_eq gz⟩
   cases r with
   | tab i => simpa only [ZStreamRef.get, streams] using get
   | in_gzstate_strm i => simpa only [ZStreamRef.get, gz] using get
@@ -108,7 +156,7 @@ theorem Tbl.get_modify_map {β : Type} (t : Tbl (Option β)) (k : Nat) (g : β �
 theorem ParRel.dstate_array {keep : Bool} {h : Heap} (id : Nat) (g : DeflateState → DeflateState)
     (same : ∀ d, Same keep d (g d)) :
     ParRel keep h { h with dstates := h.dstates.modify id (Option.map g) } := by
-  refine ⟨fun ds d get => ?_, fun r z get => ⟨z, ?_, ZSame.refl z⟩⟩
+  refine ⟨fun ds d get => ?_, fun r z get => ⟨z, ?_, ZSame.refl z⟩, GzRecordsKept.of_eq rfl⟩
   · refine ⟨if ds = id then g d else d, ?_, ?_⟩
     · change (h.dstates.modify id (Option.map g)) ds = _
       rw [Tbl.get_modify_map]
@@ -135,21 +183,23 @@ theorem Same.of_pars (keep : Bool) {d d' : DeflateState} (eq : Pars d' = Pars d)
   obtain ⟨l, w, hb, g, s, wr, st, _⟩ := eq
   exact ⟨l, w, hb, g, s, fun _ => by rw [wr], fun good => by rw [st]; exact good⟩
 
-/-- Every record keeps its parameters exactly; every stream keeps `state` and the allocators. -/
+/-- Every record keeps its parameters exactly; every stream keeps `state` and the allocators; every
+gz record keeps everything but its stream. -/
 def ExactRel (h h' : Heap) : Prop :=
   (∀ ds d, h.dstates ds = some d → ∃ d', h'.dstates ds = some d' ∧ Pars d' = Pars d) ∧
-  (∀ (r : ZStreamRef) z, r.get h = some z → ∃ z', r.get h' = some z' ∧ ZSame z z')
+  (∀ (r : ZStreamRef) z, r.get h = some z → ∃ z', r.get h' = some z' ∧ ZSame z z') ∧
+  GzRecordsKept h h'
 
 theorem ExactRel.refl (h : Heap) : ExactRel h h :=
-  ⟨fun _ d get => ⟨d, get, rfl⟩, fun _ z get => ⟨z, get, ZSame.refl z⟩⟩
+  ⟨fun _ d get => ⟨d, get, rfl⟩, fun _ z get => ⟨z, get, ZSame.refl z⟩, GzRecordsKept.refl h⟩
 
 theorem ExactRel.trans {a b c : Heap} (first : ExactRel a b) (second : ExactRel b c) : ExactRel a c := by
-  refine ⟨fun ds d get => ?_, fun r z get => ?_⟩
+  refine ⟨fun ds d get => ?_, fun r z get => ?_, first.2.2.trans second.2.2⟩
   · obtain ⟨d1, get1, same1⟩ := first.1 ds d get
     obtain ⟨d2, get2, same2⟩ := second.1 ds d1 get1
     exact ⟨d2, get2, same2.trans same1⟩
-  · obtain ⟨z1, get1, same1⟩ := first.2 r z get
-    obtain ⟨z2, get2, same2⟩ := second.2 r z1 get1
+  · obtain ⟨z1, get1, same1⟩ := first.2.1 r z get
+    obtain ⟨z2, get2, same2⟩ := second.2.1 r z1 get1
     exact ⟨z2, get2, same1.trans same2⟩
 
 theorem ExactRel.par {keep : Bool} {h h' : Heap} (rel : ExactRel h h') : ParRel keep h h' :=
@@ -159,7 +209,8 @@ theorem ExactRel.par {keep : Bool} {h h' : Heap} (rel : ExactRel h h') : ParRel 
 
 theorem ExactRel.quiet {h h' : Heap} (states : h'.dstates = h.dstates)
     (streams : h'.streams = h.streams) (gz : h'.gzstates = h.gzstates) : ExactRel h h' := by
-  refine ⟨fun ds d get => ⟨d, by rw [states]; exact get, rfl⟩, fun r z get => ⟨z, ?_, ZSame.refl z⟩⟩
+  refine ⟨fun ds d get => ⟨d, by rw [states]; exact get, rfl⟩, fun r z get => ⟨z, ?_, ZSame.refl z⟩,
+    GzRecordsKept.of_eq gz⟩
   cases r with
   | tab i => simpa only [ZStreamRef.get, streams] using get
   | in_gzstate_strm i => simpa only [ZStreamRef.get, gz] using get
@@ -167,7 +218,7 @@ theorem ExactRel.quiet {h h' : Heap} (states : h'.dstates = h.dstates)
 theorem ExactRel.dstate_array {h : Heap} (id : Nat) (g : DeflateState → DeflateState)
     (same : ∀ d, Pars (g d) = Pars d) :
     ExactRel h { h with dstates := h.dstates.modify id (Option.map g) } := by
-  refine ⟨fun ds d get => ?_, fun r z get => ⟨z, ?_, ZSame.refl z⟩⟩
+  refine ⟨fun ds d get => ?_, fun r z get => ⟨z, ?_, ZSame.refl z⟩, GzRecordsKept.of_eq rfl⟩
   · refine ⟨if ds = id then g d else d, ?_, ?_⟩
     · change (h.dstates.modify id (Option.map g)) ds = _
       rw [Tbl.get_modify_map]

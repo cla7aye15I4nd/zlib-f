@@ -167,6 +167,7 @@ def check_public_mutant_spans(manifest: dict, selected: set[str] | None = None) 
 
 
 REPLAY_RSS_LIMIT = int(os.environ.get("ZLIBF_REPLAY_RSS_MB", "12288")) * 2**20
+REPLAY_WARN_RSS = 11 * 2**30
 
 
 def group_rss(group: int) -> int:
@@ -188,25 +189,41 @@ def group_rss(group: int) -> int:
 def run_replay(args: list[str], what: str) -> subprocess.CompletedProcess:
     """Run one kernel replay in its own process group, within a resident-memory budget.
 
-    A legitimate replay of the largest registered closure stays near 7 GB. A replay
+    A legitimate replay of the largest registered closure stays near 10.5 GB. A replay
     whose kernel work grows without bound is stopped at the budget and fails closed,
     so the stage stays inside the 16 GB build limit instead of meeting the
     out-of-memory killer (which may also hit unrelated processes).
     """
     process = subprocess.Popen(args, cwd=ROOT, text=True, stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE, start_new_session=True)
-    stdout, stderr, over = "", "", False
+    stdout, stderr, over, peak = "", "", False, 0
     while True:
         try:
             stdout, stderr = process.communicate(timeout=2)
             break
         except subprocess.TimeoutExpired:
-            if group_rss(process.pid) > REPLAY_RSS_LIMIT:
+            peak = max(peak, group_rss(process.pid))
+            if peak > REPLAY_RSS_LIMIT:
                 over = True
                 os.killpg(process.pid, 9)
     if over:
-        raise Rejected(f"kernel replay exceeded the memory budget of {REPLAY_RSS_LIMIT >> 20} MB: {what}")
-    return subprocess.CompletedProcess(args, process.returncode, stdout, stderr)
+        raise Rejected(f"replay over budget ({REPLAY_RSS_LIMIT >> 20} MB): {what}: move this row to a "
+                       "source-level table if it edits a loop body or machine arithmetic "
+                       "(docs/checking/proof-mutants.md)")
+    result = subprocess.CompletedProcess(args, process.returncode, stdout, stderr)
+    result.peak = peak
+    return result
+
+
+def report_peak(goal: str, peak: int) -> None:
+    """Print the peak of a legitimate replay; warn when it nears the budget.
+
+    The budget is not raised when closures grow: the fix is a smaller replay closure.
+    """
+    print(f"replay peak: {goal}: {peak >> 20} MB", flush=True)
+    if peak > REPLAY_WARN_RSS:
+        print(f"WARNING: legitimate replay of {goal} peaked at {peak >> 20} MB, above "
+              f"{REPLAY_WARN_RSS >> 20} MB of the {REPLAY_RSS_LIMIT >> 20} MB budget", flush=True)
 
 
 def mutation_row(reference: dict) -> list[str]:
@@ -247,6 +264,7 @@ def replay_public_mutants(manifest: dict, selected: set[str] | None = None) -> N
         sys.stderr.write(control.stderr)
         if control.returncode != 0:
             raise Rejected(f"exact public proof does not replay: {goal}")
+        report_peak(goal, control.peak)
         for reference in references:
             row = mutation_row(reference)
             with tempfile.TemporaryDirectory(prefix="public-proof-replay-") as directory:
@@ -429,7 +447,9 @@ def coverage() -> dict:
         "sequence_goals": ["inflate_sequence", "deflate_sequence", "inflate_back_sequence", "gz_sequence"],
         "nonvacuity_goals": ["inflate_initialisation_domain", "deflate_initialisation_domain",
                               "inflate_back_initialisation_domain", "gz_initialisation_domain"],
-        "safety_goals": ["inflate_sequence_safety", "deflate_sequence_safety", "uncompress_safe", "uncompress_z_safe", "uncompress2_safe", "uncompress2_z_safe", "compress_safety", "compress_z_safety", "compress2_safety", "compress2_z_safety"],
+        "safety_goals": ["inflate_sequence_safety", "deflate_sequence_safety", "uncompress_safe", "uncompress_z_safe", "uncompress2_safe", "uncompress2_z_safe", "compress_safety", "compress_z_safety", "compress2_safety", "compress2_z_safety",
+                         "inflate_back_sequence_safety", "deflateCopy_safety",
+                         "inflate_refusal", "deflate_refusal"],
     }
     for group, suffixes in groups.items():
         expected = ["ZlibF.Spec.Public.Goal." + suffix for suffix in suffixes]

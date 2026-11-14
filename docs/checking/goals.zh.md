@@ -1,10 +1,10 @@
-<!-- source-sha256: 5a976c9ee4c030e4bf37bb6d10fcd88b957f2d8ebefc4e2d5367dfbc4cc12e24 -->
+<!-- source-sha256: 0f6d532f3c12fef99851fed7b588255980fde1fb61fe95ee937a780d036fe0cc -->
 
 # 公开验证目标
 
 结论要求公开 API 安全并满足文档规定的行为。首个目标是默认 x86_64 Linux 静态构建，使用默认分配器。分配失败属于范围之内。项目还以覆盖上游 CI 构建的每一种配置为目标。
 
-`tests/audit/public-api.json` 根据固定版本的 `zlib.h` 固定公开入口清单。每个条目给出翻译后的函数、手册章节及其所需最终目标。共有 95 个默认构建入口和八个族级义务：四个生命周期契约和四个初始化定义域契约。其 `safety_goals` 组列出当前范围的十个安全目标：`inflate` 和 `deflate` 调用序列、`uncompress*` 和 `compress*`。仅 Windows 支持的 `gzopen_w` 单独标识。清单条目是一项要求，不是证明。
+`tests/audit/public-api.json` 根据固定版本的 `zlib.h` 固定公开入口清单。每个条目给出翻译后的函数、手册章节及其所需最终目标。共有 95 个默认构建入口和八个族级义务：四个生命周期契约和四个初始化定义域契约。其 `safety_goals` 组列出当前范围的安全目标：`inflate`、`deflate` 和 `inflateBack` 调用序列、`uncompress*` 和 `compress*`。仅 Windows 支持的 `gzopen_w` 单独标识。清单条目是一项要求，不是证明。
 
 ## 契约覆盖整个调用
 

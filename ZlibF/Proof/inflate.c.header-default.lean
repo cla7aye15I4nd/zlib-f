@@ -128,8 +128,8 @@ theorem lit_incorrect_header_check : "incorrect header check" ∈ strTable :=
   Array.mem_of_getElem? (i := 85) (by rfl)
 
 set_option maxRecDepth 100000 in
-theorem lit_unknown_compression_method : "unknown compression method" ∈ strTable :=
-  Array.mem_of_getElem? (i := 163) (by rfl)
+theorem lit_unknown_compression_method : "unknown compression method" ∈ strTable := by
+  decide +kernel
 
 set_option maxRecDepth 100000 in
 theorem lit_invalid_window_size : "invalid window size" ∈ strTable :=

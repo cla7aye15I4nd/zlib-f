@@ -13,7 +13,7 @@ buffer/table precondition. Format refinement is a separate obligation.
 namespace Zlib.Inffast.Proofs
 open C Zlib.Inffast Zlib.Inffast.Spec ZlibF.Spec
 
-variable {e : Env} {c : Ctx}
+variable {α : Bool} {e : EnvG α} {c : Ctx}
 
 /-- The reviewed length branch has the full one-iteration postcondition,
 including the six-byte bound that its older format-oriented summary omits. -/
@@ -42,10 +42,10 @@ theorem dolenLen_step_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m : UI
     have hi' : i' = ir := (Ptr.ref.inj (hls'.hin.symm.trans hin)).2
     subst ir
     refine ⟨i', o + (l.len.toNat + lx),
-      matchArr e.s0.wsize.toNat e.s0.wnext.toNat e.woff e.W e.bg o (E.val.toNat + xv) (l.len.toNat + lx) A,
+      e.mArr e.bg o (E.val.toNat + xv) (l.len.toNat + lx) A,
       msg, m, hls', by omega, hir2, by omega, by omega,
-      matchArr_size _ _ _ _ _ _ _ _ _, hh, hag, ?_, ?_, ?_⟩
-    · exact fun j hj => matchArr_frame _ _ _ _ _ _ _ _ _ _ hj
+      e.mArr_size _ _ _ _ _, hh, hag, ?_, ?_, ?_⟩
+    · exact fun j hj => e.mArr_frame _ _ _ _ _ _ hj
     · intro _; exact ⟨by omega, rfl, rfl⟩
     · intro h; simp [hb] at h
   · obtain ⟨i', p, _, _, hb, hls', hh⟩ := hbad
@@ -313,11 +313,10 @@ theorem dolenRoot_step_wp (hc : CtxOK e c) (A : Array UInt8) (msg : BPtr) (m : U
   · exact dolenLoop_step_wp hc A msg m _ i o s _ (LS.congr hls rfl rfl rfl rfl) hAsz ho hbroke
       hs6 hsi hT hb15 hbi2 hmod rfl (hfr.mono (by omega))
 
-/-- Safety, frame, exact margins and positive output on continuation for one
-actual translated `inflate_fast_body` execution. This proves the unchanged
-parent-authored `Goal.step_safe`, not a model execution assumption. -/
-theorem inflate_fast_body_step_safe : Goal.step_safe := by
-  intro e c A msg m l i o hp
+/-- `inflate_fast_body_step_safe` for any window relation (`EnvG`). -/
+theorem inflate_fast_body_step_safe_gen {α : Bool} (e : EnvG α) (c : Ctx) (A : Array UInt8) (msg : BPtr)
+    (m : UInt32) (l : L) (i o : Nat) (hp : StepPre e c A l i o) :
+    ∃ l' h', C.run (inflate_fast_body c l) (e.heap A msg m) = .ok (l', h') ∧ StepPost e A msg m i o l' h' := by
   have hfr := hp.inputFrame
   rcases hp with ⟨hc, hls, hAsz, hi6, ho258, hbroke⟩
   change Wp (inflate_fast_body c l) (e.heap A msg m) (StepPost e A msg m i o)
@@ -344,5 +343,11 @@ theorem inflate_fast_body_step_safe : Goal.step_safe := by
       have : ¬ l.bits.toNat < 15 := fun h => h1 (UInt32.lt_iff_toNat_lt.mpr (by simpa using h))
       omega
     exact dolenRoot_step_wp hc A msg m l i o i hls hAsz ho258 hbroke hi6 (by omega) (by omega) hb (by omega) (hfr.mono (by omega))
+
+/-- Safety, frame, exact margins and positive output on continuation for one
+actual translated `inflate_fast_body` execution. This proves the unchanged
+parent-authored `Goal.step_safe`, not a model execution assumption. -/
+theorem inflate_fast_body_step_safe : Goal.step_safe :=
+  fun e c A msg m l i o hp => inflate_fast_body_step_safe_gen e c A msg m l i o hp
 
 end Zlib.Inffast.Proofs

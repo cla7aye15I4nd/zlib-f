@@ -83,7 +83,7 @@ theorem cont_empty_q {h : Heap} {r : ZStreamRef} {ds : Nat}
     (inv : DInv h r ds z d) (ov : Block.OverlayAt d.lit_bufsize.toNat) (header : HeaderInv d)
     (facts : CallFacts d) (buffers : StreamBuffers h r)
     (active : ActiveHeader h r) (pend : d.pending = 0) (accepted : ¬ DeflateRefuses z d flush)
-    (room : z.avail_out ≠ 0) (lower : 0 ≤ flush.toInt) (upper : flush.toInt ≤ 4) (empty : z.avail_in = 0)
+    (room : z.avail_out ≠ 0) (lower : 0 ≤ flush.toInt) (upper : flush.toInt ≤ 5) (empty : z.avail_in = 0)
     (sq : SQ r ds flush) :
     CallQ r ds z d flush
       (headerPhase (some r) (some (.tab ds)) flush
@@ -151,7 +151,7 @@ theorem call_pending_q {h : Heap} {r : ZStreamRef} {ds : Nat}
     (inv : DInv h r ds z d) (ov : Block.OverlayAt d.lit_bufsize.toNat) (header : HeaderInv d)
     (facts : CallFacts d) (buffers : StreamBuffers h r)
     (active : ActiveHeader h r) (pend : d.pending ≠ 0) (accepted : ¬ DeflateRefuses z d flush)
-    (room : z.avail_out ≠ 0) (lower : 0 ≤ flush.toInt) (upper : flush.toInt ≤ 4) (empty : z.avail_in = 0)
+    (room : z.avail_out ≠ 0) (lower : 0 ≤ flush.toInt) (upper : flush.toInt ≤ 5) (empty : z.avail_in = 0)
     (sq : SQ r ds flush) :
     CallQ r ds z d flush (C.run (deflate (some r) flush) h) := by
   have accepted0 := accepted
@@ -337,7 +337,7 @@ state. `sq` is the strategy fact (`strat_quiet`). -/
 theorem call_quiet_of {h : Heap} {r : ZStreamRef} {ds : Nat} {z : ZStream} {d : DeflateState} {flush : Int32}
     (inv : DInv h r ds z d) (ov : Block.OverlayAt d.lit_bufsize.toNat) (header : HeaderInv d) (facts : CallFacts d)
     (buffers : StreamBuffers h r) (active : ActiveHeader h r) (out : z.next_out ≠ .null)
-    (lower : 0 ≤ flush.toInt) (upper : flush.toInt ≤ 4) (empty : z.avail_in = 0)
+    (lower : 0 ≤ flush.toInt) (upper : flush.toInt ≤ 5) (empty : z.avail_in = 0)
     (sq : ∀ {h1 : Heap} {z1 : ZStream} {d1 : DeflateState} {b : block_state} {a : Heap} {z2 : ZStream} {d2 : DeflateState},
       DInv h1 r ds z1 d1 → Block.OverlayAt d1.lit_bufsize.toNat → StrategyEntry h1 r z1 d1 → d1.status = BUSY_STATE →
       z1.avail_in = 0 → dispatch (some (.tab ds)) flush d1 h1 = .ok (b, a) → r.get a = some z2 → a.dstates ds = some d2 →

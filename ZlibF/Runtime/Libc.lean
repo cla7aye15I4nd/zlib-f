@@ -14,12 +14,13 @@ heap tables) is in `Space.lean`, `Monad.lean` and `Ptr.lean`. Each function says
 | `memmove` | `Ptr.memmove`, `memmoveB` | the same without the overlap fault |
 | `memset`, `zmemzero` | `Ptr.fill` (set `n` elements to a value), `Ptr.memset` (every byte of each element is `c`), `memsetB` | counts elements; `Ptr.fill` is `memset` only for bytes or the value 0 |
 | `strlen` | `strlenB` | faults when no NUL lies inside the block (the C reads past the object) |
-| `malloc` (through `ZALLOC`) | `allocB`, `allocW`, `allocK` per struct kind | the content is arbitrary integers and NULL pointers; success is decided by the oracle `Heap.allocOk`; faults if the heap is not `Fresh`; the size is a count of elements |
+| `malloc` (through `ZALLOC`) | `allocB`, `allocW`, `allocK` per struct kind | the content is arbitrary integers and NULL pointers; a request above `PTRDIFF_MAX` bytes returns NULL (glibc); below that, success is decided by the oracle `Heap.allocOk`; each call consumes one oracle number; faults if the heap is not `Fresh`; the size is a count of elements |
 | `free` | `freeB`, `freeW`, `freeK` | faults on a pointer that is not the start of a live block, on a freed block (double free), on a read-only block; NULL is a no-op |
 | string literal | `strLitRef` (the table `strTable`) | a static read-only array, the same pointer every time; a text outside the sources is a fault |
 | (test harness, not a C function) | `allocBytes`, `allocBytesRO` | put given bytes in a fresh block; take no allocation call |
 
-Not modelled: `calloc`, `realloc`, `printf` and the `gz` file calls other than through `GzFs` (the file system model of
+Not modelled: `calloc` and `realloc` (no call site in the verified LP64 build: `zcalloc` takes its `malloc` branch),
+`printf` and the `gz` file calls other than through `GzFs` (the file system model of
 the translations, in `ZlibF/Zlib/gzfs.lean`), `errno`, `abs`, `strerror` (the translations write them themselves).
 -/
 
@@ -229,10 +230,25 @@ block number `nextBlk` is already in use (`Heap.slotUsed`). The fault is not a C
 suffix `Chk` are aliases of the plain ones. -/
 
 
-/-- `malloc(n)` for `n` bytes: a fresh writable block with arbitrary content, or `NULL` when the failure oracle
-says so. -/
+/-- One more than `PTRDIFF_MAX` on LP64: `2^63`. glibc 2.43 refuses a `malloc` (and `calloc`, `realloc`) request
+above `PTRDIFF_MAX` (`malloc/malloc.c`, `_int_malloc`: `if (bytes > PTRDIFF_MAX) { __set_errno (ENOMEM); return
+NULL; }`). A named constant, so that `simp` does not rewrite it to a numeral before a size hypothesis can match. -/
+def mallocLimit : Nat := 2 ^ 63
+
+theorem mallocLimit_eq : mallocLimit = 2 ^ 63 := rfl
+
+theorem lt_mallocLimit_of_lt_pow32 {n : Nat} (hn : n < 2 ^ 32) : n < mallocLimit := by
+  unfold mallocLimit; omega
+
+theorem UInt32.toNat_lt_mallocLimit (x : UInt32) : x.toNat < mallocLimit :=
+  lt_mallocLimit_of_lt_pow32 (UInt32.toNat_lt x)
+
+/-- `malloc(n)` for `n` bytes: a fresh writable block with arbitrary content, or `NULL` when the request is above
+`PTRDIFF_MAX` (`n ≥ mallocLimit`) or the failure oracle says so. A refusal and an oracle failure are
+indistinguishable to the caller except through the size: both return `NULL`, consume one oracle number and leave
+the same heap. -/
 def allocB (n : Nat) : M BPtr := fun h =>
-  if h.allocOk h.nalloc then
+  if h.allocOk h.nalloc = true ∧ n < mallocLimit then
     if h.slotUsed h.nextBlk then .error (.ub "allocation: the block number is in use (the heap is not Fresh)")
     else
       .ok (.ref (.blk h.nextBlk) 0,
@@ -256,9 +272,10 @@ def allocBytesRO (a : Array UInt8) : M BPtr := fun h =>
     .ok (.ref (.blk h.nextBlk) 0,
       { h with bytes := upd h.bytes h.nextBlk (some a), ro := upd h.ro h.nextBlk true, nextBlk := h.nextBlk + 1 })
 
-/-- `malloc(2 * n)` for `n` 16-bit words, as `allocB`. -/
+/-- `malloc(2 * n)` for `n` 16-bit words, as `allocB`: the size test is on the `2 * n` bytes, and a refusal is
+indistinguishable from an oracle failure except through the size. -/
 def allocW (n : Nat) : M WPtr := fun h =>
-  if h.allocOk h.nalloc then
+  if h.allocOk h.nalloc = true ∧ 2 * n < mallocLimit then
     if h.slotUsed h.nextBlk then .error (.ub "allocation: the block number is in use (the heap is not Fresh)")
     else
       .ok (.ref (.blk h.nextBlk) 0,
@@ -353,12 +370,12 @@ theorem strLitRef_ro (h : Heap) (i : Nat) : Space.ro h (BRef.str i) = true := rf
 
 /-! ### Rules -/
 
-theorem allocB_some {h : Heap} (n : Nat) (hok : h.allocOk h.nalloc = true)
+theorem allocB_some {h : Heap} (n : Nat) (hok : h.allocOk h.nalloc = true) (hn : n < mallocLimit)
     (hs : h.slotUsed h.nextBlk = false := by fresh_slot) :
     allocB n h = .ok (.ref (.blk h.nextBlk) 0,
       { h with bytes := upd h.bytes h.nextBlk (some (Array.ofFn (n := n) fun i => Junk.of (h.garbage h.nalloc i.val))),
                ro := upd h.ro h.nextBlk false, nextBlk := h.nextBlk + 1, nalloc := h.nalloc + 1 }) := by
-  simp [allocB, hok, hs]
+  simp [allocB, hok, hn, hs]
 
 theorem allocBytesRO_ok {h : Heap} (a : Array UInt8) (hs : h.slotUsed h.nextBlk = false := by fresh_slot) :
     allocBytesRO a h = .ok (.ref (.blk h.nextBlk) 0,
@@ -369,12 +386,12 @@ theorem allocB_none {h : Heap} (n : Nat) (hok : ¬ h.allocOk h.nalloc = true) :
     allocB n h = .ok (.null, { h with nalloc := h.nalloc + 1 }) := by
   simp [allocB, hok]
 
-theorem allocW_some {h : Heap} (n : Nat) (hok : h.allocOk h.nalloc = true)
+theorem allocW_some {h : Heap} (n : Nat) (hok : h.allocOk h.nalloc = true) (hn : 2 * n < mallocLimit)
     (hs : h.slotUsed h.nextBlk = false := by fresh_slot) :
     allocW n h = .ok (.ref (.blk h.nextBlk) 0,
       { h with words := upd h.words h.nextBlk (some (Array.ofFn (n := n) fun i => Junk.of (h.garbage h.nalloc i.val))),
                nextBlk := h.nextBlk + 1, nalloc := h.nalloc + 1 }) := by
-  simp [allocW, hok, hs]
+  simp [allocW, hok, hn, hs]
 
 theorem allocW_none {h : Heap} (n : Nat) (hok : ¬ h.allocOk h.nalloc = true) :
     allocW n h = .ok (.null, { h with nalloc := h.nalloc + 1 }) := by
@@ -413,10 +430,11 @@ theorem free_twice {h : Heap} {b : Nat} {a : Array UInt8} (hb : h.bytes b = some
   simp [freeB]
 
 /-- A successful `allocB` adds exactly the new block to the live blocks. -/
-theorem allocB_owns {h : Heap} (n : Nat) {S : Nat → Prop} (hok : h.allocOk h.nalloc = true) (hO : h.Owns S)
+theorem allocB_owns {h : Heap} (n : Nat) {S : Nat → Prop} (hok : h.allocOk h.nalloc = true)
+    (hn : n < mallocLimit) (hO : h.Owns S)
     (hs : h.slotUsed h.nextBlk = false := by fresh_slot) :
     ∃ h', allocB n h = .ok (.ref (.blk h.nextBlk) 0, h') ∧ h'.Owns (fun b => S b ∨ b = h.nextBlk) := by
-  refine ⟨_, allocB_some n hok hs, ?_⟩
+  refine ⟨_, allocB_some n hok hn hs, ?_⟩
   intro b
   by_cases hb : b = h.nextBlk
   · subst hb; simp [Heap.live]

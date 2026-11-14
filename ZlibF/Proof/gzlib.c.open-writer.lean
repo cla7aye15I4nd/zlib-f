@@ -229,8 +229,9 @@ theorem openAfterMode_writer_copy (h : Heap) (fs : Fs) (i : Nat) (s : GzState)
     (allocatedPathBytes h name.length) fmt path name hp hfmt hbytes hro
     (by simp [allocatedPathBytes]) hlen (Fresh.slotUsed_next hpfresh)
   rw [openAfterMode_path_cut]
+  have hlim : name.length + 1 < C.mallocLimit := by unfold C.mallocLimit; omega
   offsetsimp [hdone, hs, hm, hdirect, GZ_WRITE, GZ_READ, GZ_NONE, hstr, hcapNat,
-    allocB, hok, Fresh.slotUsed_next hf, setS, upd_upd, hmod]
+    allocB, hok, hlim, Fresh.slotUsed_next hf, setS, upd_upd, hmod]
   dsimp only [pathAllocatedHeap, allocatedPathBytes] at hliteral hformat
   simp only [hm, GZ_WRITE] at hliteral hformat
   simp only [Zlib.GzFs.strLit] at hliteral ⊢

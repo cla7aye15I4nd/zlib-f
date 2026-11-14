@@ -73,7 +73,9 @@ without bound instead:
 
 Changes outside loops are rejected quickly: dropped or replaced calls, dropped stores, and
 changed constants. Each such row takes 120 s to 200 s at about 10.5 GB on `uncompress2_z` and
-`compress2_z`. So a public record names structural mutants. A list keeps its arithmetic and
+`compress2_z`. So a public record names structural mutants. **Rule:** a mutant named in
+`tests/audit/public-mutants.json` must not edit a loop body or machine arithmetic; such mutants
+go in a source-level list only. A replay over the budget says so in its failure message. A list keeps its arithmetic and
 loop-body mutants as well, and every mutation shard checks those by re-elaboration, where the
 proof must fail in a semantic lemma. `tests/proof-mutants/api-boundary.tsv` is the example:
 `uncompress2_z-destLen-count` and both `refill-off-by-one` rows are checked by re-elaboration.

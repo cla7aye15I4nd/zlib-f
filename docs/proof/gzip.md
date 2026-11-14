@@ -9,9 +9,11 @@ and history proofs; [progress](../progress.md) owns status and remaining work.
 ## Representation and history predicates
 
 `GzGood` carries state, string and buffer ownership, uniqueness and freshness.
-`PosInv` bounds positions and pending skips. `NextOk` excludes dangling input
-and pointers into message storage that may be freed. These facts need actual
-history producers; a direct caller-buffer read can change their lifetime case.
+`PosInv` bounds positions and pending skips. `NextOk` holds only with buffered
+output (`x.have != 0`): `x.next` then points into live storage, not into message
+storage that may be freed. With `x.have = 0`, `x.next` may dangle in the
+caller's buffer after a direct read; with patch 0005 nothing reads or advances
+it then. These facts need actual history producers.
 
 On the selected LP64 branch, `GT_OFF` is false because int and offset widths
 differ. Offsets are signed 64-bit, with `GZ_OFF_MAX = 2^63 - 1`. Individual

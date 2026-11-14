@@ -255,7 +255,10 @@ macro "keep_m_step" : tactic => `(tactic|
     | with_reducible exact keep_ptr_diff _ _
     | with_reducible exact keep_ptr_lt _ _
     | with_reducible exact keep_ldZStream _
-    | with_reducible exact keep_stZStream _ _
+    | (show MsgOk _ _; first | exact Or.inl rfl | exact Or.inr (Or.inl rfl))
+    | with_reducible apply keep_lit_ld_st_bind
+    | with_reducible apply keep_ldZ_stZ_bind
+    | with_reducible apply keep_ldZ_stZ
     | with_reducible apply keep_ld_st_bind
     | with_reducible apply keep_ld_st
     | with_reducible exact keep_ldInflateState _
@@ -265,7 +268,7 @@ macro "keep_m_step" : tactic => `(tactic|
     | with_reducible exact keep_chkI32 _
     | with_reducible exact keep_memcpyB _ _ _
     | with_reducible apply keep_wrS
-    | with_reducible exact keep_wrZ _ _
+    | with_reducible apply keep_wrZ
     | with_reducible exact keep_rdS _ _
     | with_reducible apply keep_setMode
     | with_reducible exact keep_setMsg _ _
