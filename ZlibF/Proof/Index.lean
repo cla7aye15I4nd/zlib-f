@@ -227,6 +227,7 @@ import ZlibF.Proof.«inflate.c.fast-view-whole-memory-shape»
 import ZlibF.Proof.«inflate.c.stream-frame-primitives»
 import ZlibF.Proof.«inflate.c.window-platform»
 import ZlibF.Proof.«public-deflate-init»
+import ZlibF.Proof.«public-deflate-init-domain»
 import ZlibF.Proof.«public-deflate-init2»
 import ZlibF.Proof.«deflate.c.engine.fill-preserve»
 import ZlibF.Proof.«deflate.c.engine.rebuffer»
