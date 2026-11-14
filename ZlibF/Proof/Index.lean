@@ -1706,6 +1706,7 @@ import ZlibF.Proof.«gz.read-assembly»
 import ZlibF.Proof.«gz.read-close»
 import ZlibF.Proof.«gz.read-decomp»
 import ZlibF.Proof.«inflate.c.head-uses-input»
+import ZlibF.Proof.«inflate.c.stuck-no-output»
 import ZlibF.Proof.«gzwrite.c.upto-input»
 import ZlibF.Proof.«gzwrite.c.comp»
 import ZlibF.Proof.«gzwrite.c.zero»
