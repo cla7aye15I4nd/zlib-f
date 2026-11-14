@@ -816,6 +816,7 @@
     "ZlibF.Spec.Public.Goal.compress_z_safety",
     "ZlibF.Spec.Public.Goal.compress2_safety",
     "ZlibF.Spec.Public.Goal.compress2_z_safety",
-    "ZlibF.Spec.Public.Goal.inflate_back_sequence_safety"
+    "ZlibF.Spec.Public.Goal.inflate_back_sequence_safety",
+    "ZlibF.Spec.Public.Goal.deflateCopy_safety"
   ]
 }
