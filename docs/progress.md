@@ -2243,6 +2243,14 @@ A read leaf is open while `dev`'s theorem differs from the skeleton statement. T
 "Difference" names what differs, so that the read side can align the statement (a correction of
 the skeleton statement, with evidence) or add an adapter lemma.
 
+Statement corrections of `GzInv` against the skeleton text. Both make a clause weaker, because the
+skeleton's clause was false; each has a checked regression. The no-fault and frame clauses of the goal
+are unchanged.
+- `GzCommon.next` constrains `x.next` only while output is buffered (`x.have ≠ 0`) (`7c32d275`;
+  regression `tests/verification/regressions/gz-next-caller.c`, with patch 0005).
+- `GzReadInv.copyDirect` allows `direct = 0 ∨ direct = 1` under `how = COPY` (`a351cd66`; regression
+  `tests/verification/regressions/gz-copy-direct.c`).
+
 | Lemma | Meaning | State | Hours | Owner |
 | --- | --- | --- | ---: | --- |
 | `GzInv.caller`, `GzInv.gz_error`, `GzInv.gz_reset`, `GzInv.put_scalars` | Interface lemmas of `GzInv`. | checked: `gz.inv-frame`, `gzlib.c.error-inv-premises`, `gz.inv-reset`, `gz.inv-put-scalars` | 0 | batch 1, deflate owner |
