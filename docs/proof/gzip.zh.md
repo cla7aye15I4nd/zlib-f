@@ -1,4 +1,4 @@
-<!-- source-sha256: 20cc30678bed1e0f187cd30d7c0cd401ff64a1706c90a93763c73222e6ab1379 -->
+<!-- source-sha256: 3c342b49f9d5b0a48ed23057b15a598a40526e7d9a4e93794ae8e3b3e91a12d1 -->
 # Gzip 文件：源代码流程、所有权与清理
 
 源文件为 `gzlib.c`、`gzread.c`、`gzwrite.c`、`gzclose.c` 和 `gzguts.h`。[API](../spec/api/gz-file.md)定义调用者可见行为，独立的[外部 I/O 模型](../design/external-io.md)定义已表示的文件与格式化操作。下文沿源代码展开执行与调用历史的证明义务；[进度](../progress.md)负责状态与剩余工作。
