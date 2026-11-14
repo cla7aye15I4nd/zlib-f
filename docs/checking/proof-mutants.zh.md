@@ -1,4 +1,4 @@
-<!-- source-sha256: 5e67fb10fd7827a6617cb90d55bb64e85cebea16c863fdc40454d65becccbd51 -->
+<!-- source-sha256: 48f9e64aaeb128642710607493d6ca166bbd6e68f618347f05ecc2a6fa0251e6 -->
 
 # 证明变异
 
@@ -60,6 +60,17 @@ bash tests/audit/proofmut.sh tests/audit/proofmut/crc32.tsv '^combine'
 - `inflateBackInit_`：状态没有存入流；窗口没有存入；分配失败返回 `Z_OK`；`sane` 被清零；
 - `inflateBackEnd`：跳过对状态的释放；保留 `strm->state`；返回 `Z_STREAM_ERROR`。
 收尾部分的那一行是脚本（`infback-sequence.py`），它在重述 `backTail` 中做相同修改，使失败的是语义引理，而不是 `inflateBack_eq` 的 `rfl`。变异分片以重新繁饰检查这些行。用每行的翻译修改对 `inflate_back_sequence_safety` 做内核重放，也拒绝全部十一行；原始证明的重放峰值约为 9.8 GB。
+
+gz 目标也不是公开入口；它们的行在三个安全表中。
+- `tests/proof-mutants/gz-refusal.tsv`，对应 `Goal.gz_refusal`：十九行，每行在 `NULL` 句柄上改变返回值或去掉 `NULL` 检查，覆盖除 `gzread` 与 `gzfread`（在 `gz-read.tsv` 中）以及 `gzbuffer`、`gzeof` 与 `gzoffset64`（在 `public-streams.tsv` 中）之外的每个 gz 函数。目标的子句由求值成立，所以每行都在 `public-gz-refusal` 中失败。
+- `tests/proof-mutants/gz-sequence.tsv`，对应 `Goal.gz_sequence_safety`：写入调用（`gzwrite`、`gzfwrite`、`gzputc`、`gzputs`、`gzvprintf` 从而 `gzprintf`、`gzflush`、`gzsetparams`）、关闭（`gzclose_w`、`gzclose_r`、`gzclose` 的分派）、打开（`gz_open`、`gzdopen`）、`gzseek64` 与 `gztell64`、`gz_error`（跳过释放；为 `Z_MEM_ERROR` 分配消息）、`gzgetc()` 宏的两个分支（`zlib.h.lean`：去掉 `have` 检查；`pos` 不前进）、读取叶子 `gzgetc`、`gzungetc`、`gzgets` 与 `gzdirect`，以及补丁 0002 到 0005 的每个补丁块各一行，去掉该补丁块（即未打补丁的 C）。大多数行是脚本行（`gz-sequence.py`），在代码的每个 `rfl` 重述（`gzwrite_eq`、`putcSlow`、`closeTail`、`pfFmt`、`gTail`、`seekTail`、`openAfterMode`、`fetchBody`、`restK`、`getsRest`、`gz_error` 的私有副本）中做相同修改，使失败的是语义引理，而不是重述。
+- `tests/proof-mutants/gz-read.tsv`（及 `gz-read.py`），来自读取侧：`gzread`、`gzfread`、`gzgetc` 与 `gzungetc` 的拒绝，以及 `gzclose_r`。其中两行 `gzungetc-mode-check` 与 `gzungetc-skip-dropped` 还列出步骤引理所在的模块 `gz.read-getc-step`：只列 `gzread.c.getc-ungetc` 时不会构建 `gzungetc_step` 的证明，两行都能构建通过；列出后两行都在那里被杀死。
+
+第一个错误的位置。每一行都在被变异函数的证明中被杀死：其步骤引理、其函数体的精确运行，或（对被调用者）该被调用者的证明。有五行列出步骤引理之外的模块，它们都是被变异函数的证明：三行 `gz_open` 在 `gz_open` 的精确运行中失败（`gzlib.c.open-init` 中的 `gz_open_empty_mode`，`gzlib.c.open-io` 中的 `openAfterPath_writer`：`gz_open` 的 I/O 尾部，它释放路径并调用 `gz_reset`），`gzdopen` 一行在 `gzdopen` 的运行中失败（`gzdopen_writer_regular_run`，`gzlib.c.dopen-entry`），`gztell64` 一行在 `gztell64` 的运行中失败（`gztell64_run`，`gzlib.c.simple`）。`gzclose_w` 的各行在 `closeTail_ok`（`gzwrite.c.close`）中失败，即 `gzclose_w` 的释放证明；`gzclose` 的分派一行在 `gzclose_dispatch` 中失败。有一行由心跳超时而非类型错误杀死：`patch0004-fetch-copy-room-removed`，在 `fetch_look`（`gz.read-fetch`）中，这是同一函数 `gz_fetch` 的证明。
+
+`macro-have-guard-dropped` 一行起初存活：目标只在 `x.have ≠ 0` 时运行宏，所以它的 `have = 0` 分支从未被运行。目标已更正（3c5292f7；回归 `tests/verification/regressions/gz-macro-have-zero.lean`），该行现在在 `zlib.h.gzgetc-macro` 中被杀死。
+
+变异分片以重新繁饰检查这三个表。对 `gz_refusal` 的内核重放拒绝全部十九行拒绝变异（每次重放在两秒内结束）。用每个结构性行的翻译修改对 `gz_sequence_safety_public` 做内核重放（不含位于循环体或机器算术中的行：`patch0003-*`、`gz_fetch` 与 `gz_read` 的三行 `patch0004`、`patch0004-gets-room-removed`、`gzgets-left-whole-length`、`gztell64-adds-max`），接受原始证明（51615 个依赖，峰值约 10.7 GB）。
 
 ## 列表格式
 

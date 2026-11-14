@@ -2585,9 +2585,14 @@ history of a handle. The goal `Goal.gz_sequence_safety` and its definitions (`Gz
 and one premise, `GzReadLeaves`: the six read leaves `gzread_step`, `gzfread_step`, `gzgetc_step`,
 `gzungetc_step`, `gzgets_step`, `gzdirect_step`, each with the skeleton's exact statement. All six are
 checked on `dev` with no premise, so `Goal.gz_sequence_safety` is checked: `gz_sequence_safety_public`
-(`public-gz-sequence-safety`). It is not yet registered in `tests/audit/theorems.txt`, so not accepted.
+(`public-gz-sequence-safety`). It is registered in `tests/audit/theorems.txt`, with proof mutants (`gz-sequence.tsv`,
+`gz-read.tsv`); `Goal.gz_sequence_nonvacuity` (`gz_sequence_nonvacuity_public`) and `Goal.gz_refusal` (`gz_refusal`) are
+registered with it.
 Audit A1 added the inline path of the `gzgetc()` macro of `zlib.h` to `GzHistory` (`getcMacro`) and to the
-goal (one conjunct); `GzMacro.gzgetc_macro_safe` proves it. Every other
+goal (one conjunct); `GzMacro.gzgetc_macro_safe` proves it. Goal correction (3c5292f7): the step and the conjunct
+covered only `x.have ≠ 0`, so the macro's `have = 0` branch was never run by the goal (the proof mutant
+`macro-have-guard-dropped` survived). Both now cover every macro call; with `x.have = 0` the macro is the call of
+`gzgetc`, which returns under `ReadsFinite` (regression `tests/verification/regressions/gz-macro-have-zero.lean`). Every other
 leaf is used from `dev` directly; no loop rule is used. The skeleton is on the branch `skeleton/gz`,
 commit `17770416`, after a merge of `dev`: files `gz.skeleton-model.lean` (the two loop rules only),
 `gz.skeleton-read.lean` (the open read leaves) and `gz.skeleton.lean` (`gz_sequence_safety_of` applied to
@@ -2625,7 +2630,7 @@ are unchanged.
 | `gzclearerr_step` | `gzclearerr` through `gz_error`. | checked: `gzclearerr_step` (`gz.inv-clearerr`) | 0 | batch 1 |
 | `gzoffset64_step`, `gzoffset_step` | One `lseek` (M3); nothing else changes. | checked: same names (`gz.inv-offset-rewind`, `646b1ab6`) | 0 | batch C |
 | `gzrewind_step` | `lseek` (M3) and `gz_reset`. | checked: `gzrewind_step` (`gz.inv-offset-rewind`, `646b1ab6`) | 0 | batch C |
-| `history_inv`, `operation_safe`, `close_safe`, `gz_sequence_safety` | Assembly, re-checked under `dev`'s `GzInv` and `GzSafety`. | checked: `gz_sequence_safety_of` (`gz.sequence-safety`), premise `GzReadLeaves`, all six fields proved (`gz_read_leaves`); `Goal.gz_sequence_safety` checked with no premise as `gz_sequence_safety_public` (`public-gz-sequence-safety`); not registered in `theorems.txt` | 0 | batch C |
+| `history_inv`, `operation_safe`, `close_safe`, `gz_sequence_safety` | Assembly, re-checked under `dev`'s `GzInv` and `GzSafety`. | checked: `gz_sequence_safety_of` (`gz.sequence-safety`), premise `GzReadLeaves`, all six fields proved (`gz_read_leaves`); `Goal.gz_sequence_safety` checked with no premise as `gz_sequence_safety_public` (`public-gz-sequence-safety`); registered in `theorems.txt` | 0 | batch C |
 | `gz_init_safe`, `gz_comp_safe`, `gz_zero_safe`, `gz_write_safe`, `gz_vacate_safe` | Write-side helpers. | checked: same names (`gzwrite.c.safety`) | 0 | batch C |
 | `gzwrite_step`, `gzfwrite_step`, `gzputc_step`, `gzputs_step`, `gzvprintf_step`, `gzprintf_step`, `gzflush_step`, `gzsetparams_step` | Write-side public calls. | checked: same names (`gzwrite.c.safety`) | 0 | batch C |
 | `gzclose_w_step` | Finish, `deflateEnd`, frees, descriptor released. | checked: `gzclose_w_step` (`gzwrite.c.safety`, stated with `GzCloseSafe`) | 0 | batch C |
@@ -2644,7 +2649,7 @@ are unchanged.
 | `gzungetc_step` | Push back inside `out`. | checked: `GzRead.gzungetc_step` (`gz.read-getc-step`), no premise: `GzSkipTerminates` is `gzSkipTerminates_holds` (`gzread.c.skip-terminates`) | 0 | batch C |
 | `gzgets_step` | Bounded `memchr`, copy, NUL. | checked: `GzRead.gzgets_step` (`gz.read-gets-step`), no premise | 0 | batch C |
 | `gzdirect_step` | One `gz_look` and `gz_skip_have`. | checked: `GzRead.gzdirect_step` (`gz.read-direct-step`), no premise | 0 | batch C |
-| `gzgetc_macro_safe` | The inline path of the `gzgetc()` macro of `zlib.h` (`Zlib.ZlibH.gzgetc`, `x.have ≠ 0`) returns and keeps `GzInv`: the history step `GzHistory.getcMacro` and the goal conjunct added by audit A1. | checked: `GzMacro.gzgetc_macro_safe` (`zlib.h.gzgetc-macro`), used in `history_inv` and `gz_sequence_safety_of` | 0 | batch C |
+| `gzgetc_macro_safe` | A call of the `gzgetc()` macro of `zlib.h` (`Zlib.ZlibH.gzgetc`) keeps `GzInv`: the inline path (`x.have ≠ 0`) returns with no premise, and with `x.have = 0` the macro is the function, through `gzgetc_step`; the history step `GzHistory.getcMacro` and the goal conjunct added by audit A1, corrected in 3c5292f7. | checked: `GzMacro.gzgetc_macro_safe` (`zlib.h.gzgetc-macro`), used in `history_inv` and `gz_sequence_safety_of` | 0 | batch C |
 | Merge the `deflate.c.quiet-*` restated copies | Cleanup, not on the critical path. | open | 4 | later |
 | **Total remaining** | batch C 0; read side 9.5 (alignment of internal helper statements with the skeleton text; the goal no longer needs them); unassigned 2; later 4 | | **15.5** | |
 
@@ -2747,8 +2752,10 @@ Abbreviations:
 #### Gzip file interface
 
 `Goal.gz_sequence_safety` (`ZlibF/Spec/Public/GzSafety.lean`) is the safety goal of the gzip interface. It is
-registered in `goals.txt` and in `safety_goals`, and checked on dev with no premise (`gz_sequence_safety_public`,
-`public-gz-sequence-safety.lean`), not yet in `theorems.txt`. `gz_sequence_safety_of (L : GzReadLeaves)`
+registered in `goals.txt` and in `safety_goals`, checked with no premise (`gz_sequence_safety_public`,
+`public-gz-sequence-safety.lean`) and registered in `theorems.txt`, with proof mutants of every gz function group and of
+each hunk of patches 0002 to 0005 (`gz-sequence.tsv`, `gz-read.tsv`, `docs/checking/proof-mutants.md`). Its non-vacuity
+goal `Goal.gz_sequence_nonvacuity` (`gz_sequence_nonvacuity_public`) is registered too. `gz_sequence_safety_of (L : GzReadLeaves)`
 (`gz.sequence-safety.lean`) proves it from six read leaves, all proved. Every other call is proved directly: the open calls,
 the close calls, the write calls and the queries. `gzread_step` and `gzfread_step` close with the read side's
 `gz.read-assembly`. `gzgetc_step`, `gzungetc_step`, `gzgets_step` and `gzdirect_step` are batch C's. The goal's
@@ -2759,15 +2766,15 @@ handles have `Goal.gz_refusal` (A2), and the fd rule is removed from the goal (B
 
 | function | route | theorem | registered? | domain gap or note |
 | --- | --- | --- | --- | --- |
-| gzopen, gzopen64 | open leaf | `gzopen_safe` (`gz.inv-open-fresh`), `gzopen64_safe` | no (checked) | Every path, mode and world. |
+| gzopen, gzopen64 | open leaf | `gzopen_safe` (`gz.inv-open-fresh`), `gzopen64_safe` | through `gz_sequence_safety_public` | Every path, mode and world. |
 | gzdopen | open leaf + own goal | `gzdopen_safe` (`gz.inv-open`); `gzdopen_complete` (`Goal.gzdopen`) | yes (own goal) | Every `fd`. |
-| gzbuffer, gzeof, gzerror, gzclearerr, gztell, gztell64, gzoffset, gzoffset64, gzrewind, gzseek, gzseek64 | sequence leaf | `gzbuffer_step`, `gzeof_step`, `gzerror_step`, `gzclearerr_step`, `gztell*_step`, `gzoffset*_step`, `gzrewind_step`, `gzseek*_step` (`gz.inv-*`) | no (checked) | Own functional goals of gzbuffer, gzeof, gzerror, gzclearerr, gzoffset and gzrewind are registered separately. |
-| gzwrite, gzfwrite, gzputc, gzputs, gzprintf, gzvprintf, gzflush, gzsetparams | sequence leaf | `gzwrite.c.safety` (`gzwrite_step` …) | no (checked) | `gzprintf`/`gzvprintf`: `GzArguments` asks for a representable format on every call, even on a reader (audit B3). |
-| gzclose, gzclose_w, gzclose_r | close leaf | `gzclose_step`, `gzclose_w_step`, `gzclose_r_step_safe` | no (checked) | |
-| gzread, gzfread | read leaf | `GzRead.gzread_step`, `GzRead.gzfread_step` (`gz.read-assembly`) | no (checked) | |
-| gzgetc, gzgetc_, gzungetc, gzgets, gzdirect | read leaf | `GzRead.gzgetc_step`, `GzRead.gzungetc_step` (`gz.read-getc-step`), `GzRead.gzgets_step`, `GzRead.gzdirect_step` | no (checked) | |
-| the `gzgetc()` macro of zlib.h | history step + goal conjunct | `GzMacro.gzgetc_macro_safe` (`zlib.h.gzgetc-macro`) | no (checked) | Closed (audit A1): the inline path (`x.have ≠ 0`) is `GzHistory.getcMacro`; with `x.have = 0` the macro calls the function, the `step` with `Call.gzgetc`. Differential test: op `getcm` of `tests/gen/gz.py`. |
-| all gz functions on a `NULL` handle | own safety goal | `ZlibF.Spec.Public.GzRefusalProof.gz_refusal` (`Goal.gz_refusal`, `public-gz-refusal.lean`) | no (checked) | Closed (audit A2): each of the 29 functions returns its documented value with the heap and the world unchanged. C test `tests/goals/gz-refusal`: 204 calls, no violation. The `gzgetc` macro on `NULL` is undefined behaviour in C; the goal states the function. |
+| gzbuffer, gzeof, gzerror, gzclearerr, gztell, gztell64, gzoffset, gzoffset64, gzrewind, gzseek, gzseek64 | sequence leaf | `gzbuffer_step`, `gzeof_step`, `gzerror_step`, `gzclearerr_step`, `gztell*_step`, `gzoffset*_step`, `gzrewind_step`, `gzseek*_step` (`gz.inv-*`) | through `gz_sequence_safety_public` | Own functional goals of gzbuffer, gzeof, gzerror, gzclearerr, gzoffset and gzrewind are registered separately. |
+| gzwrite, gzfwrite, gzputc, gzputs, gzprintf, gzvprintf, gzflush, gzsetparams | sequence leaf | `gzwrite.c.safety` (`gzwrite_step` …) | through `gz_sequence_safety_public` | `gzprintf`/`gzvprintf`: `GzArguments` asks for a representable format on every call, even on a reader (audit B3). |
+| gzclose, gzclose_w, gzclose_r | close leaf | `gzclose_step`, `gzclose_w_step`, `gzclose_r_step_safe` | through `gz_sequence_safety_public` | |
+| gzread, gzfread | read leaf | `GzRead.gzread_step`, `GzRead.gzfread_step` (`gz.read-assembly`) | through `gz_sequence_safety_public` | |
+| gzgetc, gzgetc_, gzungetc, gzgets, gzdirect | read leaf | `GzRead.gzgetc_step`, `GzRead.gzungetc_step` (`gz.read-getc-step`), `GzRead.gzgets_step`, `GzRead.gzdirect_step` | through `gz_sequence_safety_public` | |
+| the `gzgetc()` macro of zlib.h | history step + goal conjunct | `GzMacro.gzgetc_macro_safe` (`zlib.h.gzgetc-macro`) | through `gz_sequence_safety_public` | Closed (audit A1; corrected in 3c5292f7 after the proof mutant `macro-have-guard-dropped` survived): every macro call is `GzHistory.getcMacro`; with buffered output it is the inline path, and with `x.have = 0` the call of the function, covered through `gzgetc_step` under `ReadsFinite`. Differential test: op `getcm` of `tests/gen/gz.py` (also at `x.have = 0`: right after an open, on a writer, on an empty file). |
+| all gz functions on a `NULL` handle | own safety goal | `ZlibF.Spec.Public.GzRefusalProof.gz_refusal` (`Goal.gz_refusal`, `public-gz-refusal.lean`) | yes, with proof mutants (`gz-refusal.tsv`) | Closed (audit A2): each of the 29 functions returns its documented value with the heap and the world unchanged. C test `tests/goals/gz-refusal`: 204 calls, no violation. The `gzgetc` macro on `NULL` is undefined behaviour in C; the goal states the function. |
 | a second handle on the same fd | world step | `GzHistory.world` | no | Covered (audit B1, corrected): `GzWorldStep` is any well-formed world, so another party may close or reuse the handle's fd ([regression](../tests/verification/regressions/gz-world-closes-fd.lean)). |
 
 #### Miscounts and open items
@@ -2781,7 +2788,7 @@ Documented functions with no checked no-fault theorem for their full documented 
 5. **NULL or inconsistent stream refusal**: closed. `Goal.inflate_refusal` and `Goal.deflate_refusal` (checked) cover `inflate`, `deflate`, `inflateEnd`, `inflateReset`, `inflateReset2`, `inflateGetDictionary`, `inflateSetDictionary`, `inflateCopy`, `deflateSetDictionary`, `deflateParams`, `deflateGetDictionary` and `deflateCopy`. These goals and `deflateGetDictionary_reject` are registered.
 6. **deflateParams, deflateSetDictionary, deflatePrime, deflateBound, deflateBound_z, inflateSync**: no own-goal theorem. No-fault on reachable streams comes only through SeqI or SeqD. That suffices for planned safety, but per-call own goals stay open.
 7. **adler32, adler32_z**: domain narrower than zlib.h (NULL only with `len = 0`). `len = 1` is a real C fault (deviation row). NULL with `len ≥ 2` is safe but unproved.
-8. **gz functions**: `Goal.gz_sequence_safety` is registered in `goals.txt` and checked with no premise (`gz_sequence_safety_public`); its theorem is not yet in `theorems.txt`. The `gzgetc` macro path (audit A1) and a second handle on one fd (audit B1) are in the goal. `NULL` handles are covered by `Goal.gz_refusal`.
+8. **gz functions**: `Goal.gz_sequence_safety` is registered (`gz_sequence_safety_public`, no premise), with its non-vacuity goal. The `gzgetc` macro path (audit A1) and a second handle on one fd (audit B1) are in the goal. `NULL` handles are covered by `Goal.gz_refusal`.
 9. Related, not a function: `Goal.deflate_initialisation_domain` (nonvacuity) has no theorem.
 
 ### Ordered next work

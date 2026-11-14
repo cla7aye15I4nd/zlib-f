@@ -108,6 +108,45 @@ The row of the epilogue is a script (`infback-sequence.py`) that makes the same 
 check the rows by re-elaboration. A kernel replay of `inflate_back_sequence_safety` with the
 translation edit of each row also rejects all eleven; the replay of the original peaks at about 9.8 GB.
 
+The gz goals are not public entries either; their rows are three safety lists.
+- `tests/proof-mutants/gz-refusal.tsv`, for `Goal.gz_refusal`: nineteen rows, each a different return value on a
+  `NULL` handle or a dropped `NULL` test, of every gz function except `gzread` and `gzfread` (in `gz-read.tsv`) and
+  `gzbuffer`, `gzeof` and `gzoffset64` (in `public-streams.tsv`). The goal's clauses hold by evaluation, so each row
+  fails in `public-gz-refusal`.
+- `tests/proof-mutants/gz-sequence.tsv`, for `Goal.gz_sequence_safety`: the write calls (`gzwrite`, `gzfwrite`,
+  `gzputc`, `gzputs`, `gzvprintf` and so `gzprintf`, `gzflush`, `gzsetparams`), the closes (`gzclose_w`, `gzclose_r`,
+  the dispatch of `gzclose`), the opens (`gz_open`, `gzdopen`), `gzseek64` and `gztell64`, `gz_error` (a skipped free;
+  a message allocated for `Z_MEM_ERROR`), both branches of the `gzgetc()` macro (`zlib.h.lean`: the `have` test dropped;
+  `pos` not advanced), the read leaves `gzgetc`, `gzungetc`, `gzgets` and `gzdirect`, and one row per hunk of
+  patches 0002 to 0005 that removes the hunk (the unpatched C). Most rows are script rows (`gz-sequence.py`) that make
+  the same edit in each `rfl` restatement of the code (`gzwrite_eq`, `putcSlow`, `closeTail`, `pfFmt`, `gTail`,
+  `seekTail`, `openAfterMode`, `fetchBody`, `restK`, `getsRest`, the private copies of `gz_error`), so that a semantic
+  lemma fails, not the restatement.
+- `tests/proof-mutants/gz-read.tsv` (with `gz-read.py`), from the read side: `gzread`, `gzfread`, the refusals of
+  `gzgetc` and `gzungetc`, and `gzclose_r`. Its two `gzungetc` rows `gzungetc-mode-check` and `gzungetc-skip-dropped`
+  name the step lemma's module `gz.read-getc-step` as well: with `gzread.c.getc-ungetc` alone the proof of
+  `gzungetc_step` is not built, and both rows built; with it both are killed there.
+
+Where the first error lands. Each row is killed in a proof of the mutated function: its step lemma, the exact run
+of its body, or (for a callee) the proof of that callee. Five rows name modules beyond the step lemma, all proofs of
+the mutated function: the three `gz_open` rows fail in the exact runs of `gz_open` (`gz_open_empty_mode` in
+`gzlib.c.open-init`, `openAfterPath_writer` in `gzlib.c.open-io`: the I/O tail of `gz_open`, which frees the path and
+calls `gz_reset`), the `gzdopen` row in the run of `gzdopen` (`gzdopen_writer_regular_run`, `gzlib.c.dopen-entry`),
+and the `gztell64` row in the run of `gztell64` (`gztell64_run`, `gzlib.c.simple`). The `gzclose_w` rows fail in
+`closeTail_ok` (`gzwrite.c.close`), the release proof of `gzclose_w`; the dispatch row of `gzclose` in
+`gzclose_dispatch`. One row is killed by a heartbeat timeout, not a type error: `patch0004-fetch-copy-room-removed`
+in `fetch_look` (`gz.read-fetch`), a proof of the same function `gz_fetch`.
+
+The row `macro-have-guard-dropped` survived at first: the goal ran the macro only with `x.have ≠ 0`, so its
+`have = 0` branch was never run. The goal was corrected (3c5292f7; regression
+`tests/verification/regressions/gz-macro-have-zero.lean`) and the row is now killed in `zlib.h.gzgetc-macro`.
+
+The mutation shards check the three lists by re-elaboration. A kernel replay of `gz_refusal` rejects all nineteen
+refusal rows (each replay ends within two seconds). A kernel replay of `gz_sequence_safety_public` with the
+translation edit of each structural row (the rows in a loop body or in machine arithmetic left out: `patch0003-*`,
+the three `patch0004` rows of `gz_fetch` and `gz_read`, `patch0004-gets-room-removed`, `gzgets-left-whole-length`,
+`gztell64-adds-max`) accepts the original (51615 dependencies, peak about 10.7 GB).
+
 ## List format
 
 Lists use one tab-separated row per mutant. Lines starting with `#` are comments.

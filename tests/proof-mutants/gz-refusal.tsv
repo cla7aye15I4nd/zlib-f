@@ -1,0 +1,25 @@
+# Proof mutants of Goal.gz_refusal (gz_refusal, public-gz-refusal): each changes what a gz function does on a NULL
+# handle, a different return value or a dropped NULL test (then the first load faults). The clauses of the goal hold by
+# evaluation, so each row must fail there. Structural rows: no loop body, no arithmetic. gzbuffer, gzeof and gzoffset64
+# have their NULL rows in public-streams.tsv; gzread and gzfread are in gz-read.tsv. Run in the mutant shards with the
+# other safety lists (scripts/verification.py).
+# NAME	FILE	OLD	NEW	PROOF_MODULES
+gzwrite-null-refusal	ZlibF/Zlib/gzwrite.c.lean	def gzwrite (file : GzFilePtr) (buf : BPtr) (len : UInt32) : G Int32 := do\n  if file.isNone then return 0	def gzwrite (file : GzFilePtr) (buf : BPtr) (len : UInt32) : G Int32 := do\n  if file.isNone then return 1	public-gz-refusal
+gzfwrite-null-refusal	ZlibF/Zlib/gzwrite.c.lean	def gzfwrite (buf : BPtr) (size nitems : UInt64) (file : GzFilePtr) : G UInt64 := do\n  if file.isNone then return 0	def gzfwrite (buf : BPtr) (size nitems : UInt64) (file : GzFilePtr) : G UInt64 := do\n  if file.isNone then return 1	public-gz-refusal
+gzputc-null-refusal	ZlibF/Zlib/gzwrite.c.lean	  -- unsigned have; unsigned char buf[1];\n  if file.isNone then return -1	  -- unsigned have; unsigned char buf[1];\n  if file.isNone then return 0	public-gz-refusal
+gzputs-null-refusal	ZlibF/Zlib/gzwrite.c.lean	def gzputs (file : GzFilePtr) (str : BPtr) : G Int32 := do\n  if file.isNone then return -1	def gzputs (file : GzFilePtr) (str : BPtr) : G Int32 := do\n  if file.isNone then return 0	public-gz-refusal
+gzvprintf-null-refusal	ZlibF/Zlib/gzwrite.c.lean	def gzvprintf (file : GzFilePtr) (format : BPtr) (va : List VaArg) : G Int32 := do\n  if file.isNone then return Z_STREAM_ERROR	def gzvprintf (file : GzFilePtr) (format : BPtr) (va : List VaArg) : G Int32 := do\n  if file.isNone then return Z_OK	public-gz-refusal
+gzflush-null-refusal	ZlibF/Zlib/gzwrite.c.lean	def gzflush (file : GzFilePtr) (flush : Int32) : G Int32 := do\n  if file.isNone then return Z_STREAM_ERROR	def gzflush (file : GzFilePtr) (flush : Int32) : G Int32 := do\n  if file.isNone then return Z_OK	public-gz-refusal
+gzsetparams-null-refusal	ZlibF/Zlib/gzwrite.c.lean	def gzsetparams (file : GzFilePtr) (level strategy : Int32) : G Int32 := do\n  if file.isNone then return Z_STREAM_ERROR	def gzsetparams (file : GzFilePtr) (level strategy : Int32) : G Int32 := do\n  if file.isNone then return Z_OK	public-gz-refusal
+gzclose_w-null-refusal	ZlibF/Zlib/gzwrite.c.lean	  let mut ret := Z_OK\n  if file.isNone then return Z_STREAM_ERROR	  let mut ret := Z_OK\n  if file.isNone then return Z_OK	public-gz-refusal
+gzclose-null-refusal	ZlibF/Zlib/gzclose.c.lean	  if file.isNone then return Z_STREAM_ERROR	  if file.isNone then return Z_OK	public-gz-refusal
+gzclose_r-null-refusal	ZlibF/Zlib/gzread.c.lean	def gzclose_r (file : GzFilePtr) : G Int32 := do\n  if file.isNone then return Z_STREAM_ERROR	def gzclose_r (file : GzFilePtr) : G Int32 := do\n  if file.isNone then return Z_OK	public-gz-refusal
+gzgetc-null-refusal	ZlibF/Zlib/gzread.c.lean	  -- unsigned char buf[1];\n  if file.isNone then return -1	  -- unsigned char buf[1];\n  if file.isNone then return 0	public-gz-refusal
+gzungetc-null-refusal	ZlibF/Zlib/gzread.c.lean	def gzungetc (c : Int32) (file : GzFilePtr) : G Int32 := do\n  if file.isNone then return -1	def gzungetc (c : Int32) (file : GzFilePtr) : G Int32 := do\n  if file.isNone then return 0	public-gz-refusal
+gzgets-null-check-dropped	ZlibF/Zlib/gzread.c.lean	  if file.isNone || buf == .null || len < 1 then return .null	  if buf == .null || len < 1 then return .null	public-gz-refusal
+gzdirect-null-refusal	ZlibF/Zlib/gzread.c.lean	def gzdirect (file : GzFilePtr) : G Int32 := do\n  if file.isNone then return 0	def gzdirect (file : GzFilePtr) : G Int32 := do\n  if file.isNone then return 1	public-gz-refusal
+gzseek64-null-refusal	ZlibF/Zlib/gzlib.c.lean	def gzseek64 (file : GzFilePtr) (offset : Int64) (whence : Int32) : G Int64 := do\n  if file.isNone then return -1	def gzseek64 (file : GzFilePtr) (offset : Int64) (whence : Int32) : G Int64 := do\n  if file.isNone then return 0	public-gz-refusal
+gztell64-null-refusal	ZlibF/Zlib/gzlib.c.lean	def gztell64 (file : GzFilePtr) : M Int64 := do\n  if file.isNone then return -1	def gztell64 (file : GzFilePtr) : M Int64 := do\n  if file.isNone then return 0	public-gz-refusal
+gzrewind-null-refusal	ZlibF/Zlib/gzlib.c.lean	def gzrewind (file : GzFilePtr) : G Int32 := do\n  if file.isNone then return -1	def gzrewind (file : GzFilePtr) : G Int32 := do\n  if file.isNone then return 0	public-gz-refusal
+gzerror-null-check-dropped	ZlibF/Zlib/gzlib.c.lean	def gzerror (file : GzFilePtr) (errnum : BPtr) : M BPtr := do\n  if file.isNone then return .null\n	def gzerror (file : GzFilePtr) (errnum : BPtr) : M BPtr := do\n	public-gz-refusal
+gzclearerr-null-check-dropped	ZlibF/Zlib/gzlib.c.lean	def gzclearerr (file : GzFilePtr) : M Unit := do\n  if file.isNone then return\n	def gzclearerr (file : GzFilePtr) : M Unit := do\n	public-gz-refusal

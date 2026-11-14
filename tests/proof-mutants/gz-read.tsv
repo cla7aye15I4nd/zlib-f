@@ -1,0 +1,34 @@
+# Safety mutants of the gz read side: gzread, gzfread, gzgetc, gzungetc (script rows, gz-read.py, which makes
+# the same edit in each rfl restatement of the code so that only a semantic lemma can fail) and gzclose_r (plain
+# rows: its proofs run the translation directly). Each row drops a refusal, skips a free or a call that frees,
+# or moves a bound by one, outside loop bodies. Every row but gzclose_r-return-value breaks a clause of
+# GzCallSafe or GzCloseSafe (no fault, the caller regions, the ledger, the invariant) on a permitted input;
+# gzclose_r-return-value is caught by the exact run lemma (run_buf), not by a safety clause.
+# A skipped gz_error or a wrong return value of gzread, gzfread, gzgetc and gzungetc is not a row: the safety
+# statement does not observe it (no block is allocated or freed), so only a restatement could fail.
+# The rows marked "pending" are for gzgets and gzdirect, whose proofs are not on dev; the module names are
+# placeholders. Uncomment them when the proofs land.
+# NAME	FILE	OLD	NEW	PROOF_MODULES
+gzread-mode-check	script:tests/proof-mutants/gz-read.py	-	-	gz.read-gzread
+gzread-int-check	script:tests/proof-mutants/gz-read.py	-	-	gz.read-gzread
+gzread-int-check-off-by-one	script:tests/proof-mutants/gz-read.py	-	-	gz.read-gzread
+gzfread-mode-check	script:tests/proof-mutants/gz-read.py	-	-	gzread.c.fread
+gzfread-overflow-check	script:tests/proof-mutants/gz-read.py	-	-	gzread.c.fread
+gzfread-overflow-compare	script:tests/proof-mutants/gz-read.py	-	-	gzread.c.fread
+gzgetc-mode-check	script:tests/proof-mutants/gz-read.py	-	-	gzread.c.getc-ungetc
+gzgetc-have-check	script:tests/proof-mutants/gz-read.py	-	-	gzread.c.getc-ungetc
+gzgetc-local-leak	script:tests/proof-mutants/gz-read.py	-	-	gzread.c.getc-ungetc
+gzungetc-mode-check	script:tests/proof-mutants/gz-read.py	-	-	gzread.c.getc-ungetc,gz.read-getc-step,gz.sequence-safety
+gzungetc-skip-dropped	script:tests/proof-mutants/gz-read.py	-	-	gzread.c.getc-ungetc,gz.read-getc-step,gz.sequence-safety
+gzungetc-full-check	script:tests/proof-mutants/gz-read.py	-	-	gzread.c.getc-ungetc
+gzungetc-empty-offset	script:tests/proof-mutants/gz-read.py	-	-	gzread.c.getc-ungetc
+gzclose_r-mode-check	ZlibF/Zlib/gzread.c.lean	  if s.mode != GZ_READ then return Z_STREAM_ERROR	  if false then return Z_STREAM_ERROR	gzread.c.close,gz.read-close
+gzclose_r-inflateEnd-skipped	ZlibF/Zlib/gzread.c.lean	    let _ ← inflateEnd (strmOf state)\n    freeB s.out	    freeB s.out	gzread.c.close,gz.read-close
+gzclose_r-in-leak	ZlibF/Zlib/gzread.c.lean	    freeB s.«in»\n  -- err = state->err	  -- err = state->err	gzread.c.close,gz.read-close
+gzclose_r-gz_error-skipped	ZlibF/Zlib/gzread.c.lean	  gz_error state Z_OK .null\n  -- free(state->path)	  -- free(state->path)	gzread.c.close,gz.read-close
+gzclose_r-return-value	ZlibF/Zlib/gzread.c.lean	  return if ret != 0 then Z_ERRNO else err	  return if ret != 0 then Z_ERRNO else Z_OK	gzread.c.close,gz.read-close
+# pending: gzgets-mode-check	ZlibF/Zlib/gzread.c.lean	  if s.mode != GZ_READ then return .null	  if false then return .null	gzread.c.gets
+# pending: gzgets-len-check	ZlibF/Zlib/gzread.c.lean	  if file.isNone || buf == .null || len < 1 then return .null	  if file.isNone || buf == .null || len < 0 then return .null	gzread.c.gets
+# pending: gzgets-left-off-by-one	ZlibF/Zlib/gzread.c.lean	  let left : UInt32 := len.toUInt32 - 1	  let left : UInt32 := len.toUInt32	gzread.c.gets
+# pending: gzdirect-mode-check	ZlibF/Zlib/gzread.c.lean	  if s.mode == GZ_READ && s.how == LOOK && s.x.«have» == 0 then	  if s.how == LOOK && s.x.«have» == 0 then	gzread.c.direct
+# pending: gzdirect-skip-have-dropped	ZlibF/Zlib/gzread.c.lean	    gz_skip_have state\n  -- return state->direct == 1;	  -- return state->direct == 1;	gzread.c.direct

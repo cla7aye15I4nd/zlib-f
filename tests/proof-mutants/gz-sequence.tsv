@@ -1,0 +1,51 @@
+# Proof mutants of Goal.gz_sequence_safety (gz_sequence_safety_public; the assembly gz.sequence-safety and its leaves):
+# the write calls, open and close, seek and tell, gz_error, the inline path of the gzgetc() macro (zlib.h.lean) and
+# the read leaves gzgetc, gzungetc, gzgets and gzdirect. The rows named patch000N-* each remove one hunk of a patch
+# from the translation (the unpatched C): the proof must fail without it. A dropped check, store, free or close, a
+# changed constant; no edit of the OS model. Rows of gzread, gzfread, gzclose_r (mode, inflateEnd, in) and of the gzgetc and gzungetc
+# refusals are in gz-read.tsv. Run in the mutant shards
+# with the other safety lists (scripts/verification.py).
+# NAME	FILE	OLD	NEW	PROOF_MODULES
+gzwrite-mode-check-dropped	script:tests/proof-mutants/gz-sequence.py	-	-	gzwrite.c.write,gzwrite.c.write-calls,gzwrite.c.safety,gz.sequence-safety
+gzfwrite-mode-check-dropped	script:tests/proof-mutants/gz-sequence.py	-	-	gzwrite.c.write,gzwrite.c.write-calls,gzwrite.c.safety,gz.sequence-safety
+gzputs-mode-check-dropped	script:tests/proof-mutants/gz-sequence.py	-	-	gzwrite.c.write,gzwrite.c.write-calls,gzwrite.c.safety,gz.sequence-safety
+gzputc-local-free-skipped	script:tests/proof-mutants/gz-sequence.py	-	-	gzwrite.c.write,gzwrite.c.write-calls,gzwrite.c.safety,gz.sequence-safety
+gzvprintf-length-check-dropped	script:tests/proof-mutants/gz-sequence.py	-	-	gzwrite.c.printf-run,gzwrite.c.printf,gzwrite.c.safety,gz.sequence-safety
+gzflush-mode-check-dropped	script:tests/proof-mutants/gz-sequence.py	-	-	gzwrite.c.flush-params,gzwrite.c.safety,gz.sequence-safety
+gzsetparams-mode-check-dropped	script:tests/proof-mutants/gz-sequence.py	-	-	gzwrite.c.flush-params,gzwrite.c.safety,gz.sequence-safety
+gzclose_w-deflateEnd-skipped	script:tests/proof-mutants/gz-sequence.py	-	-	gzwrite.c.close,gzwrite.c.safety,gz.inv-close,gz.sequence-safety
+gzclose_w-in-free-skipped	script:tests/proof-mutants/gz-sequence.py	-	-	gzwrite.c.close,gzwrite.c.safety,gz.inv-close,gz.sequence-safety
+gzclose_w-path-free-skipped	script:tests/proof-mutants/gz-sequence.py	-	-	gzwrite.c.close,gzwrite.c.safety,gz.inv-close,gz.sequence-safety
+gzclose_w-descriptor-kept	script:tests/proof-mutants/gz-sequence.py	-	-	gzwrite.c.close,gzwrite.c.safety,gz.inv-close,gz.sequence-safety
+gzclose_r-out-free-skipped	ZlibF/Zlib/gzread.c.lean	    freeB s.out\n    freeB s.«in»\n  -- err = 	    pure ()\n    freeB s.«in»\n  -- err = 	gzread.c.close,gz.read-close,gz.inv-close,gz.sequence-safety
+gzclose_r-descriptor-kept	ZlibF/Zlib/gzread.c.lean	  let ret ← fsClose s.fd	  let ret : Int32 := 0	gzread.c.close,gz.read-close,gz.inv-close,gz.sequence-safety
+gzclose-dispatch-swapped	ZlibF/Zlib/gzclose.c.lean	if (← ldS state).mode == GZ_READ then	if (← ldS state).mode == GZ_WRITE then	gzclose.c,gz.inv-close,gz.inv-queries,gz.sequence-safety
+gz_open-no-mode-leak	script:tests/proof-mutants/gz-sequence.py	-	-	gzlib.c.open,gzlib.c.open-init,gzlib.c.open-io,gzlib.c.open-mode,gzlib.c.open-copy-stage,gzlib.c.dopen-entry,gz.inv-open,gz.inv-open-path,gz.inv-open-fd,gz.inv-open-fresh,gz.sequence-safety
+gz_open-open-failure-path-leak	script:tests/proof-mutants/gz-sequence.py	-	-	gzlib.c.open,gzlib.c.open-init,gzlib.c.open-io,gzlib.c.open-mode,gzlib.c.open-copy-stage,gzlib.c.dopen-entry,gz.inv-open,gz.inv-open-path,gz.inv-open-fd,gz.inv-open-fresh,gz.sequence-safety
+gz_open-reset-skipped	script:tests/proof-mutants/gz-sequence.py	-	-	gzlib.c.open,gzlib.c.open-init,gzlib.c.open-io,gzlib.c.open-mode,gzlib.c.open-copy-stage,gzlib.c.dopen-entry,gz.inv-open,gz.inv-open-path,gz.inv-open-fd,gz.inv-open-fresh,gz.sequence-safety
+gzdopen-path-leak	script:tests/proof-mutants/gz-sequence.py	-	-	gzlib.c.open,gzlib.c.open-init,gzlib.c.open-io,gzlib.c.open-mode,gzlib.c.open-copy-stage,gzlib.c.dopen-entry,gzlib.c.dopen-complete,gzlib.c.dopen-public,gz.inv-open,gz.sequence-safety
+gzseek64-have-not-consumed	script:tests/proof-mutants/gz-sequence.py	-	-	gzlib.c.seek,gz.inv-seek,gz.sequence-safety
+gzseek64-skip-wrong	script:tests/proof-mutants/gz-sequence.py	-	-	gzlib.c.seek,gz.inv-seek,gz.sequence-safety
+gztell64-adds-max	ZlibF/Zlib/gzlib.c.lean	  i64add s.x.pos (if s.past != 0 then 0 else s.skip)\n\n/-- `z_off_t ZEXPORT gztell	  i64add s.x.pos GZ_OFF_MAX\n\n/-- `z_off_t ZEXPORT gztell	gzlib.c.simple,gz.inv-queries,gz.sequence-safety
+patch0002-seek-cur-guard-removed	ZlibF/Zlib/gzlib.c.lean	  if pos > 0 then\n    if offset > (← i64sub GZ_OFF_MAX pos) then return -1	  if offset > (← i64sub GZ_OFF_MAX pos) then return -1	gzlib.c.seek,gz.inv-seek,gz.sequence-safety
+patch0002-displacement-check-removed	ZlibF/Zlib/gzlib.c.lean	  if s.x.pos < 0 then\n    if pos > (← i64add GZ_OFF_MAX s.x.pos) then return -1	  if false then\n    if pos > (← i64add GZ_OFF_MAX s.x.pos) then return -1	gzlib.c.seek,gz.inv-seek,gz.sequence-safety
+patch0005-seek-next-unconditional	script:tests/proof-mutants/gz-sequence.py	-	-	gzlib.c.seek,gz.inv-seek,gz.sequence-safety
+patch0005-skip-have-next-unconditional	ZlibF/Zlib/gzread.c.lean	  if n != 0 then\n    let s ← ldS state\n    let nx ← s.x.next.add n.toNat	  if true then\n    let s ← ldS state\n    let nx ← s.x.next.add n.toNat	gzread.c.skip-have,gz.inv-seek,gz.read-direct-step,gz.sequence-safety
+gz_error-free-skipped	script:tests/proof-mutants/gz-sequence.py	-	-	gzlib.c.error,gzlib.c.error-inv,gz.inv-clearerr,gz.sequence-safety
+gz_error-mem-error-message	script:tests/proof-mutants/gz-sequence.py	-	-	gzlib.c.error,gzlib.c.error-inv,gz.inv-clearerr,gz.sequence-safety
+macro-have-guard-dropped	script:tests/proof-mutants/gz-sequence.py	-	-	zlib.h.gzgetc-macro,gz.sequence-safety
+macro-pos-not-advanced	script:tests/proof-mutants/gz-sequence.py	-	-	zlib.h.gzgetc-macro,gz.sequence-safety
+gzgetc-have-not-decremented	script:tests/proof-mutants/gz-sequence.py	-	-	gzread.c.getc-ungetc,gz.read-getc-step,gz.read-leaf-common,gz.sequence-safety
+gzungetc-slide-skipped	script:tests/proof-mutants/gz-sequence.py	-	-	gzread.c.getc-ungetc,gz.read-getc-step,gz.read-leaf-common,gz.sequence-safety
+gzgets-left-whole-length	script:tests/proof-mutants/gz-sequence.py	-	-	gz.read-gets-step,gz.read-leaf-common,gzread.c.skip-gets,gz.sequence-safety
+gzgets-mode-check-dropped	script:tests/proof-mutants/gz-sequence.py	-	-	gz.read-gets-step,gz.read-leaf-common,gzread.c.skip-gets,gz.sequence-safety
+gzdirect-mode-check-dropped	script:tests/proof-mutants/gz-sequence.py	-	-	gz.read-direct-step,gz.read-leaf-common,gz.sequence-safety
+patch0003-copy-next-after-load	script:tests/proof-mutants/gz-sequence.py	-	-	gz.read-fetch,gz.read-read,gz.read-look,gz.read-fetch-specs,gz.read-leaf-common,gz.read-getc-step,gz.sequence-safety
+patch0004-look-room-removed	script:tests/proof-mutants/gz-sequence.py	-	-	gz.read-fetch,gz.read-read,gz.read-look,gz.read-fetch-specs,gz.read-leaf-common,gz.read-getc-step,gz.sequence-safety
+patch0004-fetch-copy-room-removed	script:tests/proof-mutants/gz-sequence.py	-	-	gz.read-fetch,gz.read-read,gz.read-look,gz.read-fetch-specs,gz.read-leaf-common,gz.read-getc-step,gz.sequence-safety
+patch0004-fetch-gzip-room-removed	script:tests/proof-mutants/gz-sequence.py	-	-	gz.read-fetch,gz.read-read,gz.read-look,gz.read-fetch-specs,gz.read-leaf-common,gz.read-getc-step,gz.sequence-safety
+patch0004-read-room-removed	script:tests/proof-mutants/gz-sequence.py	-	-	gz.read-fetch,gz.read-read,gz.read-look,gz.read-fetch-specs,gz.read-leaf-common,gz.read-getc-step,gz.sequence-safety
+patch0004-gets-room-removed	script:tests/proof-mutants/gz-sequence.py	-	-	gz.read-gets-step,gz.read-leaf-common,gzread.c.skip-gets,gz.sequence-safety
+patch0004-write-position-check-removed	script:tests/proof-mutants/gz-sequence.py	-	-	gzwrite.c.write,gzwrite.c.write-calls,gzwrite.c.safety,gz.sequence-safety
+patch0004-putc-position-check-removed	script:tests/proof-mutants/gz-sequence.py	-	-	gzwrite.c.write,gzwrite.c.write-calls,gzwrite.c.safety,gz.sequence-safety
+patch0004-printf-position-check-removed	script:tests/proof-mutants/gz-sequence.py	-	-	gzwrite.c.printf-run,gzwrite.c.printf,gzwrite.c.safety,gz.sequence-safety

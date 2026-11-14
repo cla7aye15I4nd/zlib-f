@@ -377,7 +377,8 @@ def replay_public_mutants(manifest: dict, selected: set[str] | None = None) -> N
 
 SAFETY_MUTANT_LISTS = ("tests/proof-mutants/deflate-header.tsv", "tests/proof-mutants/deflate-strategies.tsv",
                        "tests/proof-mutants/deflate-ops.tsv", "tests/proof-mutants/stream-refusal.tsv",
-                       "tests/proof-mutants/infback-sequence.tsv")
+                       "tests/proof-mutants/infback-sequence.tsv", "tests/proof-mutants/gz-refusal.tsv",
+                       "tests/proof-mutants/gz-sequence.tsv", "tests/proof-mutants/gz-read.tsv")
 
 
 def mutation_partition(manifest: dict, count: int = 1, index: int = 0) -> tuple[set[str], dict[str, list[str]]]:
