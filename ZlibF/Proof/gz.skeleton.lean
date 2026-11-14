@@ -5,7 +5,8 @@ import ZlibF.Proof.«gz.sequence-safety»
 /-!
 # gz file interface, safety skeleton: the goal (skeleton)
 
-The proof of `Goal.gz_sequence_safety` from the open read leaves (`gz.skeleton-read.lean`, `sorry` there). The
+The proof of `Goal.gz_sequence_safety` from the read leaves (`gz.skeleton-read.lean`; all six now closed there by `dev`
+theorems, so this theorem uses no `sorry`; `dev` has it as `gz_sequence_safety_public`). The
 assembly is on `dev`: `gz_sequence_safety_of` (`gz.sequence-safety`) proves the goal from `GzReadLeaves`, the six
 open read leaves with the skeleton's exact statements, and uses every other leaf from `dev` directly.
 

@@ -1,6 +1,10 @@
 import ZlibF.Proof.«gz.skeleton-model»
 import ZlibF.Proof.«gz.read-close»
 import ZlibF.Proof.«gzread.c.skip-have»
+import ZlibF.Proof.«gz.read-assembly»
+import ZlibF.Proof.«gz.read-getc-step»
+import ZlibF.Proof.«gz.read-gets-step»
+import ZlibF.Proof.«gz.read-direct-step»
 
 /-!
 # gz file interface, safety skeleton: the read side (skeleton)
@@ -8,7 +12,9 @@ import ZlibF.Proof.«gzread.c.skip-have»
 Open lemmas of `gzread.c` (owner: the deflate owner, read side). Each is a statement with `sorry`. The internal
 helpers are stated on a handle in `GzInv` or, inside a reading call, in `GzInvUpToOutput` (the buffered output
 may be in the caller's buffer until `gz_read` resets it: local patch for R-4). The public lemmas have the shape
-`GzCallSafe` used by `Goal.gz_sequence_safety`.
+`GzCallSafe` used by `Goal.gz_sequence_safety`. The six public read leaves are closed by the `dev` theorems of the
+same statement (`GzRead.gzread_step`, `GzRead.gzfread_step`, `GzRead.gzgetc_step`, `GzRead.gzungetc_step`,
+`GzRead.gzgets_step`, `GzRead.gzdirect_step`).
 
 The codec steps are embedded through `GzReadInv.codec` (`StreamReachable .inflate`): `gz_look`'s
 `inflateInit2_` is the `inflateInit` constructor, `inflate` and `inflateReset` are `step`s, and the gz writes of
@@ -99,18 +105,18 @@ theorem gz_read_safe (i : Nat) (buf : BPtr) (len : UInt64) (h : Heap) (fs : Fs) 
 
 /-- `gzread`: `int`/`unsigned` checks, then `gz_read`. Relies on local patches for F-1 and R-4. -/
 theorem gzread_step (i : Nat) (buf : BPtr) (len : UInt32) :
-    GzCallSafe i (.gzread (some (.in_gzstate_x i)) buf len) := by
-  sorry
+    GzCallSafe i (.gzread (some (.in_gzstate_x i)) buf len) :=
+  GzRead.gzread_step i buf len
 
 /-- `gzfread`: the `size_t` product check, then `gz_read`. Relies on local patches for F-1 and R-4. -/
 theorem gzfread_step (i : Nat) (buf : BPtr) (size nitems : UInt64) :
-    GzCallSafe i (.gzfread buf size nitems (some (.in_gzstate_x i))) := by
-  sorry
+    GzCallSafe i (.gzfread buf size nitems (some (.in_gzstate_x i))) :=
+  GzRead.gzfread_step i buf size nitems
 
 /-- `gzgetc`: the buffered byte (`x.next` inside `out`) or `gz_read` into a local block (freed: ledger). Relies
 on the local patch for F-1. -/
-theorem gzgetc_step (i : Nat) : GzCallSafe i (.gzgetc (some (.in_gzstate_x i))) := by
-  sorry
+theorem gzgetc_step (i : Nat) : GzCallSafe i (.gzgetc (some (.in_gzstate_x i))) :=
+  GzRead.gzgetc_step i
 
 /-- `gzgetc_` is `gzgetc` (definitionally: same arguments, regions and M7 premise). -/
 theorem gzgetc__step (i : Nat) : GzCallSafe i (.gzgetc_ (some (.in_gzstate_x i))) :=
@@ -118,18 +124,18 @@ theorem gzgetc__step (i : Nat) : GzCallSafe i (.gzgetc_ (some (.in_gzstate_x i))
 
 /-- `gzungetc`: `gz_look` and `gz_skip` first, then the push back inside `out` (slide, room check);
 `x.pos ≥ -2·size`. -/
-theorem gzungetc_step (i : Nat) (c : Int32) : GzCallSafe i (.gzungetc c (some (.in_gzstate_x i))) := by
-  sorry
+theorem gzungetc_step (i : Nat) (c : Int32) : GzCallSafe i (.gzungetc c (some (.in_gzstate_x i))) :=
+  GzRead.gzungetc_step i c
 
 /-- `gzgets`: `memchr` bounded by `min(have, left)`, the copy and the final NUL inside `[buf, buf + len)`. -/
 theorem gzgets_step (i : Nat) (buf : BPtr) (len : Int32) :
-    GzCallSafe i (.gzgets (some (.in_gzstate_x i)) buf len) := by
-  sorry
+    GzCallSafe i (.gzgets (some (.in_gzstate_x i)) buf len) :=
+  GzRead.gzgets_step i buf len
 
 /-- `gzdirect`: one `gz_look` and `gz_skip_have` on a reader with nothing buffered. Relies on local patches for
 R-3 and R-4. -/
-theorem gzdirect_step (i : Nat) : GzCallSafe i (.gzdirect (some (.in_gzstate_x i))) := by
-  sorry
+theorem gzdirect_step (i : Nat) : GzCallSafe i (.gzdirect (some (.in_gzstate_x i))) :=
+  GzRead.gzdirect_step i
 
 /-- `gzclose_r`: refuses a writer; otherwise `inflateEnd` (part 3 of the inflate sequence goal) when buffers
 exist, frees `out`, `in`, the message, the path and the record, and closes the descriptor, which is released
