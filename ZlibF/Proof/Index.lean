@@ -1730,6 +1730,7 @@ import ZlibF.Proof.«gz.inv-open-path»
 import ZlibF.Proof.«gz.inv-open-fd»
 import ZlibF.Proof.«gz.inv-open-fresh»
 import ZlibF.Proof.«gz.sequence-safety»
+import ZlibF.Proof.«public-gz-sequence-nonvacuity»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.

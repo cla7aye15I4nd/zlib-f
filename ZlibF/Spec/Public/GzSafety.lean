@@ -11,6 +11,7 @@ The definitions of sections 3 and 4 of the gz safety skeleton (`gz.skeleton-mode
 2. `GzCloseCall`, `CloseRefuses`, `GzReleased`, `GzCloseSafe`: safety of a close call.
 3. `GzOpenSafe`, `GzDopenSafe`: safety of an open.
 4. `Goal.gz_sequence_safety`: safety of every gz file history.
+5. `Goal.gz_sequence_nonvacuity`: its premises hold on concrete reading and writing histories.
 
 The goal is the skeleton's statement with the `GzInv` and `GzArguments` of this branch: `GzInv` with the corrected
 clauses listed in `gz.inv-model` (`GzCommon.next` only with buffered output, `copyDirect` allows `direct = 0`, and
@@ -140,5 +141,37 @@ def Goal.gz_sequence_safety : Prop :=
     ∃ value fs' after, call.execute fs h = .ok ((value, fs'), after) ∧
       ((CloseRefuses s call ∧ after = h ∧ fs' = fs) ∨ (¬ CloseRefuses s call ∧ GzReleased h after fs fs' i s))) ∧
   GzOpenSafe Zlib.Gzlib.gzopen ∧ GzOpenSafe Zlib.Gzlib.gzopen64 ∧ GzDopenSafe
+
+/-- **Goal: the premises of `gz_sequence_safety` are satisfiable** (non-vacuity). Two concrete histories, one per
+entry point and mode, each from a caller heap and a world that satisfy every premise of the opening constructor of
+`GzHistory`, with no allocation failure:
+
+1. `gzopen` gives a reading handle in `GzInv` whose descriptor has a finite read budget (`ReadsFinite`, the premise
+   of the termination half), and a one-byte `gzread` into a caller buffer satisfies `GzArguments`;
+2. `gzdopen` on an open descriptor gives a writing handle in `GzInv` that keeps the descriptor, and a one-byte
+   `gzwrite` from a caller buffer satisfies `GzArguments`.
+
+So the call clause of `gz_sequence_safety`, and its termination half for a reading call, apply to a real call with a
+nonzero length. -/
+def Goal.gz_sequence_nonvacuity : Prop :=
+  (∃ (h : Heap) (fs : Fs) (path mode : BPtr) (name flags : List UInt8) (after : Heap) (fs' : Fs) (i : Nat)
+      (s : GzState) (buf : BPtr),
+    Fresh h ∧ Zlib.Gzlib.Spec.Uniq h ∧ LibraryGlobals h ∧ ZlibF.PlatformMemory.ByteObjectsFit h ∧
+    NoAllocationFailure h ∧ FileSystem fs ∧ CString h path name ∧ CString h mode flags ∧
+    Zlib.Gzlib.gzopen path mode fs h = .ok ((some (.in_gzstate_x i), fs'), after) ∧
+    GzHistory after fs' i ∧ after.gzstates i = some s ∧ s.mode = GZ_READ ∧ GzInv after i s ∧
+    ReadsFinite fs' s.fd ∧
+    GzOperation i (.gzread (some (.in_gzstate_x i)) buf 1) ∧
+    NeedsReadBound (.gzread (some (.in_gzstate_x i)) buf 1) ∧
+    GzArguments after i s (.gzread (some (.in_gzstate_x i)) buf 1)) ∧
+  (∃ (h : Heap) (fs : Fs) (fd : Int32) (mode : BPtr) (flags : List UInt8) (after : Heap) (fs' : Fs) (i : Nat)
+      (s : GzState) (buf : BPtr),
+    Fresh h ∧ Zlib.Gzlib.Spec.Uniq h ∧ LibraryGlobals h ∧ ZlibF.PlatformMemory.ByteObjectsFit h ∧
+    NoAllocationFailure h ∧ FileSystem fs ∧ 0 ≤ fd.toInt ∧ GzOracle.FdOpen fs fd.toInt.toNat ∧
+    CString h mode flags ∧
+    Zlib.Gzlib.gzdopen fd mode fs h = .ok ((some (.in_gzstate_x i), fs'), after) ∧
+    GzHistory after fs' i ∧ after.gzstates i = some s ∧ s.mode = GZ_WRITE ∧ s.fd = fd ∧ GzInv after i s ∧
+    GzOperation i (.gzwrite (some (.in_gzstate_x i)) buf 1) ∧
+    GzArguments after i s (.gzwrite (some (.in_gzstate_x i)) buf 1))
 
 end ZlibF.Spec.Public
