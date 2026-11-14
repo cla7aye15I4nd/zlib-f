@@ -121,6 +121,7 @@ def EINTR : Int32 := 4
 def EIO : Int32 := 5
 def EACCES : Int32 := 13
 def ESPIPE : Int32 := 29
+def EMFILE : Int32 := 24
 
 /-- `errno` as read by the C. -/
 def getErrno : G Int32 := do return (← get).errno
@@ -192,7 +193,9 @@ def SEEK_END : Int32 := 2
 private def findName (w : Fs) (p : Array UInt8) : Option Nat :=
   (w.names.find? (fun e => e.1 == p)).map (·.2)
 
-private def lowestFd (w : Fs) : Nat :=
+/-- The lowest descriptor number from 3 up that is not open in the model's table (`fds.size` or more when every slot
+from 3 is taken). -/
+def lowestFd (w : Fs) : Nat :=
   let rec go (i : Nat) : Nat → Nat
     | 0 => i
     | k + 1 => if i < w.fds.size then (if (w.fds[i]!).isNone then i else go (i + 1) k) else i
@@ -200,23 +203,26 @@ private def lowestFd (w : Fs) : Nat :=
 
 /-- The regular-file `open(path, oflag, 0666)` for `path` given as its bytes. Returns the descriptor or -1 with `errno`. The
 access mode is read-only or write-only; `O_CREAT`, `O_EXCL`, `O_TRUNC`, `O_APPEND` are honoured; `O_NONBLOCK`,
-`O_CLOEXEC` and `O_LARGEFILE` do nothing (regular files only). Permissions are not modelled. -/
+`O_CLOEXEC` and `O_LARGEFILE` do nothing (regular files only). Permissions are not modelled. A descriptor is a C
+`int`: when no number below `2^31` is free, `open` fails with `EMFILE` before anything is created or truncated (Linux
+allocates the descriptor after checking the flags and the path string, before the lookup). -/
 def fsOpenReg (path : Array UInt8) (oflag : Int32) : G Int32 := fun w =>
   let acc := oflag &&& 3
   let has (f : Int32) := (oflag &&& f) != 0
   let fail (e : Int32) : M (Int32 × Fs) := pure (-1, { w with errno := e })
+  let fd := lowestFd w
   let openNode (n : Nat) (w : Fs) : M (Int32 × Fs) :=
     let node := w.nodes[n]!
     let wr := acc == 1
     if wr && node.isDir then pure (-1, { w with errno := EISDIR })
     else
       let w := if wr && has O_TRUNC then { w with nodes := w.nodes.set! n { node with data := #[] } } else w
-      let fd := lowestFd w
       let fds := if fd < w.fds.size then w.fds else w.fds ++ Array.replicate (fd + 1 - w.fds.size) none
       let of : OFile := { node := n, pos := 0, rd := acc == 0, wr, append := has O_APPEND }
       pure (Int32.ofNat fd, { w with fds := fds.set! fd (some of) })
   if acc ≥ 2 then fail EINVAL
   else if path.isEmpty then fail ENOENT
+  else if fd ≥ 2 ^ 31 then fail EMFILE
   else match findName w path with
     | some n => if has O_CREAT && has O_EXCL then fail EEXIST else openNode n w
     | none =>
@@ -381,8 +387,9 @@ def relocateW (r : Int32) (k : Nat) (w : Fs) : Int32 × Fs :=
     (Int32.ofNat k, { w with fds := (grown.set! k entry).set! r.toInt.toNat none })
   else (r, w)
 
-/-- `open(path, oflag, 0666)`. M5: `-1` with a nonzero errno (nothing created), or any descriptor number that was
-not open (the regular-file open picks the lowest; `openFd` may choose another). -/
+/-- `open(path, oflag, 0666)`. M5: `-1` with a nonzero errno (nothing created), or any descriptor number below
+`2^31` that was not open (the regular-file open picks the lowest, and fails with `EMFILE` when none is free;
+`openFd` may choose another). -/
 def fsOpen (path : Array UInt8) (oflag : Int32) : G Int32 := fun w0 =>
   let c := w0.nos
   let w := tickW w0

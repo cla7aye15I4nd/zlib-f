@@ -163,7 +163,8 @@ chosen errno, or returns a chosen result. Every oracle value is mapped into the 
 the call: `read` returns -1 or at most the requested count; a nonempty `write` returns -1 or
 between 1 and the count; `lseek` returns -1 or a value in `[0, 2^63 - 1]`, possibly unrelated to
 later reads; `close` returns 0 or -1 and releases the descriptor in both cases; `open` returns -1
-or any descriptor number that was not open. A failure sets a nonzero errno, and a success may
+or any descriptor number below `2^31` that was not open, and fails with `EMFILE` when no
+descriptor below `2^31` is free. A failure sets a nonzero errno, and a success may
 change errno. The safety goals quantify over every world, hence over every oracle.
 
 The oracle is deliberately wider than any real system: an oracle read or write succeeds whatever
