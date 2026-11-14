@@ -27,7 +27,7 @@ set_option autoImplicit false
 `GetcUngetc.GzErrorSpec`. -/
 def GzErrorSpec : Prop :=
   ∀ {h : Heap} {i : Nat} {s : GzState}, GzInv h i s → ∀ (err : Int32) (msg : BPtr),
-    (msg = .null ∨ ∃ t, CString h msg t ∧ ∀ b, ByteRoot msg b → ¬ GzOwned h i s b) →
+    (msg = .null ∨ ∃ t, CString h msg t ∧ ∀ b, ByteRoot msg b → ¬ GzOwned h i s b) → err ≠ Z_STREAM_END →
     ∃ after s', C.run (Zlib.Gzlib.gz_error (gzSt i) err msg) h = .ok ((), after) ∧ GzInv after i s' ∧
       s' = { s with err := s'.err, msg := s'.msg } ∧ (s'.err = err ∨ (s'.err = Z_MEM_ERROR ∧ s'.msg = .null)) ∧
       Frame h after (fun b => b = i ∨ blkOf s.msg = some b) ∧
@@ -37,7 +37,7 @@ def GzErrorSpec : Prop :=
 call that was live before was owned before. The same as `GetcUngetc.GzErrorOwn`. -/
 def GzErrorOwn : Prop :=
   ∀ (h : Heap) (i : Nat) (s : GzState) (err : Int32) (msg : BPtr) (after : Heap), GzInv h i s →
-    (msg = .null ∨ ∃ t, CString h msg t ∧ ∀ b, ByteRoot msg b → ¬ GzOwned h i s b) →
+    (msg = .null ∨ ∃ t, CString h msg t ∧ ∀ b, ByteRoot msg b → ¬ GzOwned h i s b) → err ≠ Z_STREAM_END →
     C.run (Zlib.Gzlib.gz_error (gzSt i) err msg) h = .ok ((), after) →
     ∀ s', after.gzstates i = some s' → ∀ b, GzOwned after i s' b → h.live b → GzOwned h i s b
 
@@ -944,7 +944,7 @@ theorem err_tail (err : GzErrorSpec) (errOwn : GzErrorOwn)
   have cm := inv.common
   obtain ⟨t, ct⟩ := oom_cstring H hk
   obtain ⟨after, s', run, invA, eq, -, frameE, liveE⟩ :=
-    err invH Z_MEM_ERROR (.ref (.str k) 0) (Or.inr ⟨t, ct, fun b hb => by simp [ByteRoot] at hb⟩)
+    err invH Z_MEM_ERROR (.ref (.str k) 0) (Or.inr ⟨t, ct, fun b hb => by simp [ByteRoot] at hb⟩) (by decide)
   have hmode : s'.mode = s.mode := by
     have := congrArg GzState.mode eq
     simpa using this
@@ -996,7 +996,7 @@ theorem err_tail (err : GzErrorSpec) (errOwn : GzErrorOwn)
     · exact Or.inl ((owned0 hsz b).2 (Or.inr (Or.inl (by rw [← hpath]; exact e))))
     · by_cases hl : h.live b
       · have ho' := errOwn H i _ Z_MEM_ERROR (.ref (.str k) 0) after invH
-          (Or.inr ⟨t, ct, fun b hb => by simp [ByteRoot] at hb⟩) run s' invA.common.record b ho ((live b).2 hl)
+          (Or.inr ⟨t, ct, fun b hb => by simp [ByteRoot] at hb⟩) (by decide) run s' invA.common.record b ho ((live b).2 hl)
         rcases (owned0 (s := { s with «in» := pin, out := pout, strm := z }) hsz b).1 ho' with e' | e' | e'
         · exact Or.inl ((owned0 hsz b).2 (Or.inl e'))
         · exact Or.inl ((owned0 hsz b).2 (Or.inr (Or.inl e')))

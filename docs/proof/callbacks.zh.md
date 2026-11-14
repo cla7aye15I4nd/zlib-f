@@ -1,4 +1,4 @@
-<!-- source-sha256: 155d8bcef7c53e8e11f4f7c375ef6d4d1a7dd46ce95f0d25c32ecad7182b81a4 -->
+<!-- source-sha256: f846d2bcb9a7c4937d280fef6a0c5e8485169626d63e01fbb333e45fa39647b4 -->
 # 回调解码：所有权与有限输入
 
 源文件为 `infback.c`。调用者拥有窗口，并提供输入／输出回调。[API](../spec/api/inflate-back.md)陈述公开契约，[进度](../progress.md)记录当前进展。本页依次展开回调前提、初始化顺序与窗口复制的证明义务。
@@ -35,3 +35,7 @@
 ## 已安装表与窗口复制
 
 表构造返回值的分类不能建立规范链接的界限。把输出与历史设为不同数组的快速路径定理，也不能覆盖输出位于回调窗口中的情形。实际调用者必须在返回堆上建立已安装表和复制所需前提。历史上报告过缺少 `whave` 更新的疑点，其在本 API 中的可达性论证尚未完成；普通 inflate 的例子不能解决这个 API 的问题。
+
+## 序列目标与快速路径
+
+`Goal.inflate_back_sequence_safety` 由 `inflate_back_sequence_safety`（`ZlibF/Proof/infback.c.safety-fast.lean`）证明。`case LEN` 的快速路径以窗口为输出调用 `inflate_fast`。`inflate_fast` 的入口环境（`EnvG`）只覆盖位于原始堆字节块（`.blk`）中的输出，因此快速路径并未对每个窗口都得到证明。较早的组合 `inflate_back_sequence_safety_of` 把每个窗口上的快速路径作为前提（`FastOk`）。这个前提并非错误，只是超出了证明技术的范围，而且并不需要。`back_reach_window` 表明每个可达历史的窗口都在 `.blk` 块中，因为 `BackSafeReachable` 的初始化子句要求如此（[偏差记录](../deviations.md)中的一行）。在这样的窗口上，`lenFast_of_blk` 由 `LEN_fast_p` 给出快速路径。目标由历史引理的 `.blk` 版本组合而成：`back_reach_st_blk`、`back_reach_valid_blk` 和 `back_end_blk`，调用本身用 `back_call_total`。较早的组合与 `FastOk` 已删除。

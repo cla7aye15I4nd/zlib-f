@@ -18,7 +18,7 @@ functional results that safety does not need are not planned.
 | 2 | `deflate` is safe on every input and every split of the buffers, also over its call sequences. | `deflateInit2_`, `deflate`, `deflate_sequence_safety` |
 | 3 | Whole-buffer compositions of 1 and 2. | the safety of `compress*`, `uncompress*` |
 | 4 | The callback decoder is safe on every input and every caller protocol, also over its call sequences (owner's request of 2026-11-12). | `inflate_back_sequence_safety` |
-| 5 | The gzip file interface is safe on every history of a handle, for every file-system world (owner's decision of 2026-11-12). Safety only, not functional correctness. | `gzopen`, `gzopen64`, `gzclose`, `gzclose_r`, `gzclose_w`, `gzread`, `gzfread`, `gzgetc`, `gzgetc_`, `gzungetc`, `gzgets`, `gzdirect`, `gzwrite`, `gzfwrite`, `gzputc`, `gzputs`, `gzprintf`, `gzvprintf`, `gzflush`, `gzsetparams`, `gzseek`, `gzseek64`, `gztell`, `gztell64`, through `gz_sequence_safety` |
+| 5 | The gzip file interface is safe on every history of a handle, for every file-system world (owner's decision of 2026-11-12). Safety only, not functional correctness. | `gzopen`, `gzopen64`, `gzdopen`, `gzbuffer`, `gzclose`, `gzclose_r`, `gzclose_w`, `gzread`, `gzfread`, `gzgetc`, `gzgetc_`, `gzungetc`, `gzgets`, `gzdirect`, `gzwrite`, `gzfwrite`, `gzputc`, `gzputs`, `gzprintf`, `gzvprintf`, `gzflush`, `gzsetparams`, `gzseek`, `gzseek64`, `gztell`, `gztell64`, `gzoffset`, `gzoffset64`, `gzrewind`, `gzeof`, `gzerror`, `gzclearerr`, through `gz_sequence_safety`; a `NULL` handle through `gz_refusal`. Termination: every call in every world, except `gzread`, `gzfread`, `gzgetc`, `gzgetc_`, `gzgets` and `gzungetc`, which need a read budget below `2^61` (`ReadsFinite`), also where the C returns at once |
 
 A target that one of these needs as a step stays planned as a dependency. This holds for the
 other stream calls that a sequence goal ranges over, such as `inflateSync`, `inflateCopy`,
@@ -59,8 +59,8 @@ records and in `docs/history/` describe the state when they were written.
 <!-- proof-progress:start -->
 ## Proof progress graph
 
-**196 fixed targets: 118 public and 78 supporting.**
-Exact proofs: 143 registered and 5 local only.
+**197 fixed targets: 119 public and 78 supporting.**
+Exact proofs: 148 registered and 2 local only.
 These counts are not a percentage of verification effort or a final CI result.
 
 **Input coverage colours:** ⬜ not proved · 🟦 default inputs · 🟨 common inputs · 🟩 all stated inputs.
@@ -107,15 +107,15 @@ flowchart LR
   end
   style checksums fill:#f9fafb,stroke:#9ca3af,color:#111827
   subgraph addresses["Byte-address model"]
-    n138["ByteAddress<br/>address_read_is_pure"]:::all
-    n139["ByteAddress<br/>raw_block_unchanged"]:::all
-    n140["ByteAddress<br/>every_layout_is_<br/>representable"]:::all
-    n141["ByteAddress<br/>every_existing_heap_<br/>accepts_layout"]:::all
-    n142["ByteAddress<br/>mask_refines_base_plus_<br/>offset"]:::all
-    n143["ByteAddress<br/>pointer_advance_<br/>preserves_low_bits"]:::all
-    n144["ByteAddress<br/>first_aligned_offset"]:::all
-    n145["ByteAddress<br/>byte_stores_preserve_<br/>bases"]:::all
-    n146["ByteAddress<br/>byte_modifies_preserve_<br/>bases"]:::all
+    n139["ByteAddress<br/>address_read_is_pure"]:::all
+    n140["ByteAddress<br/>raw_block_unchanged"]:::all
+    n141["ByteAddress<br/>every_layout_is_<br/>representable"]:::all
+    n142["ByteAddress<br/>every_existing_heap_<br/>accepts_layout"]:::all
+    n143["ByteAddress<br/>mask_refines_base_plus_<br/>offset"]:::all
+    n144["ByteAddress<br/>pointer_advance_<br/>preserves_low_bits"]:::all
+    n145["ByteAddress<br/>first_aligned_offset"]:::all
+    n146["ByteAddress<br/>byte_stores_preserve_<br/>bases"]:::all
+    n147["ByteAddress<br/>byte_modifies_preserve_<br/>bases"]:::all
   end
   style addresses fill:#f9fafb,stroke:#9ca3af,color:#111827
   subgraph inflate["Inflate streams"]
@@ -138,65 +138,65 @@ flowchart LR
     n99["inflate"]:::all
     n105["inflateSync"]:::unproved
     n123["inflate_sequence_safety"]:::all
-    n127["inflate_back_sequence_<br/>safety"]:::unproved
-    n129["inflate_refusal<br/>Local exact proof"]:::all
+    n127["inflate_back_sequence_<br/>safety"]:::all
+    n129["inflate_refusal"]:::all
   end
   style inflate fill:#f9fafb,stroke:#9ca3af,color:#111827
   subgraph fast["Fast decoder obligations"]
-    n149["InflateFastBodyOrigin<br/>actual_body_preserves_<br/>origin"]:::all
-    n150["InflateFastBodyToken<br/>actual_body_refines_token"]:::all
-    n151["InflateFastCallOrigin<br/>actual_fast_preserves_<br/>origin"]:::all
-    n152["InflateFastDistanceOrigin<br/>actual_distance_block_<br/>preserves_origin"]:::all
-    n153["InflateFastDistanceResult<br/>actual_distance_refines_<br/>lz77"]:::all
-    n154["InflateFastDistance<br/>Semantics<br/>distance_lookup_matches_<br/>format"]:::all
-    n155["InflateFast<br/>fast_safe"]:::all
-    n156["InflateFast<br/>step_safe"]:::all
-    n157["InflateFastLength<br/>Semantics<br/>length_lookup_matches_<br/>format"]:::all
-    n158["InflateFastLengthTrace<br/>actual_body_retains_<br/>selected_length"]:::all
-    n159["InflateFastMatchHistory<br/>actual_copy_match_<br/>refines_lz77"]:::all
-    n160["InflateFastMatchHistory<br/>match_array_refines_lz77"]:::all
-    n161["InflateFastOrigin<br/>actual_drop_preserves_<br/>origin"]:::all
-    n162["InflateFastOrigin<br/>actual_pull_preserves_<br/>origin"]:::all
-    n163["InflateFastOrigin<br/>actual_rollback_<br/>preserves_origin"]:::all
-    n164["InflateFastOrigin<br/>drop_preserves_origin"]:::all
-    n165["InflateFastOrigin<br/>initial_origin"]:::all
-    n166["InflateFastOrigin<br/>pull_preserves_origin"]:::all
-    n167["InflateFastOrigin<br/>rollback_preserves_origin"]:::all
+    n150["InflateFastBodyOrigin<br/>actual_body_preserves_<br/>origin"]:::all
+    n151["InflateFastBodyToken<br/>actual_body_refines_token"]:::all
+    n152["InflateFastCallOrigin<br/>actual_fast_preserves_<br/>origin"]:::all
+    n153["InflateFastDistanceOrigin<br/>actual_distance_block_<br/>preserves_origin"]:::all
+    n154["InflateFastDistanceResult<br/>actual_distance_refines_<br/>lz77"]:::all
+    n155["InflateFastDistance<br/>Semantics<br/>distance_lookup_matches_<br/>format"]:::all
+    n156["InflateFast<br/>fast_safe"]:::all
+    n157["InflateFast<br/>step_safe"]:::all
+    n158["InflateFastLength<br/>Semantics<br/>length_lookup_matches_<br/>format"]:::all
+    n159["InflateFastLengthTrace<br/>actual_body_retains_<br/>selected_length"]:::all
+    n160["InflateFastMatchHistory<br/>actual_copy_match_<br/>refines_lz77"]:::all
+    n161["InflateFastMatchHistory<br/>match_array_refines_lz77"]:::all
+    n162["InflateFastOrigin<br/>actual_drop_preserves_<br/>origin"]:::all
+    n163["InflateFastOrigin<br/>actual_pull_preserves_<br/>origin"]:::all
+    n164["InflateFastOrigin<br/>actual_rollback_<br/>preserves_origin"]:::all
+    n165["InflateFastOrigin<br/>drop_preserves_origin"]:::all
+    n166["InflateFastOrigin<br/>initial_origin"]:::all
+    n167["InflateFastOrigin<br/>pull_preserves_origin"]:::all
+    n168["InflateFastOrigin<br/>rollback_preserves_origin"]:::all
   end
   style fast fill:#f9fafb,stroke:#9ca3af,color:#111827
   subgraph tables["Decode-table obligations"]
-    n168["InflateDecodeTable<br/>Rejection<br/>decode_table_classifies_<br/>input"]:::all
-    n169["InflateDecodeTable<br/>Semantics<br/>decode_table_matches_<br/>format"]:::all
-    n170["InflateDecodeTableShort<br/>short_decode_table_leaf_<br/>sound"]:::all
-    n171["InflateDecodeTable<br/>Soundness<br/>decode_table_leaf_sound"]:::all
-    n172["InflateDecodeTableFrame<br/>decode_table_read_<br/>preserved"]:::all
-    n173["InflateDecodeTable<br/>Invariant<br/>constructor_establishes_<br/>decode_table_invariant"]:::all
-    n174["InflateDecodeTable<br/>Invariant<br/>decode_table_invariant_<br/>of_prefix"]:::all
-    n175["InflateDecodeTable<br/>Stability<br/>constructor_establishes_<br/>query_stability"]:::all
-    n176["InflateDecodeTable<br/>Stability<br/>query_stability_of_prefix"]:::all
-    n177["InflateDecodeTable<br/>Stability<br/>short_rejected_leaf_<br/>stays_invalid"]:::all
-    n178["InflateFastTableFlags<br/>constructor_establishes_<br/>fast_leaf_flags"]:::all
-    n179["InflateFastTableFlags<br/>fast_leaf_flags_of_prefix"]:::all
-    n180["InflateFastTableFlags<br/>fixed_tables_have_fast_<br/>leaf_flags"]:::all
-    n181["InflateFastTableFlags<br/>leaf_classification_<br/>agrees"]:::all
-    n182["InflateTableContent<br/>inflate_table_content"]:::all
-    n183["InflateTableSafety<br/>inflate_table_decoder_<br/>safe"]:::all
-    n184["InflateTableExtent<br/>inflate_table_read_extent"]:::all
-    n185["InflateRootTable<br/>constructor_root_bits"]:::all
-    n186["InflateSubtable<br/>constructor_subtable_bits"]:::all
+    n169["InflateDecodeTable<br/>Rejection<br/>decode_table_classifies_<br/>input"]:::all
+    n170["InflateDecodeTable<br/>Semantics<br/>decode_table_matches_<br/>format"]:::all
+    n171["InflateDecodeTableShort<br/>short_decode_table_leaf_<br/>sound"]:::all
+    n172["InflateDecodeTable<br/>Soundness<br/>decode_table_leaf_sound"]:::all
+    n173["InflateDecodeTableFrame<br/>decode_table_read_<br/>preserved"]:::all
+    n174["InflateDecodeTable<br/>Invariant<br/>constructor_establishes_<br/>decode_table_invariant"]:::all
+    n175["InflateDecodeTable<br/>Invariant<br/>decode_table_invariant_<br/>of_prefix"]:::all
+    n176["InflateDecodeTable<br/>Stability<br/>constructor_establishes_<br/>query_stability"]:::all
+    n177["InflateDecodeTable<br/>Stability<br/>query_stability_of_prefix"]:::all
+    n178["InflateDecodeTable<br/>Stability<br/>short_rejected_leaf_<br/>stays_invalid"]:::all
+    n179["InflateFastTableFlags<br/>constructor_establishes_<br/>fast_leaf_flags"]:::all
+    n180["InflateFastTableFlags<br/>fast_leaf_flags_of_prefix"]:::all
+    n181["InflateFastTableFlags<br/>fixed_tables_have_fast_<br/>leaf_flags"]:::all
+    n182["InflateFastTableFlags<br/>leaf_classification_<br/>agrees"]:::all
+    n183["InflateTableContent<br/>inflate_table_content"]:::all
+    n184["InflateTableSafety<br/>inflate_table_decoder_<br/>safe"]:::all
+    n185["InflateTableExtent<br/>inflate_table_read_extent"]:::all
+    n186["InflateRootTable<br/>constructor_root_bits"]:::all
+    n187["InflateSubtable<br/>constructor_subtable_bits"]:::all
   end
   style tables fill:#f9fafb,stroke:#9ca3af,color:#111827
   subgraph copy["Match-copy mathematics"]
-    n187["LZ77CopySpec<br/>output_copy_refines_lz77"]:::all
-    n188["LZ77CopySpec<br/>window_copy_refines_lz77"]:::all
-    n189["LZ77HistorySpec<br/>copy_back_compose"]:::all
-    n190["LZ77HistorySpec<br/>copy_back_extends_history"]:::all
-    n191["LZ77HistorySpec<br/>retained_history_agrees"]:::all
-    n192["LZ77HistorySpec<br/>window_distance_check_<br/>agrees"]:::all
+    n188["LZ77CopySpec<br/>output_copy_refines_lz77"]:::all
+    n189["LZ77CopySpec<br/>window_copy_refines_lz77"]:::all
+    n190["LZ77HistorySpec<br/>copy_back_compose"]:::all
+    n191["LZ77HistorySpec<br/>copy_back_extends_history"]:::all
+    n192["LZ77HistorySpec<br/>retained_history_agrees"]:::all
+    n193["LZ77HistorySpec<br/>window_distance_check_<br/>agrees"]:::all
   end
   style copy fill:#f9fafb,stroke:#9ca3af,color:#111827
   subgraph deflate["Deflate streams"]
-    n40["deflateCopy<br/>Local exact proof"]:::all
+    n40["deflateCopy"]:::all
     n75["deflateInit2_"]:::all
     n76["deflateInit_"]:::all
     n83["deflateGetDictionary"]:::all
@@ -214,8 +214,8 @@ flowchart LR
     n103["deflatePrime"]:::unproved
     n104["deflateParams"]:::unproved
     n125["deflate_sequence_safety"]:::all
-    n128["deflateCopy_safety<br/>Local exact proof"]:::all
-    n130["deflate_refusal<br/>Local exact proof"]:::all
+    n128["deflateCopy_safety"]:::all
+    n130["deflate_refusal"]:::all
   end
   style deflate fill:#f9fafb,stroke:#9ca3af,color:#111827
   subgraph back["Callback decoding"]
@@ -258,6 +258,7 @@ flowchart LR
     n71["gzflush"]:::unproved
     n72["gzsetparams"]:::unproved
     n131["gz_sequence_safety"]:::unproved
+    n132["gz_refusal<br/>Local exact proof"]:::all
   end
   style gzip fill:#f9fafb,stroke:#9ca3af,color:#111827
   subgraph buffers["Whole-buffer operations"]
@@ -299,82 +300,86 @@ flowchart LR
     n16["Goals<br/>gz_seek_read<br/>Local exact proof"]:::all
     n17["Concrete<br/>compress_bound_value"]:::all
     n18["Concrete<br/>compress2_z_first_alloc_<br/>failure"]:::all
-    n137["Inflate<br/>inflate_deferred_distance"]:::all
+    n138["Inflate<br/>inflate_deferred_distance"]:::all
   end
   style models fill:#f9fafb,stroke:#9ca3af,color:#111827
   subgraph lifecycle["Lifecycles and call sequences"]
     n122["inflate_sequence"]:::unproved
     n124["deflate_sequence"]:::unproved
     n126["inflate_back_sequence"]:::unproved
-    n132["gz_sequence"]:::unproved
-    n133["inflate_initialisation_<br/>domain"]:::all
-    n134["deflate_initialisation_<br/>domain"]:::unproved
-    n135["inflate_back_<br/>initialisation_domain"]:::all
-    n136["gz_initialisation_domain"]:::unproved
+    n133["gz_sequence"]:::unproved
+    n134["inflate_initialisation_<br/>domain"]:::all
+    n135["deflate_initialisation_<br/>domain"]:::unproved
+    n136["inflate_back_<br/>initialisation_domain"]:::all
+    n137["gz_initialisation_domain"]:::unproved
   end
   style lifecycle fill:#f9fafb,stroke:#9ca3af,color:#111827
   subgraph internal["Internal proof obligations"]
-    n147["Crc32ByteViews<br/>crc32_z_all_byte_views"]:::all
-    n148["Crc32ByteViews<br/>crc32_all_byte_views"]:::all
-    n193["Token<br/>rejected_has_no_symbols"]:::all
-    n194["Token<br/>step_composes_symbols"]:::all
-    n195["Token<br/>symbols_exposes_step"]:::all
+    n148["Crc32ByteViews<br/>crc32_z_all_byte_views"]:::all
+    n149["Crc32ByteViews<br/>crc32_all_byte_views"]:::all
+    n194["Token<br/>rejected_has_no_symbols"]:::all
+    n195["Token<br/>step_composes_symbols"]:::all
+    n196["Token<br/>symbols_exposes_step"]:::all
   end
   style internal fill:#f9fafb,stroke:#9ca3af,color:#111827
-  n143 --> n144
-  n148 --> n28
-  n148 --> n99
-  n148 --> n39
-  n148 --> n123
-  n147 --> n29
-  n149 --> n151
-  n151 --> n99
-  n151 --> n39
-  n151 --> n123
-  n152 --> n149
+  n144 --> n145
+  n149 --> n28
+  n149 --> n99
+  n149 --> n39
+  n149 --> n123
+  n148 --> n29
+  n150 --> n152
+  n152 --> n99
+  n152 --> n39
+  n152 --> n123
   n153 --> n150
-  n154 --> n153
-  n155 --> n151
-  n156 --> n150
-  n156 --> n158
-  n157 --> n150
-  n159 --> n153
-  n160 --> n159
-  n161 --> n149
-  n163 --> n151
+  n154 --> n151
+  n155 --> n154
+  n156 --> n152
+  n157 --> n151
+  n157 --> n159
+  n158 --> n151
+  n160 --> n154
+  n161 --> n160
+  n162 --> n150
   n164 --> n152
-  n164 --> n161
-  n165 --> n151
+  n165 --> n153
+  n165 --> n162
   n166 --> n152
-  n166 --> n162
+  n167 --> n153
   n167 --> n163
-  n168 --> n173
-  n169 --> n168
-  n170 --> n173
-  n171 --> n168
-  n171 --> n170
-  n172 --> n174
-  n172 --> n176
-  n172 --> n179
-  n173 --> n99
-  n173 --> n39
-  n173 --> n123
+  n168 --> n164
+  n169 --> n174
+  n170 --> n169
+  n171 --> n174
+  n172 --> n169
+  n172 --> n171
+  n173 --> n175
+  n173 --> n177
+  n173 --> n180
   n174 --> n99
   n174 --> n39
+  n174 --> n127
   n174 --> n123
-  n177 --> n154
-  n177 --> n157
-  n182 --> n183
+  n175 --> n99
+  n175 --> n39
+  n175 --> n127
+  n175 --> n123
+  n176 --> n127
+  n177 --> n127
+  n178 --> n155
+  n178 --> n158
   n183 --> n184
-  n183 --> n185
-  n184 --> n173
-  n186 --> n173
-  n186 --> n185
-  n187 --> n160
-  n188 --> n160
-  n189 --> n160
-  n191 --> n8
-  n191 --> n9
+  n184 --> n185
+  n184 --> n186
+  n185 --> n174
+  n187 --> n174
+  n187 --> n186
+  n188 --> n161
+  n189 --> n161
+  n190 --> n161
+  n192 --> n8
+  n192 --> n9
   n5 --> n10
   n5 --> n11
   n5 --> n8
@@ -399,7 +404,9 @@ flowchart LR
   n99 --> n114
   n99 --> n117
   n99 --> n116
-  n36 --> n135
+  n38 --> n127
+  n36 --> n136
+  n36 --> n127
   n80 --> n123
   n73 --> n99
   n73 --> n39
@@ -482,202 +489,203 @@ flowchart LR
   n23 -.-> n100
   n23 -.-> n75
   n21 -.-> n106
-  click n0 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Api/Goals.lean#L42" _blank
-  click n1 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Api/Goals.lean#L47" _blank
-  click n2 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Api/Goals.lean#L58" _blank
-  click n3 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Api/Goals.lean#L69" _blank
-  click n4 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Api/Goals.lean#L84" _blank
-  click n5 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Api/Goals.lean#L99" _blank
-  click n6 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Api/Goals.lean#L106" _blank
-  click n7 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Api/Goals.lean#L116" _blank
-  click n8 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Api/Goals.lean#L134" _blank
-  click n9 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Api/Goals.lean#L143" _blank
-  click n10 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Api/Goals.lean#L162" _blank
-  click n11 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Api/Goals.lean#L180" _blank
-  click n12 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Api/Goals.lean#L189" _blank
-  click n13 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Api/Goals.lean#L196" _blank
-  click n14 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Api/Goals.lean#L203" _blank
-  click n15 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Api/Goals.lean#L214" _blank
-  click n16 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Api/Goals.lean#L221" _blank
-  click n17 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Api/Concrete.lean#L57" _blank
-  click n18 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Api/Concrete.lean#L67" _blank
-  click n19 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Queries.lean#L35" _blank
-  click n20 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Queries.lean#L40" _blank
-  click n21 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Queries.lean#L46" _blank
-  click n22 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Queries.lean#L53" _blank
-  click n23 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Queries.lean#L59" _blank
-  click n24 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Checksums.lean#L66" _blank
-  click n25 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Checksums.lean#L61" _blank
-  click n26 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Checksums.lean#L86" _blank
-  click n27 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Checksums.lean#L90" _blank
-  click n28 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Checksums.lean#L117" _blank
-  click n29 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Checksums.lean#L109" _blank
-  click n30 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Checksums.lean#L126" _blank
-  click n31 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Checksums.lean#L140" _blank
-  click n32 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Checksums.lean#L143" _blank
-  click n33 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Checksums.lean#L150" _blank
-  click n34 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Checksums.lean#L162" _blank
-  click n35 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Checksums.lean#L165" _blank
-  click n36 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Back.lean#L22" _blank
-  click n37 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Back.lean#L118" _blank
-  click n38 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Back.lean#L145" _blank
-  click n39 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Copy.lean#L27" _blank
-  click n40 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Copy.lean#L67" _blank
-  click n41 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzClose.lean#L35" _blank
-  click n42 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzClose.lean#L40" _blank
-  click n43 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzClose.lean#L44" _blank
-  click n44 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzControl.lean#L12" _blank
-  click n45 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzControl.lean#L22" _blank
-  click n46 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzControl.lean#L36" _blank
-  click n47 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzControl.lean#L39" _blank
-  click n48 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzControl.lean#L53" _blank
-  click n49 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzControl.lean#L56" _blank
-  click n50 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzControl.lean#L63" _blank
-  click n51 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzControl.lean#L74" _blank
-  click n52 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzControl.lean#L91" _blank
-  click n53 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzControl.lean#L116" _blank
-  click n54 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzControl.lean#L119" _blank
-  click n55 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzOpen.lean#L65" _blank
-  click n56 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzOpen.lean#L70" _blank
-  click n57 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzOpen.lean#L75" _blank
-  click n58 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzRead.lean#L22" _blank
-  click n59 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzRead.lean#L37" _blank
-  click n60 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzRead.lean#L58" _blank
-  click n61 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzRead.lean#L61" _blank
-  click n62 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzRead.lean#L66" _blank
-  click n63 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzRead.lean#L80" _blank
-  click n64 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzRead.lean#L103" _blank
-  click n65 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzWrite.lean#L28" _blank
-  click n66 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzWrite.lean#L43" _blank
-  click n67 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzWrite.lean#L59" _blank
-  click n68 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzWrite.lean#L71" _blank
-  click n69 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzWrite.lean#L108" _blank
-  click n70 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzWrite.lean#L112" _blank
-  click n71 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzWrite.lean#L117" _blank
-  click n72 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzWrite.lean#L134" _blank
-  click n73 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Initialisation.lean#L92" _blank
-  click n74 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Initialisation.lean#L97" _blank
-  click n75 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Initialisation.lean#L140" _blank
-  click n76 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Initialisation.lean#L147" _blank
-  click n77 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Lifecycle.lean#L20" _blank
-  click n78 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Lifecycle.lean#L32" _blank
-  click n79 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Lifecycle.lean#L43" _blank
-  click n80 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Lifecycle.lean#L60" _blank
-  click n81 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Lifecycle.lean#L77" _blank
-  click n82 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Lifecycle.lean#L87" _blank
-  click n83 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Lifecycle.lean#L105" _blank
-  click n84 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Lifecycle.lean#L115" _blank
-  click n85 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Lifecycle.lean#L146" _blank
-  click n86 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Lifecycle.lean#L149" _blank
-  click n87 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Lifecycle.lean#L153" _blank
-  click n88 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Lifecycle.lean#L175" _blank
-  click n89 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/StreamQueries.lean#L53" _blank
-  click n90 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/StreamQueries.lean#L62" _blank
-  click n91 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/StreamQueries.lean#L73" _blank
-  click n92 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/StreamQueries.lean#L81" _blank
-  click n93 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/StreamQueries.lean#L89" _blank
-  click n94 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/StreamQueries.lean#L100" _blank
-  click n95 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/StreamQueries.lean#L113" _blank
-  click n96 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/StreamQueries.lean#L124" _blank
-  click n97 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/StreamQueries.lean#L132" _blank
-  click n98 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/StreamQueries.lean#L145" _blank
-  click n99 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Streams.lean#L35" _blank
-  click n100 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Streams.lean#L87" _blank
-  click n101 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Streams.lean#L154" _blank
-  click n102 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Streams.lean#L158" _blank
-  click n103 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Streams.lean#L168" _blank
-  click n104 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Streams.lean#L186" _blank
-  click n105 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Streams.lean#L209" _blank
-  click n106 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Utilities.lean#L84" _blank
-  click n107 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Utilities.lean#L89" _blank
-  click n108 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Utilities.lean#L96" _blank
-  click n109 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Utilities.lean#L101" _blank
-  click n110 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Utilities.lean#L156" _blank
-  click n111 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Utilities.lean#L160" _blank
-  click n112 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Utilities.lean#L188" _blank
-  click n113 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Utilities.lean#L192" _blank
-  click n114 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Utilities.lean#L231" _blank
-  click n115 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Utilities.lean#L234" _blank
-  click n116 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Utilities.lean#L260" _blank
-  click n117 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Utilities.lean#L263" _blank
-  click n118 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Utilities.lean#L68" _blank
-  click n119 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Utilities.lean#L72" _blank
-  click n120 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Utilities.lean#L78" _blank
-  click n121 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Utilities.lean#L107" _blank
-  click n122 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Sequences.lean#L241" _blank
-  click n123 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Sequences.lean#L268" _blank
-  click n124 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Sequences.lean#L278" _blank
-  click n125 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Sequences.lean#L259" _blank
-  click n126 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Sequences.lean#L375" _blank
-  click n127 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Sequences.lean#L396" _blank
-  click n128 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Copy.lean#L106" _blank
-  click n129 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Refusals.lean#L25" _blank
-  click n130 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Refusals.lean#L45" _blank
-  click n131 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzSafety.lean#L129" _blank
-  click n132 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Sequences.lean#L425" _blank
-  click n133 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Domains.lean#L24" _blank
-  click n134 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Domains.lean#L37" _blank
-  click n135 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Domains.lean#L53" _blank
-  click n136 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Domains.lean#L79" _blank
-  click n137 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Api/Inflate.lean#L267" _blank
-  click n138 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/ByteAddress.lean#L39" _blank
-  click n139 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/ByteAddress.lean#L43" _blank
-  click n140 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/ByteAddress.lean#L50" _blank
-  click n141 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/ByteAddress.lean#L57" _blank
-  click n142 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/ByteAddress.lean#L65" _blank
-  click n143 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/ByteAddress.lean#L70" _blank
-  click n144 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/ByteAddress.lean#L77" _blank
-  click n145 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/ByteAddress.lean#L83" _blank
-  click n146 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/ByteAddress.lean#L87" _blank
-  click n147 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Crc32ByteViews.lean#L17" _blank
-  click n148 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Crc32ByteViews.lean#L28" _blank
-  click n149 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateFastBodyOrigin.lean#L18" _blank
-  click n150 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateFastBodyToken.lean#L73" _blank
-  click n151 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateFastCallOrigin.lean#L24" _blank
-  click n152 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateFastDistanceOrigin.lean#L18" _blank
-  click n153 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateFastDistanceResult.lean#L101" _blank
-  click n154 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateFastDistanceSemantics.lean#L20" _blank
-  click n155 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateFast.lean#L70" _blank
-  click n156 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateFast.lean#L42" _blank
-  click n157 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateFastLengthSemantics.lean#L34" _blank
-  click n158 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateFastLengthTrace.lean#L51" _blank
-  click n159 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateFastMatchHistory.lean#L39" _blank
-  click n160 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateFastMatchHistory.lean#L25" _blank
-  click n161 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateFastOrigin.lean#L68" _blank
-  click n162 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateFastOrigin.lean#L57" _blank
-  click n163 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateFastOrigin.lean#L81" _blank
-  click n164 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateFastOrigin.lean#L38" _blank
-  click n165 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateFastOrigin.lean#L27" _blank
-  click n166 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateFastOrigin.lean#L32" _blank
-  click n167 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateFastOrigin.lean#L46" _blank
-  click n168 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateDecodeTableRejection.lean#L19" _blank
-  click n169 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateDecodeTableSemantics.lean#L51" _blank
-  click n170 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateDecodeTableShort.lean#L26" _blank
-  click n171 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateDecodeTableSoundness.lean#L31" _blank
-  click n172 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateDecodeTableFrame.lean#L20" _blank
-  click n173 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateDecodeTableInvariant.lean#L51" _blank
-  click n174 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateDecodeTableInvariant.lean#L68" _blank
-  click n175 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateDecodeTableStability.lean#L30" _blank
-  click n176 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateDecodeTableStability.lean#L43" _blank
-  click n177 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateDecodeTableStability.lean#L54" _blank
-  click n178 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateFastTableFlags.lean#L52" _blank
-  click n179 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateFastTableFlags.lean#L66" _blank
-  click n180 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateFastTableFlags.lean#L76" _blank
-  click n181 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateFastTableFlags.lean#L42" _blank
-  click n182 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateTableContent.lean#L32" _blank
-  click n183 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateTableSafety.lean#L28" _blank
-  click n184 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateTableExtent.lean#L28" _blank
-  click n185 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateRootTable.lean#L21" _blank
-  click n186 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateSubtable.lean#L26" _blank
-  click n187 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Math/LZ77CopySpec.lean#L22" _blank
-  click n188 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Math/LZ77CopySpec.lean#L32" _blank
-  click n189 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Math/LZ77HistorySpec.lean#L21" _blank
-  click n190 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Math/LZ77HistorySpec.lean#L15" _blank
-  click n191 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Math/LZ77HistorySpec.lean#L29" _blank
-  click n192 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Math/LZ77HistorySpec.lean#L39" _blank
-  click n193 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Format/Token.lean#L84" _blank
-  click n194 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Format/Token.lean#L62" _blank
-  click n195 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Format/Token.lean#L73" _blank
+  click n0 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Api/Goals.lean#L42" _blank
+  click n1 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Api/Goals.lean#L47" _blank
+  click n2 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Api/Goals.lean#L58" _blank
+  click n3 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Api/Goals.lean#L69" _blank
+  click n4 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Api/Goals.lean#L84" _blank
+  click n5 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Api/Goals.lean#L99" _blank
+  click n6 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Api/Goals.lean#L106" _blank
+  click n7 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Api/Goals.lean#L116" _blank
+  click n8 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Api/Goals.lean#L134" _blank
+  click n9 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Api/Goals.lean#L143" _blank
+  click n10 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Api/Goals.lean#L162" _blank
+  click n11 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Api/Goals.lean#L180" _blank
+  click n12 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Api/Goals.lean#L189" _blank
+  click n13 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Api/Goals.lean#L196" _blank
+  click n14 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Api/Goals.lean#L203" _blank
+  click n15 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Api/Goals.lean#L214" _blank
+  click n16 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Api/Goals.lean#L221" _blank
+  click n17 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Api/Concrete.lean#L57" _blank
+  click n18 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Api/Concrete.lean#L67" _blank
+  click n19 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Queries.lean#L35" _blank
+  click n20 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Queries.lean#L40" _blank
+  click n21 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Queries.lean#L46" _blank
+  click n22 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Queries.lean#L53" _blank
+  click n23 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Queries.lean#L59" _blank
+  click n24 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Checksums.lean#L66" _blank
+  click n25 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Checksums.lean#L61" _blank
+  click n26 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Checksums.lean#L86" _blank
+  click n27 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Checksums.lean#L90" _blank
+  click n28 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Checksums.lean#L117" _blank
+  click n29 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Checksums.lean#L109" _blank
+  click n30 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Checksums.lean#L126" _blank
+  click n31 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Checksums.lean#L140" _blank
+  click n32 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Checksums.lean#L143" _blank
+  click n33 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Checksums.lean#L150" _blank
+  click n34 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Checksums.lean#L162" _blank
+  click n35 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Checksums.lean#L165" _blank
+  click n36 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Back.lean#L22" _blank
+  click n37 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Back.lean#L118" _blank
+  click n38 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Back.lean#L145" _blank
+  click n39 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Copy.lean#L27" _blank
+  click n40 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Copy.lean#L67" _blank
+  click n41 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/GzClose.lean#L35" _blank
+  click n42 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/GzClose.lean#L40" _blank
+  click n43 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/GzClose.lean#L44" _blank
+  click n44 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/GzControl.lean#L12" _blank
+  click n45 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/GzControl.lean#L22" _blank
+  click n46 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/GzControl.lean#L36" _blank
+  click n47 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/GzControl.lean#L39" _blank
+  click n48 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/GzControl.lean#L53" _blank
+  click n49 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/GzControl.lean#L56" _blank
+  click n50 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/GzControl.lean#L63" _blank
+  click n51 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/GzControl.lean#L74" _blank
+  click n52 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/GzControl.lean#L91" _blank
+  click n53 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/GzControl.lean#L116" _blank
+  click n54 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/GzControl.lean#L119" _blank
+  click n55 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/GzOpen.lean#L65" _blank
+  click n56 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/GzOpen.lean#L70" _blank
+  click n57 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/GzOpen.lean#L75" _blank
+  click n58 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/GzRead.lean#L22" _blank
+  click n59 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/GzRead.lean#L37" _blank
+  click n60 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/GzRead.lean#L58" _blank
+  click n61 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/GzRead.lean#L61" _blank
+  click n62 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/GzRead.lean#L66" _blank
+  click n63 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/GzRead.lean#L80" _blank
+  click n64 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/GzRead.lean#L103" _blank
+  click n65 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/GzWrite.lean#L28" _blank
+  click n66 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/GzWrite.lean#L43" _blank
+  click n67 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/GzWrite.lean#L59" _blank
+  click n68 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/GzWrite.lean#L71" _blank
+  click n69 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/GzWrite.lean#L108" _blank
+  click n70 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/GzWrite.lean#L112" _blank
+  click n71 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/GzWrite.lean#L117" _blank
+  click n72 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/GzWrite.lean#L134" _blank
+  click n73 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Initialisation.lean#L92" _blank
+  click n74 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Initialisation.lean#L97" _blank
+  click n75 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Initialisation.lean#L140" _blank
+  click n76 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Initialisation.lean#L147" _blank
+  click n77 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Lifecycle.lean#L20" _blank
+  click n78 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Lifecycle.lean#L32" _blank
+  click n79 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Lifecycle.lean#L43" _blank
+  click n80 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Lifecycle.lean#L60" _blank
+  click n81 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Lifecycle.lean#L77" _blank
+  click n82 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Lifecycle.lean#L87" _blank
+  click n83 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Lifecycle.lean#L105" _blank
+  click n84 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Lifecycle.lean#L115" _blank
+  click n85 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Lifecycle.lean#L146" _blank
+  click n86 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Lifecycle.lean#L149" _blank
+  click n87 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Lifecycle.lean#L153" _blank
+  click n88 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Lifecycle.lean#L175" _blank
+  click n89 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/StreamQueries.lean#L53" _blank
+  click n90 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/StreamQueries.lean#L62" _blank
+  click n91 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/StreamQueries.lean#L73" _blank
+  click n92 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/StreamQueries.lean#L81" _blank
+  click n93 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/StreamQueries.lean#L89" _blank
+  click n94 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/StreamQueries.lean#L100" _blank
+  click n95 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/StreamQueries.lean#L113" _blank
+  click n96 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/StreamQueries.lean#L124" _blank
+  click n97 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/StreamQueries.lean#L132" _blank
+  click n98 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/StreamQueries.lean#L145" _blank
+  click n99 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Streams.lean#L35" _blank
+  click n100 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Streams.lean#L87" _blank
+  click n101 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Streams.lean#L154" _blank
+  click n102 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Streams.lean#L158" _blank
+  click n103 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Streams.lean#L168" _blank
+  click n104 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Streams.lean#L186" _blank
+  click n105 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Streams.lean#L209" _blank
+  click n106 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Utilities.lean#L84" _blank
+  click n107 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Utilities.lean#L89" _blank
+  click n108 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Utilities.lean#L96" _blank
+  click n109 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Utilities.lean#L101" _blank
+  click n110 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Utilities.lean#L156" _blank
+  click n111 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Utilities.lean#L160" _blank
+  click n112 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Utilities.lean#L188" _blank
+  click n113 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Utilities.lean#L192" _blank
+  click n114 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Utilities.lean#L231" _blank
+  click n115 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Utilities.lean#L234" _blank
+  click n116 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Utilities.lean#L260" _blank
+  click n117 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Utilities.lean#L263" _blank
+  click n118 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Utilities.lean#L68" _blank
+  click n119 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Utilities.lean#L72" _blank
+  click n120 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Utilities.lean#L78" _blank
+  click n121 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Utilities.lean#L107" _blank
+  click n122 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Sequences.lean#L241" _blank
+  click n123 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Sequences.lean#L268" _blank
+  click n124 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Sequences.lean#L278" _blank
+  click n125 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Sequences.lean#L259" _blank
+  click n126 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Sequences.lean#L375" _blank
+  click n127 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Sequences.lean#L396" _blank
+  click n128 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Copy.lean#L106" _blank
+  click n129 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Refusals.lean#L25" _blank
+  click n130 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Refusals.lean#L45" _blank
+  click n131 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/GzSafety.lean#L131" _blank
+  click n132 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/GzRefusal.lean#L39" _blank
+  click n133 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Sequences.lean#L425" _blank
+  click n134 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Domains.lean#L24" _blank
+  click n135 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Domains.lean#L37" _blank
+  click n136 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Domains.lean#L53" _blank
+  click n137 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Public/Domains.lean#L79" _blank
+  click n138 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Api/Inflate.lean#L267" _blank
+  click n139 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/ByteAddress.lean#L39" _blank
+  click n140 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/ByteAddress.lean#L43" _blank
+  click n141 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/ByteAddress.lean#L50" _blank
+  click n142 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/ByteAddress.lean#L57" _blank
+  click n143 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/ByteAddress.lean#L65" _blank
+  click n144 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/ByteAddress.lean#L70" _blank
+  click n145 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/ByteAddress.lean#L77" _blank
+  click n146 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/ByteAddress.lean#L83" _blank
+  click n147 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/ByteAddress.lean#L87" _blank
+  click n148 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Crc32ByteViews.lean#L17" _blank
+  click n149 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Crc32ByteViews.lean#L28" _blank
+  click n150 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/InflateFastBodyOrigin.lean#L18" _blank
+  click n151 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/InflateFastBodyToken.lean#L73" _blank
+  click n152 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/InflateFastCallOrigin.lean#L24" _blank
+  click n153 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/InflateFastDistanceOrigin.lean#L18" _blank
+  click n154 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/InflateFastDistanceResult.lean#L101" _blank
+  click n155 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/InflateFastDistanceSemantics.lean#L20" _blank
+  click n156 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/InflateFast.lean#L70" _blank
+  click n157 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/InflateFast.lean#L42" _blank
+  click n158 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/InflateFastLengthSemantics.lean#L34" _blank
+  click n159 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/InflateFastLengthTrace.lean#L51" _blank
+  click n160 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/InflateFastMatchHistory.lean#L39" _blank
+  click n161 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/InflateFastMatchHistory.lean#L25" _blank
+  click n162 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/InflateFastOrigin.lean#L68" _blank
+  click n163 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/InflateFastOrigin.lean#L57" _blank
+  click n164 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/InflateFastOrigin.lean#L81" _blank
+  click n165 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/InflateFastOrigin.lean#L38" _blank
+  click n166 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/InflateFastOrigin.lean#L27" _blank
+  click n167 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/InflateFastOrigin.lean#L32" _blank
+  click n168 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/InflateFastOrigin.lean#L46" _blank
+  click n169 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/InflateDecodeTableRejection.lean#L19" _blank
+  click n170 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/InflateDecodeTableSemantics.lean#L51" _blank
+  click n171 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/InflateDecodeTableShort.lean#L26" _blank
+  click n172 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/InflateDecodeTableSoundness.lean#L31" _blank
+  click n173 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/InflateDecodeTableFrame.lean#L20" _blank
+  click n174 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/InflateDecodeTableInvariant.lean#L51" _blank
+  click n175 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/InflateDecodeTableInvariant.lean#L68" _blank
+  click n176 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/InflateDecodeTableStability.lean#L30" _blank
+  click n177 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/InflateDecodeTableStability.lean#L43" _blank
+  click n178 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/InflateDecodeTableStability.lean#L54" _blank
+  click n179 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/InflateFastTableFlags.lean#L52" _blank
+  click n180 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/InflateFastTableFlags.lean#L66" _blank
+  click n181 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/InflateFastTableFlags.lean#L76" _blank
+  click n182 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/InflateFastTableFlags.lean#L42" _blank
+  click n183 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/InflateTableContent.lean#L32" _blank
+  click n184 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/InflateTableSafety.lean#L28" _blank
+  click n185 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/InflateTableExtent.lean#L28" _blank
+  click n186 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/InflateRootTable.lean#L21" _blank
+  click n187 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/InflateSubtable.lean#L26" _blank
+  click n188 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Math/LZ77CopySpec.lean#L22" _blank
+  click n189 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Math/LZ77CopySpec.lean#L32" _blank
+  click n190 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Math/LZ77HistorySpec.lean#L21" _blank
+  click n191 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Math/LZ77HistorySpec.lean#L15" _blank
+  click n192 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Math/LZ77HistorySpec.lean#L29" _blank
+  click n193 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Math/LZ77HistorySpec.lean#L39" _blank
+  click n194 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Format/Token.lean#L84" _blank
+  click n195 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Format/Token.lean#L62" _blank
+  click n196 href "https://github.com/cla7aye15I4nd/zlib-f/blob/26de5f9b1972a7c0889bec0eb6a933a644df66ff/ZlibF/Spec/Format/Token.lean#L73" _blank
   classDef unproved fill:#e5e7eb,color:#374151,stroke:#374151
   classDef default fill:#dbeafe,color:#1d4ed8,stroke:#1d4ed8
   classDef common fill:#fef3c7,color:#92400e,stroke:#92400e
@@ -686,7 +694,7 @@ flowchart LR
 ```
 
 Each node opens its exact target or blocker at the fixed source snapshot
-`dd539a5`. Some viewers disable diagram links; the
+`26de5f9`. Some viewers disable diagram links; the
 [evidence index](progress.md) provides ordinary links and all proof references.
 
 No documented blockers in this snapshot.
@@ -694,11 +702,11 @@ No documented blockers in this snapshot.
 
 ## Target evidence
 
-<!-- proof-link-revision: dd539a50c8a20b7591d0e8bcd801b682e232c544 -->
+<!-- proof-link-revision: 26de5f9b1972a7c0889bec0eb6a933a644df66ff -->
 
 [Proof narrative](overview.md) · [All-target graph](#proof-progress-graph) · [Input configurations](spec/input-configurations.md)
 
-This index contains **196 fixed targets**: public execution,
+This index contains **197 fixed targets**: public execution,
 sequence and initialization targets, internal obligations and abstract models.
 There is one status graph, in progress. A model result is not implementation refinement.
 Input coverage and proof registration are separate. An exact local proof can
@@ -792,8 +800,8 @@ allows: [No-fault coverage of zlib.h functions](#no-fault-coverage-of-zlibh-func
 | <a id="target-zlibf-spec-public-goal-inflate"></a>[inflate](../ZlibF/Spec/Public/Streams.lean#L35) | All stated inputs / Registered proof | [Contract](../docs/spec/api/inflate-stream.md#inflate); [input range](spec/input-configurations.md#inflate-inputs) | [Zlib.Inflate.Proofs.inflate_public](../ZlibF/Proof/public-inflate.lean#L10) | — |
 | <a id="target-zlibf-spec-public-goal-inflatesync"></a>[inflateSync](../ZlibF/Spec/Public/Streams.lean#L209) | Not proved / Not proved | [Contract](../docs/spec/api/inflate-stream.md#inflatesync); [input range](spec/input-configurations.md#inflate-inputs) | — | [Needs: scan and history](progress.md#readiness-inflatesync) |
 | <a id="target-zlibf-spec-public-goal-inflate-sequence-safety"></a>[inflate_sequence_safety](../ZlibF/Spec/Public/Sequences.lean#L268) | All stated inputs / Registered proof | Exact target statement; [input range](spec/input-configurations.md#inflate-inputs) | [Zlib.Inflate.Proofs.inflate_sequence_safety_public](../ZlibF/Proof/public-inflate-sequence-safety.lean#L10) | — |
-| <a id="target-zlibf-spec-public-goal-inflate-back-sequence-safety"></a>[inflate_back_sequence_safety](../ZlibF/Spec/Public/Sequences.lean#L396) | Not proved / Not proved | Exact target statement; [input range](spec/input-configurations.md#inflate-inputs) | — | Prerequisites unreviewed |
-| <a id="target-zlibf-spec-public-goal-inflate-refusal"></a>[inflate_refusal](../ZlibF/Spec/Public/Refusals.lean#L25) | All stated inputs / Locally checked | Exact target statement; [input range](spec/input-configurations.md#inflate-inputs) | [ZlibF.Spec.Public.RefusalProof.inflate_refusal](../ZlibF/Proof/public-stream-refusal.lean#L46) | — |
+| <a id="target-zlibf-spec-public-goal-inflate-back-sequence-safety"></a>[inflate_back_sequence_safety](../ZlibF/Spec/Public/Sequences.lean#L396) | All stated inputs / Registered proof | Exact target statement; [input range](spec/input-configurations.md#inflate-inputs) | [Zlib.Infback.Safety.inflate_back_sequence_safety](../ZlibF/Proof/infback.c.safety-fast.lean#L437) | — |
+| <a id="target-zlibf-spec-public-goal-inflate-refusal"></a>[inflate_refusal](../ZlibF/Spec/Public/Refusals.lean#L25) | All stated inputs / Registered proof | Exact target statement; [input range](spec/input-configurations.md#inflate-inputs) | [ZlibF.Spec.Public.RefusalProof.inflate_refusal](../ZlibF/Proof/public-stream-refusal.lean#L46) | — |
 
 <a id="group-fast"></a>
 
@@ -866,7 +874,7 @@ allows: [No-fault coverage of zlib.h functions](#no-fault-coverage-of-zlibh-func
 
 | Target statement | Coverage / evidence state | Contract / input range | Proof evidence | Reviewed next work |
 | --- | --- | --- | --- | --- |
-| <a id="target-zlibf-spec-public-goal-deflatecopy"></a>[deflateCopy](../ZlibF/Spec/Public/Copy.lean#L67) | All stated inputs / Locally checked | [Contract](../docs/spec/api/deflate-stream.md#deflatecopy); [input range](spec/input-configurations.md#deflate-inputs) | [Zlib.Deflate.Universal.deflate_copy_public](../ZlibF/Proof/public-deflate-copy.lean#L65) | — |
+| <a id="target-zlibf-spec-public-goal-deflatecopy"></a>[deflateCopy](../ZlibF/Spec/Public/Copy.lean#L67) | All stated inputs / Registered proof | [Contract](../docs/spec/api/deflate-stream.md#deflatecopy); [input range](spec/input-configurations.md#deflate-inputs) | [Zlib.Deflate.Universal.deflate_copy_public](../ZlibF/Proof/public-deflate-copy.lean#L65) | — |
 | <a id="target-zlibf-spec-public-goal-deflateinit2"></a>[deflateInit2_](../ZlibF/Spec/Public/Initialisation.lean#L140) | All stated inputs / Registered proof | [Contract](../docs/spec/api/deflate-stream.md#deflateinit2_); [input range](spec/input-configurations.md#deflate-inputs) | [ZlibF.Spec.Public.Proofs.DeflateInit2.deflateInit2_proof](../ZlibF/Proof/public-deflate-init2.lean#L17) | — |
 | <a id="target-zlibf-spec-public-goal-deflateinit"></a>[deflateInit_](../ZlibF/Spec/Public/Initialisation.lean#L147) | All stated inputs / Registered proof | [Contract](../docs/spec/api/deflate-stream.md#deflateinit_); [input range](spec/input-configurations.md#deflate-inputs) | [ZlibF.Spec.Public.Proofs.DeflateInit.deflateInit_proof](../ZlibF/Proof/public-deflate-init.lean#L161) | — |
 | <a id="target-zlibf-spec-public-goal-deflategetdictionary"></a>[deflateGetDictionary](../ZlibF/Spec/Public/Lifecycle.lean#L105) | All stated inputs / Registered proof | [Contract](../docs/spec/api/deflate-stream.md#deflategetdictionary); [input range](spec/input-configurations.md#deflate-inputs) | [ZlibF.Spec.Public.DeflateDictionaryProof.deflate_getdict_public](../ZlibF/Proof/public-deflate-getdict.lean#L10) | — |
@@ -884,8 +892,8 @@ allows: [No-fault coverage of zlib.h functions](#no-fault-coverage-of-zlibh-func
 | <a id="target-zlibf-spec-public-goal-deflateprime"></a>[deflatePrime](../ZlibF/Spec/Public/Streams.lean#L168) | Not proved / Not proved | [Contract](../docs/spec/api/deflate-stream.md#deflateprime); [input range](spec/input-configurations.md#deflate-inputs) | — | [Start: compaction and bits](progress.md#readiness-deflateprime) |
 | <a id="target-zlibf-spec-public-goal-deflateparams"></a>[deflateParams](../ZlibF/Spec/Public/Streams.lean#L186) | Not proved / Not proved | [Contract](../docs/spec/api/deflate-stream.md#deflateparams); [input range](spec/input-configurations.md#deflate-inputs) | — | [Needs: block flush and parameter state](progress.md#readiness-deflateparams) |
 | <a id="target-zlibf-spec-public-goal-deflate-sequence-safety"></a>[deflate_sequence_safety](../ZlibF/Spec/Public/Sequences.lean#L259) | All stated inputs / Registered proof | Exact target statement; [input range](spec/input-configurations.md#deflate-inputs) | [Zlib.Deflate.Universal.deflate_sequence_safety](../ZlibF/Proof/public-deflate-goals.lean#L24) | — |
-| <a id="target-zlibf-spec-public-goal-deflatecopy-safety"></a>[deflateCopy_safety](../ZlibF/Spec/Public/Copy.lean#L106) | All stated inputs / Locally checked | Exact target statement; [input range](spec/input-configurations.md#deflate-inputs) | [Zlib.Deflate.Universal.deflate_copy_safety](../ZlibF/Proof/public-deflate-copy.lean#L81) | — |
-| <a id="target-zlibf-spec-public-goal-deflate-refusal"></a>[deflate_refusal](../ZlibF/Spec/Public/Refusals.lean#L45) | All stated inputs / Locally checked | Exact target statement; [input range](spec/input-configurations.md#deflate-inputs) | [ZlibF.Spec.Public.RefusalProof.Deflate.deflate_refusal](../ZlibF/Proof/public-stream-refusal.lean#L89) | — |
+| <a id="target-zlibf-spec-public-goal-deflatecopy-safety"></a>[deflateCopy_safety](../ZlibF/Spec/Public/Copy.lean#L106) | All stated inputs / Registered proof | Exact target statement; [input range](spec/input-configurations.md#deflate-inputs) | [Zlib.Deflate.Universal.deflate_copy_safety](../ZlibF/Proof/public-deflate-copy.lean#L81) | — |
+| <a id="target-zlibf-spec-public-goal-deflate-refusal"></a>[deflate_refusal](../ZlibF/Spec/Public/Refusals.lean#L45) | All stated inputs / Registered proof | Exact target statement; [input range](spec/input-configurations.md#deflate-inputs) | [ZlibF.Spec.Public.RefusalProof.Deflate.deflate_refusal](../ZlibF/Proof/public-stream-refusal.lean#L89) | — |
 
 <a id="group-back"></a>
 
@@ -935,7 +943,8 @@ allows: [No-fault coverage of zlib.h functions](#no-fault-coverage-of-zlibh-func
 | <a id="target-zlibf-spec-public-goal-gzprintf"></a>[gzprintf](../ZlibF/Spec/Public/GzWrite.lean#L112) | Not proved / Not proved | [Contract](../docs/spec/api/gz-file.md#gzprintf); [input range](spec/input-configurations.md#entry-inputs) | — | [Needs: writer path proofs](progress.md#readiness-gzwrite) |
 | <a id="target-zlibf-spec-public-goal-gzflush"></a>[gzflush](../ZlibF/Spec/Public/GzWrite.lean#L117) | Not proved / Not proved | [Contract](../docs/spec/api/gz-file.md#gzflush); [input range](spec/input-configurations.md#entry-inputs) | — | [Needs: writer path proofs](progress.md#readiness-gzwrite) |
 | <a id="target-zlibf-spec-public-goal-gzsetparams"></a>[gzsetparams](../ZlibF/Spec/Public/GzWrite.lean#L134) | Not proved / Not proved | [Contract](../docs/spec/api/gz-file.md#gzsetparams); [input range](spec/input-configurations.md#entry-inputs) | — | [Needs: writer path proofs](progress.md#readiness-gzwrite) |
-| <a id="target-zlibf-spec-public-goal-gz-sequence-safety"></a>[gz_sequence_safety](../ZlibF/Spec/Public/GzSafety.lean#L129) | Not proved / Not proved | Exact target statement; [input range](spec/input-configurations.md#entry-inputs) | — | Prerequisites unreviewed |
+| <a id="target-zlibf-spec-public-goal-gz-sequence-safety"></a>[gz_sequence_safety](../ZlibF/Spec/Public/GzSafety.lean#L131) | Not proved / Not proved | Exact target statement; [input range](spec/input-configurations.md#entry-inputs) | — | Prerequisites unreviewed |
+| <a id="target-zlibf-spec-public-goal-gz-refusal"></a>[gz_refusal](../ZlibF/Spec/Public/GzRefusal.lean#L39) | All stated inputs / Locally checked | Exact target statement; [input range](spec/input-configurations.md#entry-inputs) | [ZlibF.Spec.Public.GzRefusalProof.gz_refusal](../ZlibF/Proof/public-gz-refusal.lean#L15) | — |
 
 <a id="group-buffers"></a>
 
@@ -1066,6 +1075,7 @@ A theorem for the destination actually uses a proof of the source target.
 | [decode_table_read_preserved](#target-zlib-inftrees-spec-decodetableframe-goal-decode-table-read-preserved) | [fast_leaf_flags_of_prefix](#target-zlib-inftrees-spec-fasttableflags-goal-fast-leaf-flags-of-prefix) |
 | [decode_table_read_preserved](#target-zlib-inftrees-spec-decodetableframe-goal-decode-table-read-preserved) | [inflate](#target-zlibf-spec-public-goal-inflate) |
 | [decode_table_read_preserved](#target-zlib-inftrees-spec-decodetableframe-goal-decode-table-read-preserved) | [inflateCopy](#target-zlibf-spec-public-goal-inflatecopy) |
+| [decode_table_read_preserved](#target-zlib-inftrees-spec-decodetableframe-goal-decode-table-read-preserved) | [inflate_back_sequence_safety](#target-zlibf-spec-public-goal-inflate-back-sequence-safety) |
 | [decode_table_read_preserved](#target-zlib-inftrees-spec-decodetableframe-goal-decode-table-read-preserved) | [inflate_sequence_safety](#target-zlibf-spec-public-goal-inflate-sequence-safety) |
 | [decode_table_read_preserved](#target-zlib-inftrees-spec-decodetableframe-goal-decode-table-read-preserved) | [uncompress2_safe](#target-zlibf-spec-public-goal-uncompress2-safe) |
 | [decode_table_read_preserved](#target-zlib-inftrees-spec-decodetableframe-goal-decode-table-read-preserved) | [uncompress2_z_safe](#target-zlibf-spec-public-goal-uncompress2-z-safe) |
@@ -1073,6 +1083,7 @@ A theorem for the destination actually uses a proof of the source target.
 | [decode_table_read_preserved](#target-zlib-inftrees-spec-decodetableframe-goal-decode-table-read-preserved) | [uncompress_z_safe](#target-zlibf-spec-public-goal-uncompress-z-safe) |
 | [constructor_establishes_decode_table_invariant](#target-zlib-inftrees-spec-decodetableinvariant-goal-constructor-establishes-decode-table-invariant) | [inflate](#target-zlibf-spec-public-goal-inflate) |
 | [constructor_establishes_decode_table_invariant](#target-zlib-inftrees-spec-decodetableinvariant-goal-constructor-establishes-decode-table-invariant) | [inflateCopy](#target-zlibf-spec-public-goal-inflatecopy) |
+| [constructor_establishes_decode_table_invariant](#target-zlib-inftrees-spec-decodetableinvariant-goal-constructor-establishes-decode-table-invariant) | [inflate_back_sequence_safety](#target-zlibf-spec-public-goal-inflate-back-sequence-safety) |
 | [constructor_establishes_decode_table_invariant](#target-zlib-inftrees-spec-decodetableinvariant-goal-constructor-establishes-decode-table-invariant) | [inflate_sequence_safety](#target-zlibf-spec-public-goal-inflate-sequence-safety) |
 | [constructor_establishes_decode_table_invariant](#target-zlib-inftrees-spec-decodetableinvariant-goal-constructor-establishes-decode-table-invariant) | [uncompress2_safe](#target-zlibf-spec-public-goal-uncompress2-safe) |
 | [constructor_establishes_decode_table_invariant](#target-zlib-inftrees-spec-decodetableinvariant-goal-constructor-establishes-decode-table-invariant) | [uncompress2_z_safe](#target-zlibf-spec-public-goal-uncompress2-z-safe) |
@@ -1080,16 +1091,20 @@ A theorem for the destination actually uses a proof of the source target.
 | [constructor_establishes_decode_table_invariant](#target-zlib-inftrees-spec-decodetableinvariant-goal-constructor-establishes-decode-table-invariant) | [uncompress_z_safe](#target-zlibf-spec-public-goal-uncompress-z-safe) |
 | [decode_table_invariant_of_prefix](#target-zlib-inftrees-spec-decodetableinvariant-goal-decode-table-invariant-of-prefix) | [inflate](#target-zlibf-spec-public-goal-inflate) |
 | [decode_table_invariant_of_prefix](#target-zlib-inftrees-spec-decodetableinvariant-goal-decode-table-invariant-of-prefix) | [inflateCopy](#target-zlibf-spec-public-goal-inflatecopy) |
+| [decode_table_invariant_of_prefix](#target-zlib-inftrees-spec-decodetableinvariant-goal-decode-table-invariant-of-prefix) | [inflate_back_sequence_safety](#target-zlibf-spec-public-goal-inflate-back-sequence-safety) |
 | [decode_table_invariant_of_prefix](#target-zlib-inftrees-spec-decodetableinvariant-goal-decode-table-invariant-of-prefix) | [inflate_sequence_safety](#target-zlibf-spec-public-goal-inflate-sequence-safety) |
 | [decode_table_invariant_of_prefix](#target-zlib-inftrees-spec-decodetableinvariant-goal-decode-table-invariant-of-prefix) | [uncompress2_safe](#target-zlibf-spec-public-goal-uncompress2-safe) |
 | [decode_table_invariant_of_prefix](#target-zlib-inftrees-spec-decodetableinvariant-goal-decode-table-invariant-of-prefix) | [uncompress2_z_safe](#target-zlibf-spec-public-goal-uncompress2-z-safe) |
 | [decode_table_invariant_of_prefix](#target-zlib-inftrees-spec-decodetableinvariant-goal-decode-table-invariant-of-prefix) | [uncompress_safe](#target-zlibf-spec-public-goal-uncompress-safe) |
 | [decode_table_invariant_of_prefix](#target-zlib-inftrees-spec-decodetableinvariant-goal-decode-table-invariant-of-prefix) | [uncompress_z_safe](#target-zlibf-spec-public-goal-uncompress-z-safe) |
+| [constructor_establishes_query_stability](#target-zlib-inftrees-spec-decodetablestability-goal-constructor-establishes-query-stability) | [inflate_back_sequence_safety](#target-zlibf-spec-public-goal-inflate-back-sequence-safety) |
+| [query_stability_of_prefix](#target-zlib-inftrees-spec-decodetablestability-goal-query-stability-of-prefix) | [inflate_back_sequence_safety](#target-zlibf-spec-public-goal-inflate-back-sequence-safety) |
 | [short_rejected_leaf_stays_invalid](#target-zlib-inftrees-spec-decodetablestability-goal-short-rejected-leaf-stays-invalid) | [distance_lookup_matches_format](#target-zlib-inffast-spec-distancesemantics-goal-distance-lookup-matches-format) |
 | [short_rejected_leaf_stays_invalid](#target-zlib-inftrees-spec-decodetablestability-goal-short-rejected-leaf-stays-invalid) | [length_lookup_matches_format](#target-zlib-inffast-spec-lengthsemantics-goal-length-lookup-matches-format) |
 | [inflate_table_content](#target-zlib-inftrees-spec-goal-inflate-table-content) | [inflate_table_decoder_safe](#target-zlib-inftrees-spec-goal-inflate-table-decoder-safe) |
 | [inflate_table_content](#target-zlib-inftrees-spec-goal-inflate-table-content) | [inflate](#target-zlibf-spec-public-goal-inflate) |
 | [inflate_table_content](#target-zlib-inftrees-spec-goal-inflate-table-content) | [inflateCopy](#target-zlibf-spec-public-goal-inflatecopy) |
+| [inflate_table_content](#target-zlib-inftrees-spec-goal-inflate-table-content) | [inflate_back_sequence_safety](#target-zlibf-spec-public-goal-inflate-back-sequence-safety) |
 | [inflate_table_content](#target-zlib-inftrees-spec-goal-inflate-table-content) | [inflate_sequence_safety](#target-zlibf-spec-public-goal-inflate-sequence-safety) |
 | [inflate_table_content](#target-zlib-inftrees-spec-goal-inflate-table-content) | [uncompress2_safe](#target-zlibf-spec-public-goal-uncompress2-safe) |
 | [inflate_table_content](#target-zlib-inftrees-spec-goal-inflate-table-content) | [uncompress2_z_safe](#target-zlibf-spec-public-goal-uncompress2-z-safe) |
@@ -1100,6 +1115,7 @@ A theorem for the destination actually uses a proof of the source target.
 | [inflate_table_read_extent](#target-zlib-inftrees-spec-goal-inflate-table-read-extent) | [constructor_establishes_decode_table_invariant](#target-zlib-inftrees-spec-decodetableinvariant-goal-constructor-establishes-decode-table-invariant) |
 | [inflate_table_read_extent](#target-zlib-inftrees-spec-goal-inflate-table-read-extent) | [inflate](#target-zlibf-spec-public-goal-inflate) |
 | [inflate_table_read_extent](#target-zlib-inftrees-spec-goal-inflate-table-read-extent) | [inflateCopy](#target-zlibf-spec-public-goal-inflatecopy) |
+| [inflate_table_read_extent](#target-zlib-inftrees-spec-goal-inflate-table-read-extent) | [inflate_back_sequence_safety](#target-zlibf-spec-public-goal-inflate-back-sequence-safety) |
 | [inflate_table_read_extent](#target-zlib-inftrees-spec-goal-inflate-table-read-extent) | [inflate_sequence_safety](#target-zlibf-spec-public-goal-inflate-sequence-safety) |
 | [inflate_table_read_extent](#target-zlib-inftrees-spec-goal-inflate-table-read-extent) | [uncompress2_safe](#target-zlibf-spec-public-goal-uncompress2-safe) |
 | [inflate_table_read_extent](#target-zlib-inftrees-spec-goal-inflate-table-read-extent) | [uncompress2_z_safe](#target-zlibf-spec-public-goal-uncompress2-z-safe) |
@@ -1136,7 +1152,9 @@ A theorem for the destination actually uses a proof of the source target.
 | [inflate](#target-zlibf-spec-public-goal-inflate) | [uncompress2_z_safe](#target-zlibf-spec-public-goal-uncompress2-z-safe) |
 | [inflate](#target-zlibf-spec-public-goal-inflate) | [uncompress_safe](#target-zlibf-spec-public-goal-uncompress-safe) |
 | [inflate](#target-zlibf-spec-public-goal-inflate) | [uncompress_z_safe](#target-zlibf-spec-public-goal-uncompress-z-safe) |
+| [inflateBackEnd](#target-zlibf-spec-public-goal-inflatebackend) | [inflate_back_sequence_safety](#target-zlibf-spec-public-goal-inflate-back-sequence-safety) |
 | [inflateBackInit_](#target-zlibf-spec-public-goal-inflatebackinit) | [inflate_back_initialisation_domain](#target-zlibf-spec-public-goal-inflate-back-initialisation-domain) |
+| [inflateBackInit_](#target-zlibf-spec-public-goal-inflatebackinit) | [inflate_back_sequence_safety](#target-zlibf-spec-public-goal-inflate-back-sequence-safety) |
 | [inflateEnd](#target-zlibf-spec-public-goal-inflateend) | [inflate_sequence_safety](#target-zlibf-spec-public-goal-inflate-sequence-safety) |
 | [inflateInit2_](#target-zlibf-spec-public-goal-inflateinit2) | [inflate](#target-zlibf-spec-public-goal-inflate) |
 | [inflateInit2_](#target-zlibf-spec-public-goal-inflateinit2) | [inflateCopy](#target-zlibf-spec-public-goal-inflatecopy) |
@@ -1273,16 +1291,45 @@ The destination target definition references the source target or implementation
 | [deflateInit2_](#target-zlibf-spec-public-goal-deflateinit2) | [deflate_initialisation_domain](#target-zlibf-spec-public-goal-deflate-initialisation-domain) |
 | [deflateParams](#target-zlibf-spec-public-goal-deflateparams) | [deflate_refusal](#target-zlibf-spec-public-goal-deflate-refusal) |
 | [deflateSetDictionary](#target-zlibf-spec-public-goal-deflatesetdictionary) | [deflate_refusal](#target-zlibf-spec-public-goal-deflate-refusal) |
+| [gzbuffer](#target-zlibf-spec-public-goal-gzbuffer) | [gz_refusal](#target-zlibf-spec-public-goal-gz-refusal) |
+| [gzclearerr](#target-zlibf-spec-public-goal-gzclearerr) | [gz_refusal](#target-zlibf-spec-public-goal-gz-refusal) |
+| [gzclose](#target-zlibf-spec-public-goal-gzclose) | [gz_refusal](#target-zlibf-spec-public-goal-gz-refusal) |
 | [gzclose](#target-zlibf-spec-public-goal-gzclose) | [gz_sequence](#target-zlibf-spec-public-goal-gz-sequence) |
+| [gzclose_r](#target-zlibf-spec-public-goal-gzclose-r) | [gz_refusal](#target-zlibf-spec-public-goal-gz-refusal) |
+| [gzclose_w](#target-zlibf-spec-public-goal-gzclose-w) | [gz_refusal](#target-zlibf-spec-public-goal-gz-refusal) |
+| [gzdirect](#target-zlibf-spec-public-goal-gzdirect) | [gz_refusal](#target-zlibf-spec-public-goal-gz-refusal) |
+| [gzeof](#target-zlibf-spec-public-goal-gzeof) | [gz_refusal](#target-zlibf-spec-public-goal-gz-refusal) |
+| [gzerror](#target-zlibf-spec-public-goal-gzerror) | [gz_refusal](#target-zlibf-spec-public-goal-gz-refusal) |
+| [gzflush](#target-zlibf-spec-public-goal-gzflush) | [gz_refusal](#target-zlibf-spec-public-goal-gz-refusal) |
 | [gzflush](#target-zlibf-spec-public-goal-gzflush) | [gz_sequence](#target-zlibf-spec-public-goal-gz-sequence) |
+| [gzfread](#target-zlibf-spec-public-goal-gzfread) | [gz_refusal](#target-zlibf-spec-public-goal-gz-refusal) |
 | [gzfread](#target-zlibf-spec-public-goal-gzfread) | [gz_sequence](#target-zlibf-spec-public-goal-gz-sequence) |
+| [gzfwrite](#target-zlibf-spec-public-goal-gzfwrite) | [gz_refusal](#target-zlibf-spec-public-goal-gz-refusal) |
 | [gzfwrite](#target-zlibf-spec-public-goal-gzfwrite) | [gz_sequence](#target-zlibf-spec-public-goal-gz-sequence) |
+| [gzgetc](#target-zlibf-spec-public-goal-gzgetc) | [gz_refusal](#target-zlibf-spec-public-goal-gz-refusal) |
 | [gzgetc](#target-zlibf-spec-public-goal-gzgetc) | [gz_sequence](#target-zlibf-spec-public-goal-gz-sequence) |
+| [gzgetc_](#target-zlibf-spec-public-goal-gzgetc) | [gz_refusal](#target-zlibf-spec-public-goal-gz-refusal) |
+| [gzgets](#target-zlibf-spec-public-goal-gzgets) | [gz_refusal](#target-zlibf-spec-public-goal-gz-refusal) |
 | [gzgets](#target-zlibf-spec-public-goal-gzgets) | [gz_sequence](#target-zlibf-spec-public-goal-gz-sequence) |
+| [gzoffset](#target-zlibf-spec-public-goal-gzoffset) | [gz_refusal](#target-zlibf-spec-public-goal-gz-refusal) |
+| [gzoffset64](#target-zlibf-spec-public-goal-gzoffset64) | [gz_refusal](#target-zlibf-spec-public-goal-gz-refusal) |
 | [gzopen](#target-zlibf-spec-public-goal-gzopen) | [gz_initialisation_domain](#target-zlibf-spec-public-goal-gz-initialisation-domain) |
 | [gzopen](#target-zlibf-spec-public-goal-gzopen) | [gz_sequence_safety](#target-zlibf-spec-public-goal-gz-sequence-safety) |
 | [gzopen64](#target-zlibf-spec-public-goal-gzopen64) | [gz_sequence_safety](#target-zlibf-spec-public-goal-gz-sequence-safety) |
+| [gzprintf](#target-zlibf-spec-public-goal-gzprintf) | [gz_refusal](#target-zlibf-spec-public-goal-gz-refusal) |
+| [gzputc](#target-zlibf-spec-public-goal-gzputc) | [gz_refusal](#target-zlibf-spec-public-goal-gz-refusal) |
+| [gzputs](#target-zlibf-spec-public-goal-gzputs) | [gz_refusal](#target-zlibf-spec-public-goal-gz-refusal) |
+| [gzread](#target-zlibf-spec-public-goal-gzread) | [gz_refusal](#target-zlibf-spec-public-goal-gz-refusal) |
 | [gzread](#target-zlibf-spec-public-goal-gzread) | [gz_sequence](#target-zlibf-spec-public-goal-gz-sequence) |
+| [gzrewind](#target-zlibf-spec-public-goal-gzrewind) | [gz_refusal](#target-zlibf-spec-public-goal-gz-refusal) |
+| [gzseek](#target-zlibf-spec-public-goal-gzseek) | [gz_refusal](#target-zlibf-spec-public-goal-gz-refusal) |
+| [gzseek64](#target-zlibf-spec-public-goal-gzseek64) | [gz_refusal](#target-zlibf-spec-public-goal-gz-refusal) |
+| [gzsetparams](#target-zlibf-spec-public-goal-gzsetparams) | [gz_refusal](#target-zlibf-spec-public-goal-gz-refusal) |
+| [gztell](#target-zlibf-spec-public-goal-gztell) | [gz_refusal](#target-zlibf-spec-public-goal-gz-refusal) |
+| [gztell64](#target-zlibf-spec-public-goal-gztell64) | [gz_refusal](#target-zlibf-spec-public-goal-gz-refusal) |
+| [gzungetc](#target-zlibf-spec-public-goal-gzungetc) | [gz_refusal](#target-zlibf-spec-public-goal-gz-refusal) |
+| [gzvprintf](#target-zlibf-spec-public-goal-gzvprintf) | [gz_refusal](#target-zlibf-spec-public-goal-gz-refusal) |
+| [gzwrite](#target-zlibf-spec-public-goal-gzwrite) | [gz_refusal](#target-zlibf-spec-public-goal-gz-refusal) |
 | [gzwrite](#target-zlibf-spec-public-goal-gzwrite) | [gz_sequence](#target-zlibf-spec-public-goal-gz-sequence) |
 | [inflate](#target-zlibf-spec-public-goal-inflate) | [inflate_refusal](#target-zlibf-spec-public-goal-inflate-refusal) |
 | [inflateBack](#target-zlibf-spec-public-goal-inflateback) | [inflate_back_sequence](#target-zlibf-spec-public-goal-inflate-back-sequence) |
@@ -1326,10 +1373,12 @@ Every direct grouped connection is retained here, including arrows reduced in th
 | drop_preserves_origin | inffast.c proofs |
 | pull_preserves_origin | inffast.c proofs |
 | decode_table_read_preserved | inftrees.c proofs |
-| constructor_establishes_decode_table_invariant | inflate storage and bit proofs, inftrees.c proofs |
-| decode_table_invariant_of_prefix | inftrees.c proofs |
+| constructor_establishes_decode_table_invariant | infback.c proofs, inflate storage and bit proofs, inftrees.c proofs |
+| decode_table_invariant_of_prefix | infback.c proofs, inftrees.c proofs |
+| constructor_establishes_query_stability | infback.c proofs |
+| query_stability_of_prefix | infback.c proofs |
 | inflate_table_content | inftrees.c proofs |
-| inflate_table_read_extent | inflate storage and bit proofs |
+| inflate_table_read_extent | infback.c proofs, inflate storage and bit proofs |
 | retained_history_agrees | format proofs |
 | deflate_valid | api-model proofs |
 | inflate_completes | api-model proofs |
@@ -1337,7 +1386,8 @@ Every direct grouped connection is retained here, including arrows reduced in th
 | crc32 | deflate lifecycle proofs |
 | deflateEnd | deflate lifecycle proofs, public entry composition |
 | inflate | public entry composition |
-| inflateBackInit_ | public entry composition |
+| inflateBackEnd | infback.c proofs |
+| inflateBackInit_ | infback.c proofs, public entry composition |
 | inflateEnd | inflate storage and bit proofs |
 | inflateInit2_ | inflate storage and bit proofs |
 | inflateSetDictionary | inflate storage and bit proofs |
@@ -1350,26 +1400,29 @@ Every direct grouped connection is retained here, including arrows reduced in th
 | deflate entry composition | deflate, deflateCopy, deflateCopy_safety, deflateEnd, deflateGetDictionary, deflatePending, deflateReset, deflateResetKeep, deflateSetHeader, deflateTune, deflateUsed, deflate_refusal, deflate_sequence_safety |
 | deflate lifecycle proofs | deflateCopy, deflateCopy_safety, deflateEnd, deflateGetDictionary, deflateInit_, deflatePending, deflateReset, deflateResetKeep, deflateSetHeader, deflateTune, deflateUsed, deflate_refusal, deflate construction proofs, deflate entry composition, deflate window and match proofs, inffast.c proofs, inflate storage and bit proofs, public entry composition, tree construction and emission proofs |
 | deflate window and match proofs | deflate, deflate_sequence_safety, deflate construction proofs, deflate entry composition, deflate lifecycle proofs, gzlib.c proofs, inflate storage and bit proofs, tree construction and emission proofs |
-| deflate_base.c proofs | deflate_refusal, deflate lifecycle proofs, inflate storage and bit proofs, public entry composition |
-| format proofs | short_decode_table_leaf_sound, short_rejected_leaf_stays_invalid, compress_roundtrip, format_deterministic, format_prefix_free, header_roundtrip, inflate_completes, rejected_has_no_symbols, api-model proofs, heap-free mathematics, inffast.c proofs, inftrees.c proofs, tree construction and emission proofs |
+| deflate_base.c proofs | deflate_refusal, gz_refusal, deflate lifecycle proofs, inflate storage and bit proofs, public entry composition |
+| format proofs | short_decode_table_leaf_sound, short_rejected_leaf_stays_invalid, compress_roundtrip, format_deterministic, format_prefix_free, header_roundtrip, inflate_completes, rejected_has_no_symbols, api-model proofs, heap-free mathematics, infback.c proofs, inffast.c proofs, inffixed.h.input-meaning proofs, inflate storage and bit proofs, inftrees.c proofs, tree construction and emission proofs |
+| format-model lemmas | inflate storage and bit proofs |
 | gzfs proofs | gzlib.c proofs |
 | gzfs.borrow-stable proofs | LibcBorrowLoops proofs, checksum.borrow-stable proofs, deflate lifecycle proofs, inflate storage and bit proofs, tree construction and emission proofs |
 | gzfs.oracle proofs | public entry composition |
 | gzlib.c proofs | gzclearerr, gzdopen, gzfs.oracle proofs, public entry composition |
-| heap-free mathematics | match_array_refines_lz77, output_copy_refines_lz77, window_copy_refines_lz77, copy_back_compose, retained_history_agrees, window_distance_check_agrees, api-model proofs, deflate construction proofs, deflate lifecycle proofs, deflate window and match proofs, gzlib.c proofs, inflate storage and bit proofs, inftrees.c proofs, tree construction and emission proofs |
-| infback.c proofs | inflateBackEnd, inflateBackInit_, public entry composition |
-| inffast.c proofs | actual_body_preserves_origin, actual_body_refines_token, actual_fast_preserves_origin, actual_distance_block_preserves_origin, actual_distance_refines_lz77, distance_lookup_matches_format, fast_safe, step_safe, length_lookup_matches_format, actual_body_retains_selected_length, actual_copy_match_refines_lz77, match_array_refines_lz77, actual_drop_preserves_origin, actual_pull_preserves_origin, actual_rollback_preserves_origin, drop_preserves_origin, initial_origin, pull_preserves_origin, rollback_preserves_origin, output_copy_refines_lz77, heap-free mathematics, inflate storage and bit proofs, inftrees.c proofs |
+| heap-free mathematics | match_array_refines_lz77, output_copy_refines_lz77, window_copy_refines_lz77, copy_back_compose, retained_history_agrees, window_distance_check_agrees, api-model proofs, deflate construction proofs, deflate lifecycle proofs, deflate window and match proofs, gzlib.c proofs, infback.c proofs, inffixed.h.input-meaning proofs, inflate storage and bit proofs, inftrees.c proofs, tree construction and emission proofs |
+| infback.c proofs | inflateBackEnd, inflateBackInit_, inflate_back_sequence_safety, public entry composition |
+| inffast.c proofs | actual_body_preserves_origin, actual_body_refines_token, actual_fast_preserves_origin, actual_distance_block_preserves_origin, actual_distance_refines_lz77, distance_lookup_matches_format, fast_safe, step_safe, length_lookup_matches_format, actual_body_retains_selected_length, actual_copy_match_refines_lz77, match_array_refines_lz77, actual_drop_preserves_origin, actual_pull_preserves_origin, actual_rollback_preserves_origin, drop_preserves_origin, initial_origin, pull_preserves_origin, rollback_preserves_origin, output_copy_refines_lz77, heap-free mathematics, infback.c proofs, inffixed.h.input-meaning proofs, inflate storage and bit proofs, inftrees.c proofs |
 | inffixed.h.fast-flags proofs | fixed_tables_have_fast_leaf_flags |
+| inffixed.h.input-meaning proofs | inflate storage and bit proofs |
+| inffixed.h.meaning proofs | inffixed.h.input-meaning proofs |
 | inflate entry composition | inflateCopy, inflateEnd, inflateGetDictionary, inflateGetHeader, inflateInit2_, inflateInit_, inflateMark, inflatePrime, inflateReset, inflateReset2, inflateSetDictionary, inflateSyncPoint, inflateUndermine, inflateValidate, inflate_initialisation_domain, inflate_refusal, inflate storage and bit proofs, public entry composition |
-| inflate mode and exit proofs | inffast.c proofs, inflate storage and bit proofs |
-| inflate storage and bit proofs | deflateReset, deflateResetKeep, inflate, inflateBackEnd, inflateBackInit_, inflateCopy, inflateEnd, inflateGetDictionary, inflateInit2_, inflateInit_, inflateMark, inflateReset, inflateReset2, inflateResetKeep, inflateSetDictionary, inflateSyncPoint, inflateUndermine, inflateValidate, inflate_refusal, inflate_sequence_safety, api-model proofs, deflate lifecycle proofs, infback.c proofs, inffast.c proofs, inflate entry composition, inflate mode and exit proofs, public entry composition |
+| inflate mode and exit proofs | infback.c proofs, inffast.c proofs, inflate storage and bit proofs |
+| inflate storage and bit proofs | deflateReset, deflateResetKeep, inflate, inflateBackEnd, inflateBackInit_, inflateCopy, inflateEnd, inflateGetDictionary, inflateInit2_, inflateInit_, inflateMark, inflateReset, inflateReset2, inflateResetKeep, inflateSetDictionary, inflateSyncPoint, inflateUndermine, inflateValidate, inflate_refusal, inflate_sequence_safety, api-model proofs, deflate lifecycle proofs, infback.c proofs, inffast.c proofs, inflate entry composition, inflate mode and exit proofs, inftrees.c proofs, public entry composition |
 | inflate.c proofs | inflate mode and exit proofs, inflate storage and bit proofs |
-| inftrees.c proofs | decode_table_matches_format, short_decode_table_leaf_sound, decode_table_leaf_sound, decode_table_read_preserved, constructor_establishes_decode_table_invariant, decode_table_invariant_of_prefix, constructor_establishes_query_stability, short_rejected_leaf_stays_invalid, constructor_establishes_fast_leaf_flags, leaf_classification_agrees, inflate_table_content, inflate_table_decoder_safe, inflate_table_read_extent, constructor_root_bits, constructor_subtable_bits, heap-free mathematics, inflate storage and bit proofs, tree construction and emission proofs |
+| inftrees.c proofs | decode_table_matches_format, short_decode_table_leaf_sound, decode_table_leaf_sound, decode_table_read_preserved, constructor_establishes_decode_table_invariant, decode_table_invariant_of_prefix, constructor_establishes_query_stability, short_rejected_leaf_stays_invalid, constructor_establishes_fast_leaf_flags, leaf_classification_agrees, inflate_table_content, inflate_table_decoder_safe, inflate_table_read_extent, constructor_root_bits, constructor_subtable_bits, heap-free mathematics, infback.c proofs, inffixed.h.input-meaning proofs, inflate storage and bit proofs, tree construction and emission proofs |
 | public entry composition | adler32_combine, adler32_combine64, adler32_z, compress2_safety, compress2_z_safety, compressBound, compressBound_z, compress_safety, compress_z_safety, crc32_combine, crc32_combine64, crc32_combine_gen, crc32_combine_gen64, crc32_combine_op, get_crc_table, gzbuffer, gzdopen, gzeof, gzerror, gzoffset, gzoffset64, gzrewind, inflateBackEnd, inflateBackInit_, inflate_back_initialisation_domain, inflate_refusal, uncompress2_safe, uncompress2_z_safe, uncompress_safe, uncompress_z_safe, zError, zlibVersion, adler32.c proofs, deflate lifecycle proofs, gzlib.c proofs, inflate storage and bit proofs |
-| runtime object and arithmetic lemmas | byte_modifies_preserve_bases, byte_stores_preserve_bases, every_layout_is_representable, LibcBorrow proofs, LibcBorrowLoops proofs, LibcBorrowPrimitives proofs, PlatformMemory proofs, crc32_all_byte_views, crc32_z_all_byte_views, actual_body_preserves_origin, actual_body_refines_token, actual_fast_preserves_origin, actual_distance_block_preserves_origin, actual_distance_refines_lz77, fast_safe, actual_body_retains_selected_length, actual_copy_match_refines_lz77, actual_pull_preserves_origin, actual_rollback_preserves_origin, decode_table_classifies_input, decode_table_matches_format, short_decode_table_leaf_sound, decode_table_leaf_sound, constructor_establishes_decode_table_invariant, constructor_establishes_query_stability, constructor_establishes_fast_leaf_flags, inflate_table_content, inflate_table_decoder_safe, inflate_table_read_extent, constructor_root_bits, constructor_subtable_bits, compress2_z_first_alloc_failure, adler32, adler32_z, crc32, crc32_z, deflateCopy, deflateCopy_safety, deflateEnd, deflateGetDictionary, deflateInit2_, deflateInit_, deflatePending, deflateReset, deflateResetKeep, deflateSetHeader, deflateTune, deflateUsed, deflate_refusal, get_crc_table, gzclearerr, gzdopen, gzerror, gzoffset, gzoffset64, gzrewind, inflate, inflateBackEnd, inflateBackInit_, inflateCodesUsed, inflateCopy, inflateEnd, inflateGetDictionary, inflateGetHeader, inflateInit2_, inflateInit_, inflateMark, inflatePrime, inflateReset, inflateReset2, inflateResetKeep, inflateSetDictionary, inflateSyncPoint, inflateUndermine, inflateValidate, inflate_back_initialisation_domain, inflate_initialisation_domain, inflate_refusal, uncompress2_safe, uncompress2_z_safe, uncompress_safe, uncompress_z_safe, zError, zlibVersion, adler32.c proofs, api-model proofs, borrowed-byte-frame proofs, checksum.borrow-stable proofs, crc32.c proofs, deflate construction proofs, deflate entry composition, deflate lifecycle proofs, deflate window and match proofs, gzfs proofs, gzfs.borrow-stable proofs, gzlib.c proofs, heap-free mathematics, infback.c proofs, inffast.c proofs, inflate entry composition, inflate mode and exit proofs, inflate storage and bit proofs, inftrees.c proofs, public entry composition, specification lemmas, tree construction and emission proofs, zutil.c proofs |
-| specification lemmas | every_existing_heap_accepts_layout, actual_body_preserves_origin, actual_body_refines_token, distance_lookup_matches_format, length_lookup_matches_format, actual_body_retains_selected_length, drop_preserves_origin, pull_preserves_origin, rollback_preserves_origin, decode_table_invariant_of_prefix, short_rejected_leaf_stays_invalid, gzdopen, gzlib.c proofs, inffast.c proofs, inflate storage and bit proofs |
+| runtime object and arithmetic lemmas | byte_modifies_preserve_bases, byte_stores_preserve_bases, every_layout_is_representable, LibcBorrow proofs, LibcBorrowLoops proofs, LibcBorrowPrimitives proofs, PlatformMemory proofs, crc32_all_byte_views, crc32_z_all_byte_views, actual_body_preserves_origin, actual_body_refines_token, actual_fast_preserves_origin, actual_distance_block_preserves_origin, actual_distance_refines_lz77, fast_safe, actual_body_retains_selected_length, actual_copy_match_refines_lz77, actual_pull_preserves_origin, actual_rollback_preserves_origin, decode_table_classifies_input, decode_table_matches_format, short_decode_table_leaf_sound, decode_table_leaf_sound, constructor_establishes_decode_table_invariant, constructor_establishes_query_stability, constructor_establishes_fast_leaf_flags, inflate_table_content, inflate_table_decoder_safe, inflate_table_read_extent, constructor_root_bits, constructor_subtable_bits, compress2_z_first_alloc_failure, adler32, adler32_z, crc32, crc32_z, deflateCopy, deflateCopy_safety, deflateEnd, deflateGetDictionary, deflateInit2_, deflateInit_, deflatePending, deflateReset, deflateResetKeep, deflateSetHeader, deflateTune, deflateUsed, deflate_refusal, get_crc_table, gz_refusal, gzclearerr, gzdopen, gzerror, gzoffset, gzoffset64, gzrewind, inflate, inflateBackEnd, inflateBackInit_, inflateCodesUsed, inflateCopy, inflateEnd, inflateGetDictionary, inflateGetHeader, inflateInit2_, inflateInit_, inflateMark, inflatePrime, inflateReset, inflateReset2, inflateResetKeep, inflateSetDictionary, inflateSyncPoint, inflateUndermine, inflateValidate, inflate_back_initialisation_domain, inflate_back_sequence_safety, inflate_initialisation_domain, inflate_refusal, uncompress2_safe, uncompress2_z_safe, uncompress_safe, uncompress_z_safe, zError, zlibVersion, adler32.c proofs, api-model proofs, borrowed-byte-frame proofs, checksum.borrow-stable proofs, crc32.c proofs, deflate construction proofs, deflate entry composition, deflate lifecycle proofs, deflate window and match proofs, gzfs proofs, gzfs.borrow-stable proofs, gzlib.c proofs, heap-free mathematics, infback.c proofs, inffast.c proofs, inflate entry composition, inflate mode and exit proofs, inflate storage and bit proofs, inftrees.c proofs, public entry composition, specification lemmas, tree construction and emission proofs, zutil.c proofs |
+| specification lemmas | every_existing_heap_accepts_layout, actual_body_preserves_origin, actual_body_refines_token, distance_lookup_matches_format, length_lookup_matches_format, actual_body_retains_selected_length, drop_preserves_origin, pull_preserves_origin, rollback_preserves_origin, decode_table_invariant_of_prefix, short_rejected_leaf_stays_invalid, gzdopen, gzlib.c proofs, infback.c proofs, inffast.c proofs, inflate storage and bit proofs |
 | tree construction and emission proofs | deflate construction proofs, deflate entry composition, deflate lifecycle proofs, deflate window and match proofs, heap-free mathematics, public entry composition |
-| zutil.c proofs | inflate_table_content, deflate construction proofs, deflate lifecycle proofs, inflate entry composition, inflate mode and exit proofs, inflate storage and bit proofs, inftrees.c proofs |
+| zutil.c proofs | inflate_table_content, deflate construction proofs, deflate lifecycle proofs, infback.c proofs, inflate entry composition, inflate mode and exit proofs, inflate storage and bit proofs, inftrees.c proofs |
 
 ## Other registered theorems
 
@@ -1498,6 +1551,7 @@ They are not additional fixed targets and do not grant a caller coverage colour.
 | [Zlib.Deflate.Proofs.deflateBound_z_safe](../ZlibF/Proof/deflate.c.life.bound.lean#L302) | [deflate](#target-zlibf-spec-public-goal-deflate), [deflateCopy](#target-zlibf-spec-public-goal-deflatecopy), [deflate_sequence_safety](#target-zlibf-spec-public-goal-deflate-sequence-safety) |
 | [Zlib.Deflate.Proofs.deflateEnd_reject](../ZlibF/Proof/deflate.c.life.end.lean#L321) | No fixed-target composition recorded |
 | [Zlib.Deflate.Proofs.deflateEnd_safe](../ZlibF/Proof/deflate.c.life.end.lean#L270) | [compress2_safety](#target-zlibf-spec-public-goal-compress2-safety), [compress2_z_safety](#target-zlibf-spec-public-goal-compress2-z-safety), [compress_safety](#target-zlibf-spec-public-goal-compress-safety), [compress_z_safety](#target-zlibf-spec-public-goal-compress-z-safety), [deflateEnd](#target-zlibf-spec-public-goal-deflateend) |
+| [Zlib.Deflate.Proofs.deflateGetDictionary_reject](../ZlibF/Proof/deflate.c.life.getdict.lean#L202) | [deflate_refusal](#target-zlibf-spec-public-goal-deflate-refusal) |
 | [Zlib.Deflate.Proofs.deflatePending_reject](../ZlibF/Proof/deflate.c.life.check.lean#L173) | No fixed-target composition recorded |
 | [Zlib.Deflate.Proofs.deflatePending_safe](../ZlibF/Proof/deflate.c.life.check.lean#L146) | No fixed-target composition recorded |
 | [Zlib.Deflate.Proofs.deflatePrime_invalid_count](../ZlibF/Proof/deflate.c.prime.lean#L24) | [deflate](#target-zlibf-spec-public-goal-deflate), [deflateCopy](#target-zlibf-spec-public-goal-deflatecopy), [deflate_sequence_safety](#target-zlibf-spec-public-goal-deflate-sequence-safety) |
@@ -1591,7 +1645,7 @@ They are not additional fixed targets and do not grant a caller coverage colour.
 | [Zlib.Infback.Proofs.TYPE_last](../ZlibF/Proof/infback.c.inv.lean#L87) | No fixed-target composition recorded |
 | [Zlib.Infback.Proofs.TYPE_more](../ZlibF/Proof/infback.c.inv.lean#L145) | No fixed-target composition recorded |
 | [Zlib.Infback.Proofs.backInit_witness](../ZlibF/Proof/infback.c.callbacks.lean#L143) | No fixed-target composition recorded |
-| [Zlib.Infback.Proofs.badMode_run](../ZlibF/Proof/infback.c.inv.lean#L127) | No fixed-target composition recorded |
+| [Zlib.Infback.Proofs.badMode_run](../ZlibF/Proof/infback.c.inv.lean#L127) | [inflate_back_sequence_safety](#target-zlibf-spec-public-goal-inflate-back-sequence-safety) |
 | [Zlib.Infback.Proofs.inFinite_eof](../ZlibF/Proof/infback.c.macros.lean#L304) | No fixed-target composition recorded |
 | [Zlib.Infback.Proofs.inflateBackEnd_nullstream](../ZlibF/Proof/infback.c.end.lean#L23) | [inflateBackEnd](#target-zlibf-spec-public-goal-inflatebackend) |
 | [Zlib.Infback.Proofs.inflateBackEnd_ok](../ZlibF/Proof/infback.c.end.lean#L35) | No fixed-target composition recorded |
@@ -1602,7 +1656,7 @@ They are not additional fixed targets and do not grant a caller coverage colour.
 | [Zlib.Infback.Proofs.inflateBack_eof](../ZlibF/Proof/infback.c.back.lean#L133) | No fixed-target composition recorded |
 | [Zlib.Infback.Proofs.inflateBack_eof_witness](../ZlibF/Proof/infback.c.back.lean#L174) | No fixed-target composition recorded |
 | [Zlib.Infback.Proofs.inflateBack_nostate](../ZlibF/Proof/infback.c.back.lean#L123) | No fixed-target composition recorded |
-| [Zlib.Infback.Proofs.inflateBack_nullstream](../ZlibF/Proof/infback.c.back.lean#L118) | No fixed-target composition recorded |
+| [Zlib.Infback.Proofs.inflateBack_nullstream](../ZlibF/Proof/infback.c.back.lean#L118) | [inflate_back_sequence_safety](#target-zlibf-spec-public-goal-inflate-back-sequence-safety) |
 | [Zlib.Infback.Proofs.order_inj](../ZlibF/Proof/infback.c.pure.lean#L17) | No fixed-target composition recorded |
 | [Zlib.Infback.Proofs.order_lt](../ZlibF/Proof/infback.c.pure.lean#L14) | No fixed-target composition recorded |
 | [Zlib.Infback.Proofs.order_surj](../ZlibF/Proof/infback.c.pure.lean#L21) | No fixed-target composition recorded |
@@ -1612,18 +1666,18 @@ They are not additional fixed targets and do not grant a caller coverage colour.
 | [Zlib.Infback.Proofs.stored_len_toNat](../ZlibF/Proof/infback.c.pure.lean#L58) | No fixed-target composition recorded |
 | [Zlib.Infback.Proofs.stored_loop_run](../ZlibF/Proof/infback.c.stored.lean#L406) | No fixed-target composition recorded |
 | [Zlib.Infback.Proofs.stored_run](../ZlibF/Proof/infback.c.stored.lean#L459) | No fixed-target composition recorded |
-| [Zlib.Infback.Proofs.xwhileBrk_wf](../ZlibF/Proof/infback.c.wf.lean#L16) | No fixed-target composition recorded |
-| [Zlib.Inffast.Proofs.distfix_tableSafe](../ZlibF/Proof/inffast.c.tableok.lean#L98) | [inflate](#target-zlibf-spec-public-goal-inflate), [inflateCopy](#target-zlibf-spec-public-goal-inflatecopy), [inflate_sequence_safety](#target-zlibf-spec-public-goal-inflate-sequence-safety), [uncompress2_safe](#target-zlibf-spec-public-goal-uncompress2-safe), [uncompress2_z_safe](#target-zlibf-spec-public-goal-uncompress2-z-safe), [uncompress_safe](#target-zlibf-spec-public-goal-uncompress-safe), [uncompress_z_safe](#target-zlibf-spec-public-goal-uncompress-z-safe) |
-| [Zlib.Inffast.Proofs.lenfix_tableSafe](../ZlibF/Proof/inffast.c.tableok.lean#L84) | [inflate](#target-zlibf-spec-public-goal-inflate), [inflateCopy](#target-zlibf-spec-public-goal-inflatecopy), [inflate_sequence_safety](#target-zlibf-spec-public-goal-inflate-sequence-safety), [uncompress2_safe](#target-zlibf-spec-public-goal-uncompress2-safe), [uncompress2_z_safe](#target-zlibf-spec-public-goal-uncompress2-z-safe), [uncompress_safe](#target-zlibf-spec-public-goal-uncompress-safe), [uncompress_z_safe](#target-zlibf-spec-public-goal-uncompress-z-safe) |
-| [Zlib.Inflate.Proofs.BITS_run](../ZlibF/Proof/inflate.c.main.macros.lean#L224) | [inflate](#target-zlibf-spec-public-goal-inflate), [inflateCopy](#target-zlibf-spec-public-goal-inflatecopy), [inflate_sequence_safety](#target-zlibf-spec-public-goal-inflate-sequence-safety), [uncompress2_safe](#target-zlibf-spec-public-goal-uncompress2-safe), [uncompress2_z_safe](#target-zlibf-spec-public-goal-uncompress2-z-safe), [uncompress_safe](#target-zlibf-spec-public-goal-uncompress-safe), [uncompress_z_safe](#target-zlibf-spec-public-goal-uncompress-z-safe) |
-| [Zlib.Inflate.Proofs.BITS_toNat](../ZlibF/Proof/inflate.c.main.macros.lean#L234) | [inflate](#target-zlibf-spec-public-goal-inflate), [inflateCopy](#target-zlibf-spec-public-goal-inflatecopy), [inflate_sequence_safety](#target-zlibf-spec-public-goal-inflate-sequence-safety), [uncompress2_safe](#target-zlibf-spec-public-goal-uncompress2-safe), [uncompress2_z_safe](#target-zlibf-spec-public-goal-uncompress2-z-safe), [uncompress_safe](#target-zlibf-spec-public-goal-uncompress-safe), [uncompress_z_safe](#target-zlibf-spec-public-goal-uncompress-z-safe) |
-| [Zlib.Inflate.Proofs.BYTEBITS_inv](../ZlibF/Proof/inflate.c.main.macros.lean#L293) | [inflate](#target-zlibf-spec-public-goal-inflate), [inflateCopy](#target-zlibf-spec-public-goal-inflatecopy), [inflate_sequence_safety](#target-zlibf-spec-public-goal-inflate-sequence-safety), [uncompress2_safe](#target-zlibf-spec-public-goal-uncompress2-safe), [uncompress2_z_safe](#target-zlibf-spec-public-goal-uncompress2-z-safe), [uncompress_safe](#target-zlibf-spec-public-goal-uncompress-safe), [uncompress_z_safe](#target-zlibf-spec-public-goal-uncompress-z-safe) |
-| [Zlib.Inflate.Proofs.BYTEBITS_run](../ZlibF/Proof/inflate.c.main.macros.lean#L283) | [inflate](#target-zlibf-spec-public-goal-inflate), [inflateCopy](#target-zlibf-spec-public-goal-inflatecopy), [inflate_sequence_safety](#target-zlibf-spec-public-goal-inflate-sequence-safety), [uncompress2_safe](#target-zlibf-spec-public-goal-uncompress2-safe), [uncompress2_z_safe](#target-zlibf-spec-public-goal-uncompress2-z-safe), [uncompress_safe](#target-zlibf-spec-public-goal-uncompress-safe), [uncompress_z_safe](#target-zlibf-spec-public-goal-uncompress-z-safe) |
-| [Zlib.Inflate.Proofs.DROPBITS_inv](../ZlibF/Proof/inflate.c.main.macros.lean#L251) | [inflate](#target-zlibf-spec-public-goal-inflate), [inflateCopy](#target-zlibf-spec-public-goal-inflatecopy), [inflate_sequence_safety](#target-zlibf-spec-public-goal-inflate-sequence-safety), [uncompress2_safe](#target-zlibf-spec-public-goal-uncompress2-safe), [uncompress2_z_safe](#target-zlibf-spec-public-goal-uncompress2-z-safe), [uncompress_safe](#target-zlibf-spec-public-goal-uncompress-safe), [uncompress_z_safe](#target-zlibf-spec-public-goal-uncompress-z-safe) |
-| [Zlib.Inflate.Proofs.DROPBITS_run](../ZlibF/Proof/inflate.c.main.macros.lean#L241) | [inflate](#target-zlibf-spec-public-goal-inflate), [inflateCopy](#target-zlibf-spec-public-goal-inflatecopy), [inflate_sequence_safety](#target-zlibf-spec-public-goal-inflate-sequence-safety), [uncompress2_safe](#target-zlibf-spec-public-goal-uncompress2-safe), [uncompress2_z_safe](#target-zlibf-spec-public-goal-uncompress2-z-safe), [uncompress_safe](#target-zlibf-spec-public-goal-uncompress-safe), [uncompress_z_safe](#target-zlibf-spec-public-goal-uncompress-z-safe) |
+| [Zlib.Infback.Proofs.xwhileBrk_wf](../ZlibF/Proof/infback.c.wf.lean#L16) | [inflate_back_sequence_safety](#target-zlibf-spec-public-goal-inflate-back-sequence-safety) |
+| [Zlib.Inffast.Proofs.distfix_tableSafe](../ZlibF/Proof/inffast.c.tableok.lean#L98) | [inflate](#target-zlibf-spec-public-goal-inflate), [inflateCopy](#target-zlibf-spec-public-goal-inflatecopy), [inflate_back_sequence_safety](#target-zlibf-spec-public-goal-inflate-back-sequence-safety), [inflate_sequence_safety](#target-zlibf-spec-public-goal-inflate-sequence-safety), [uncompress2_safe](#target-zlibf-spec-public-goal-uncompress2-safe), [uncompress2_z_safe](#target-zlibf-spec-public-goal-uncompress2-z-safe), [uncompress_safe](#target-zlibf-spec-public-goal-uncompress-safe), [uncompress_z_safe](#target-zlibf-spec-public-goal-uncompress-z-safe) |
+| [Zlib.Inffast.Proofs.lenfix_tableSafe](../ZlibF/Proof/inffast.c.tableok.lean#L84) | [inflate](#target-zlibf-spec-public-goal-inflate), [inflateCopy](#target-zlibf-spec-public-goal-inflatecopy), [inflate_back_sequence_safety](#target-zlibf-spec-public-goal-inflate-back-sequence-safety), [inflate_sequence_safety](#target-zlibf-spec-public-goal-inflate-sequence-safety), [uncompress2_safe](#target-zlibf-spec-public-goal-uncompress2-safe), [uncompress2_z_safe](#target-zlibf-spec-public-goal-uncompress2-z-safe), [uncompress_safe](#target-zlibf-spec-public-goal-uncompress-safe), [uncompress_z_safe](#target-zlibf-spec-public-goal-uncompress-z-safe) |
+| [Zlib.Inflate.Proofs.BITS_run](../ZlibF/Proof/inflate.c.main.macros.lean#L224) | [inflate](#target-zlibf-spec-public-goal-inflate), [inflateCopy](#target-zlibf-spec-public-goal-inflatecopy), [inflate_back_sequence_safety](#target-zlibf-spec-public-goal-inflate-back-sequence-safety), [inflate_sequence_safety](#target-zlibf-spec-public-goal-inflate-sequence-safety), [uncompress2_safe](#target-zlibf-spec-public-goal-uncompress2-safe), [uncompress2_z_safe](#target-zlibf-spec-public-goal-uncompress2-z-safe), [uncompress_safe](#target-zlibf-spec-public-goal-uncompress-safe), [uncompress_z_safe](#target-zlibf-spec-public-goal-uncompress-z-safe) |
+| [Zlib.Inflate.Proofs.BITS_toNat](../ZlibF/Proof/inflate.c.main.macros.lean#L234) | [inflate](#target-zlibf-spec-public-goal-inflate), [inflateCopy](#target-zlibf-spec-public-goal-inflatecopy), [inflate_back_sequence_safety](#target-zlibf-spec-public-goal-inflate-back-sequence-safety), [inflate_sequence_safety](#target-zlibf-spec-public-goal-inflate-sequence-safety), [uncompress2_safe](#target-zlibf-spec-public-goal-uncompress2-safe), [uncompress2_z_safe](#target-zlibf-spec-public-goal-uncompress2-z-safe), [uncompress_safe](#target-zlibf-spec-public-goal-uncompress-safe), [uncompress_z_safe](#target-zlibf-spec-public-goal-uncompress-z-safe) |
+| [Zlib.Inflate.Proofs.BYTEBITS_inv](../ZlibF/Proof/inflate.c.main.macros.lean#L293) | [inflate](#target-zlibf-spec-public-goal-inflate), [inflateCopy](#target-zlibf-spec-public-goal-inflatecopy), [inflate_back_sequence_safety](#target-zlibf-spec-public-goal-inflate-back-sequence-safety), [inflate_sequence_safety](#target-zlibf-spec-public-goal-inflate-sequence-safety), [uncompress2_safe](#target-zlibf-spec-public-goal-uncompress2-safe), [uncompress2_z_safe](#target-zlibf-spec-public-goal-uncompress2-z-safe), [uncompress_safe](#target-zlibf-spec-public-goal-uncompress-safe), [uncompress_z_safe](#target-zlibf-spec-public-goal-uncompress-z-safe) |
+| [Zlib.Inflate.Proofs.BYTEBITS_run](../ZlibF/Proof/inflate.c.main.macros.lean#L283) | [inflate](#target-zlibf-spec-public-goal-inflate), [inflateCopy](#target-zlibf-spec-public-goal-inflatecopy), [inflate_back_sequence_safety](#target-zlibf-spec-public-goal-inflate-back-sequence-safety), [inflate_sequence_safety](#target-zlibf-spec-public-goal-inflate-sequence-safety), [uncompress2_safe](#target-zlibf-spec-public-goal-uncompress2-safe), [uncompress2_z_safe](#target-zlibf-spec-public-goal-uncompress2-z-safe), [uncompress_safe](#target-zlibf-spec-public-goal-uncompress-safe), [uncompress_z_safe](#target-zlibf-spec-public-goal-uncompress-z-safe) |
+| [Zlib.Inflate.Proofs.DROPBITS_inv](../ZlibF/Proof/inflate.c.main.macros.lean#L251) | [inflate](#target-zlibf-spec-public-goal-inflate), [inflateCopy](#target-zlibf-spec-public-goal-inflatecopy), [inflate_back_sequence_safety](#target-zlibf-spec-public-goal-inflate-back-sequence-safety), [inflate_sequence_safety](#target-zlibf-spec-public-goal-inflate-sequence-safety), [uncompress2_safe](#target-zlibf-spec-public-goal-uncompress2-safe), [uncompress2_z_safe](#target-zlibf-spec-public-goal-uncompress2-z-safe), [uncompress_safe](#target-zlibf-spec-public-goal-uncompress-safe), [uncompress_z_safe](#target-zlibf-spec-public-goal-uncompress-z-safe) |
+| [Zlib.Inflate.Proofs.DROPBITS_run](../ZlibF/Proof/inflate.c.main.macros.lean#L241) | [inflate](#target-zlibf-spec-public-goal-inflate), [inflateCopy](#target-zlibf-spec-public-goal-inflatecopy), [inflate_back_sequence_safety](#target-zlibf-spec-public-goal-inflate-back-sequence-safety), [inflate_sequence_safety](#target-zlibf-spec-public-goal-inflate-sequence-safety), [uncompress2_safe](#target-zlibf-spec-public-goal-uncompress2-safe), [uncompress2_z_safe](#target-zlibf-spec-public-goal-uncompress2-z-safe), [uncompress_safe](#target-zlibf-spec-public-goal-uncompress-safe), [uncompress_z_safe](#target-zlibf-spec-public-goal-uncompress-z-safe) |
 | [Zlib.Inflate.Proofs.INITBITS_inv](../ZlibF/Proof/inflate.c.main.macros.lean#L304) | [inflate](#target-zlibf-spec-public-goal-inflate), [inflateCopy](#target-zlibf-spec-public-goal-inflatecopy), [inflate_sequence_safety](#target-zlibf-spec-public-goal-inflate-sequence-safety), [uncompress2_safe](#target-zlibf-spec-public-goal-uncompress2-safe), [uncompress2_z_safe](#target-zlibf-spec-public-goal-uncompress2-z-safe), [uncompress_safe](#target-zlibf-spec-public-goal-uncompress-safe), [uncompress_z_safe](#target-zlibf-spec-public-goal-uncompress-z-safe) |
 | [Zlib.Inflate.Proofs.NEEDBITS_run](../ZlibF/Proof/inflate.c.main.macros.lean#L150) | [inflate](#target-zlibf-spec-public-goal-inflate), [inflateCopy](#target-zlibf-spec-public-goal-inflatecopy), [inflate_sequence_safety](#target-zlibf-spec-public-goal-inflate-sequence-safety), [uncompress2_safe](#target-zlibf-spec-public-goal-uncompress2-safe), [uncompress2_z_safe](#target-zlibf-spec-public-goal-uncompress2-z-safe), [uncompress_safe](#target-zlibf-spec-public-goal-uncompress-safe), [uncompress_z_safe](#target-zlibf-spec-public-goal-uncompress-z-safe) |
-| [Zlib.Inflate.Proofs.PULLBYTE_succ](../ZlibF/Proof/inflate.c.main.macros.lean#L89) | [inflate](#target-zlibf-spec-public-goal-inflate), [inflateCopy](#target-zlibf-spec-public-goal-inflatecopy), [inflate_sequence_safety](#target-zlibf-spec-public-goal-inflate-sequence-safety), [uncompress2_safe](#target-zlibf-spec-public-goal-uncompress2-safe), [uncompress2_z_safe](#target-zlibf-spec-public-goal-uncompress2-z-safe), [uncompress_safe](#target-zlibf-spec-public-goal-uncompress-safe), [uncompress_z_safe](#target-zlibf-spec-public-goal-uncompress-z-safe) |
+| [Zlib.Inflate.Proofs.PULLBYTE_succ](../ZlibF/Proof/inflate.c.main.macros.lean#L89) | [inflate](#target-zlibf-spec-public-goal-inflate), [inflateCopy](#target-zlibf-spec-public-goal-inflatecopy), [inflate_back_sequence_safety](#target-zlibf-spec-public-goal-inflate-back-sequence-safety), [inflate_sequence_safety](#target-zlibf-spec-public-goal-inflate-sequence-safety), [uncompress2_safe](#target-zlibf-spec-public-goal-uncompress2-safe), [uncompress2_z_safe](#target-zlibf-spec-public-goal-uncompress2-z-safe), [uncompress_safe](#target-zlibf-spec-public-goal-uncompress-safe), [uncompress_z_safe](#target-zlibf-spec-public-goal-uncompress-z-safe) |
 | [Zlib.Inflate.Proofs.PULLBYTE_zero](../ZlibF/Proof/inflate.c.main.macros.lean#L44) | [inflate](#target-zlibf-spec-public-goal-inflate), [inflateCopy](#target-zlibf-spec-public-goal-inflatecopy), [inflate_sequence_safety](#target-zlibf-spec-public-goal-inflate-sequence-safety), [uncompress2_safe](#target-zlibf-spec-public-goal-uncompress2-safe), [uncompress2_z_safe](#target-zlibf-spec-public-goal-uncompress2-z-safe), [uncompress_safe](#target-zlibf-spec-public-goal-uncompress-safe), [uncompress_z_safe](#target-zlibf-spec-public-goal-uncompress-z-safe) |
 | [Zlib.Inflate.Proofs.UPDATE_CHECK_run](../ZlibF/Proof/inflate.c.main.check.lean#L21) | No fixed-target composition recorded |
 | [Zlib.Inflate.Proofs.bytesBits_eq_bytesToBits](../ZlibF/Proof/inflate.c.main.bits.lean#L107) | No fixed-target composition recorded |
@@ -1705,18 +1759,18 @@ They are not additional fixed targets and do not grant a caller coverage colour.
 | [Zlib.Inflate.Witness.init_witness](../ZlibF/Proof/inflate.c.witness.lean#L50) | No fixed-target composition recorded |
 | [Zlib.Inftrees.Proofs.Cover.bits_add_drop](../ZlibF/Proof/inftrees.c.cover.leaf.lean#L80) | No fixed-target composition recorded |
 | [Zlib.Inftrees.Proofs.Cover.cell_lt_fn](../ZlibF/Proof/inftrees.c.cover.fn.lean#L210) | No fixed-target composition recorded |
-| [Zlib.Inftrees.Proofs.Cover.distLeaf_of](../ZlibF/Proof/inftrees.c.cover.leaf.lean#L56) | [decode_table_matches_format](#target-zlib-inftrees-spec-decodesemantics-goal-decode-table-matches-format), [decode_table_leaf_sound](#target-zlib-inftrees-spec-decodesoundness-goal-decode-table-leaf-sound), [constructor_establishes_query_stability](#target-zlib-inftrees-spec-decodetablestability-goal-constructor-establishes-query-stability), [constructor_establishes_fast_leaf_flags](#target-zlib-inftrees-spec-fasttableflags-goal-constructor-establishes-fast-leaf-flags), [inflate_table_decoder_safe](#target-zlib-inftrees-spec-goal-inflate-table-decoder-safe), [inflate_table_read_extent](#target-zlib-inftrees-spec-goal-inflate-table-read-extent), [constructor_subtable_bits](#target-zlib-inftrees-spec-subtable-goal-constructor-subtable-bits), [inflate](#target-zlibf-spec-public-goal-inflate), [inflateCopy](#target-zlibf-spec-public-goal-inflatecopy), [inflate_sequence_safety](#target-zlibf-spec-public-goal-inflate-sequence-safety), [uncompress2_safe](#target-zlibf-spec-public-goal-uncompress2-safe), [uncompress2_z_safe](#target-zlibf-spec-public-goal-uncompress2-z-safe), [uncompress_safe](#target-zlibf-spec-public-goal-uncompress-safe), [uncompress_z_safe](#target-zlibf-spec-public-goal-uncompress-z-safe) |
-| [Zlib.Inftrees.Proofs.Cover.group_cover](../ZlibF/Proof/inftrees.c.cover.group.lean#L64) | [inflate_table_decoder_safe](#target-zlib-inftrees-spec-goal-inflate-table-decoder-safe), [inflate_table_read_extent](#target-zlib-inftrees-spec-goal-inflate-table-read-extent), [constructor_subtable_bits](#target-zlib-inftrees-spec-subtable-goal-constructor-subtable-bits), [inflate](#target-zlibf-spec-public-goal-inflate), [inflateCopy](#target-zlibf-spec-public-goal-inflatecopy), [inflate_sequence_safety](#target-zlibf-spec-public-goal-inflate-sequence-safety), [uncompress2_safe](#target-zlibf-spec-public-goal-uncompress2-safe), [uncompress2_z_safe](#target-zlibf-spec-public-goal-uncompress2-z-safe), [uncompress_safe](#target-zlibf-spec-public-goal-uncompress-safe), [uncompress_z_safe](#target-zlibf-spec-public-goal-uncompress-z-safe) |
+| [Zlib.Inftrees.Proofs.Cover.distLeaf_of](../ZlibF/Proof/inftrees.c.cover.leaf.lean#L56) | [decode_table_matches_format](#target-zlib-inftrees-spec-decodesemantics-goal-decode-table-matches-format), [decode_table_leaf_sound](#target-zlib-inftrees-spec-decodesoundness-goal-decode-table-leaf-sound), [constructor_establishes_query_stability](#target-zlib-inftrees-spec-decodetablestability-goal-constructor-establishes-query-stability), [constructor_establishes_fast_leaf_flags](#target-zlib-inftrees-spec-fasttableflags-goal-constructor-establishes-fast-leaf-flags), [inflate_table_decoder_safe](#target-zlib-inftrees-spec-goal-inflate-table-decoder-safe), [inflate_table_read_extent](#target-zlib-inftrees-spec-goal-inflate-table-read-extent), [constructor_subtable_bits](#target-zlib-inftrees-spec-subtable-goal-constructor-subtable-bits), [inflate](#target-zlibf-spec-public-goal-inflate), [inflateCopy](#target-zlibf-spec-public-goal-inflatecopy), [inflate_back_sequence_safety](#target-zlibf-spec-public-goal-inflate-back-sequence-safety), [inflate_sequence_safety](#target-zlibf-spec-public-goal-inflate-sequence-safety), [uncompress2_safe](#target-zlibf-spec-public-goal-uncompress2-safe), [uncompress2_z_safe](#target-zlibf-spec-public-goal-uncompress2-z-safe), [uncompress_safe](#target-zlibf-spec-public-goal-uncompress-safe), [uncompress_z_safe](#target-zlibf-spec-public-goal-uncompress-z-safe) |
+| [Zlib.Inftrees.Proofs.Cover.group_cover](../ZlibF/Proof/inftrees.c.cover.group.lean#L64) | [inflate_table_decoder_safe](#target-zlib-inftrees-spec-goal-inflate-table-decoder-safe), [inflate_table_read_extent](#target-zlib-inftrees-spec-goal-inflate-table-read-extent), [constructor_subtable_bits](#target-zlib-inftrees-spec-subtable-goal-constructor-subtable-bits), [inflate](#target-zlibf-spec-public-goal-inflate), [inflateCopy](#target-zlibf-spec-public-goal-inflatecopy), [inflate_back_sequence_safety](#target-zlibf-spec-public-goal-inflate-back-sequence-safety), [inflate_sequence_safety](#target-zlibf-spec-public-goal-inflate-sequence-safety), [uncompress2_safe](#target-zlibf-spec-public-goal-uncompress2-safe), [uncompress2_z_safe](#target-zlibf-spec-public-goal-uncompress2-z-safe), [uncompress_safe](#target-zlibf-spec-public-goal-uncompress-safe), [uncompress_z_safe](#target-zlibf-spec-public-goal-uncompress-z-safe) |
 | [Zlib.Inftrees.Proofs.Cover.group_cover_fn](../ZlibF/Proof/inftrees.c.cover.fn.lean#L163) | No fixed-target composition recorded |
-| [Zlib.Inftrees.Proofs.Cover.group_cover_idx](../ZlibF/Proof/inftrees.c.cover.group.lean#L161) | [inflate_table_decoder_safe](#target-zlib-inftrees-spec-goal-inflate-table-decoder-safe), [inflate_table_read_extent](#target-zlib-inftrees-spec-goal-inflate-table-read-extent), [constructor_subtable_bits](#target-zlib-inftrees-spec-subtable-goal-constructor-subtable-bits), [inflate](#target-zlibf-spec-public-goal-inflate), [inflateCopy](#target-zlibf-spec-public-goal-inflatecopy), [inflate_sequence_safety](#target-zlibf-spec-public-goal-inflate-sequence-safety), [uncompress2_safe](#target-zlibf-spec-public-goal-uncompress2-safe), [uncompress2_z_safe](#target-zlibf-spec-public-goal-uncompress2-z-safe), [uncompress_safe](#target-zlibf-spec-public-goal-uncompress-safe), [uncompress_z_safe](#target-zlibf-spec-public-goal-uncompress-z-safe) |
+| [Zlib.Inftrees.Proofs.Cover.group_cover_idx](../ZlibF/Proof/inftrees.c.cover.group.lean#L161) | [inflate_table_decoder_safe](#target-zlib-inftrees-spec-goal-inflate-table-decoder-safe), [inflate_table_read_extent](#target-zlib-inftrees-spec-goal-inflate-table-read-extent), [constructor_subtable_bits](#target-zlib-inftrees-spec-subtable-goal-constructor-subtable-bits), [inflate](#target-zlibf-spec-public-goal-inflate), [inflateCopy](#target-zlibf-spec-public-goal-inflatecopy), [inflate_back_sequence_safety](#target-zlibf-spec-public-goal-inflate-back-sequence-safety), [inflate_sequence_safety](#target-zlibf-spec-public-goal-inflate-sequence-safety), [uncompress2_safe](#target-zlibf-spec-public-goal-uncompress2-safe), [uncompress2_z_safe](#target-zlibf-spec-public-goal-uncompress2-z-safe), [uncompress_safe](#target-zlibf-spec-public-goal-uncompress-safe), [uncompress_z_safe](#target-zlibf-spec-public-goal-uncompress-z-safe) |
 | [Zlib.Inftrees.Proofs.Cover.group_cover_idx_fn](../ZlibF/Proof/inftrees.c.cover.fn.lean#L185) | No fixed-target composition recorded |
-| [Zlib.Inftrees.Proofs.Cover.invalid_leaf](../ZlibF/Proof/inftrees.c.cover.leaf.lean#L66) | [inflate_table_decoder_safe](#target-zlib-inftrees-spec-goal-inflate-table-decoder-safe), [inflate_table_read_extent](#target-zlib-inftrees-spec-goal-inflate-table-read-extent), [inflate](#target-zlibf-spec-public-goal-inflate), [inflateCopy](#target-zlibf-spec-public-goal-inflatecopy), [inflate_sequence_safety](#target-zlibf-spec-public-goal-inflate-sequence-safety), [uncompress2_safe](#target-zlibf-spec-public-goal-uncompress2-safe), [uncompress2_z_safe](#target-zlibf-spec-public-goal-uncompress2-z-safe), [uncompress_safe](#target-zlibf-spec-public-goal-uncompress-safe), [uncompress_z_safe](#target-zlibf-spec-public-goal-uncompress-z-safe) |
-| [Zlib.Inftrees.Proofs.Cover.lenLeaf_of](../ZlibF/Proof/inftrees.c.cover.leaf.lean#L40) | [decode_table_matches_format](#target-zlib-inftrees-spec-decodesemantics-goal-decode-table-matches-format), [decode_table_leaf_sound](#target-zlib-inftrees-spec-decodesoundness-goal-decode-table-leaf-sound), [constructor_establishes_query_stability](#target-zlib-inftrees-spec-decodetablestability-goal-constructor-establishes-query-stability), [constructor_establishes_fast_leaf_flags](#target-zlib-inftrees-spec-fasttableflags-goal-constructor-establishes-fast-leaf-flags), [inflate_table_decoder_safe](#target-zlib-inftrees-spec-goal-inflate-table-decoder-safe), [inflate_table_read_extent](#target-zlib-inftrees-spec-goal-inflate-table-read-extent), [constructor_subtable_bits](#target-zlib-inftrees-spec-subtable-goal-constructor-subtable-bits), [inflate](#target-zlibf-spec-public-goal-inflate), [inflateCopy](#target-zlibf-spec-public-goal-inflatecopy), [inflate_sequence_safety](#target-zlibf-spec-public-goal-inflate-sequence-safety), [uncompress2_safe](#target-zlibf-spec-public-goal-uncompress2-safe), [uncompress2_z_safe](#target-zlibf-spec-public-goal-uncompress2-z-safe), [uncompress_safe](#target-zlibf-spec-public-goal-uncompress-safe), [uncompress_z_safe](#target-zlibf-spec-public-goal-uncompress-z-safe) |
-| [Zlib.Inftrees.Proofs.Cover.root_cover](../ZlibF/Proof/inftrees.c.cover.root.lean#L90) | [decode_table_matches_format](#target-zlib-inftrees-spec-decodesemantics-goal-decode-table-matches-format), [short_decode_table_leaf_sound](#target-zlib-inftrees-spec-decodeshort-goal-short-decode-table-leaf-sound), [decode_table_leaf_sound](#target-zlib-inftrees-spec-decodesoundness-goal-decode-table-leaf-sound), [constructor_establishes_decode_table_invariant](#target-zlib-inftrees-spec-decodetableinvariant-goal-constructor-establishes-decode-table-invariant), [constructor_establishes_query_stability](#target-zlib-inftrees-spec-decodetablestability-goal-constructor-establishes-query-stability), [constructor_establishes_fast_leaf_flags](#target-zlib-inftrees-spec-fasttableflags-goal-constructor-establishes-fast-leaf-flags), [inflate_table_content](#target-zlib-inftrees-spec-goal-inflate-table-content), [inflate_table_decoder_safe](#target-zlib-inftrees-spec-goal-inflate-table-decoder-safe), [inflate_table_read_extent](#target-zlib-inftrees-spec-goal-inflate-table-read-extent), [constructor_subtable_bits](#target-zlib-inftrees-spec-subtable-goal-constructor-subtable-bits), [inflate](#target-zlibf-spec-public-goal-inflate), [inflateCopy](#target-zlibf-spec-public-goal-inflatecopy), [inflate_sequence_safety](#target-zlibf-spec-public-goal-inflate-sequence-safety), [uncompress2_safe](#target-zlibf-spec-public-goal-uncompress2-safe), [uncompress2_z_safe](#target-zlibf-spec-public-goal-uncompress2-z-safe), [uncompress_safe](#target-zlibf-spec-public-goal-uncompress-safe), [uncompress_z_safe](#target-zlibf-spec-public-goal-uncompress-z-safe) |
-| [Zlib.Inftrees.Proofs.Cover.root_cover_complete_fn](../ZlibF/Proof/inftrees.c.cover.fn.lean#L140) | [inflate_table_decoder_safe](#target-zlib-inftrees-spec-goal-inflate-table-decoder-safe), [inflate_table_read_extent](#target-zlib-inftrees-spec-goal-inflate-table-read-extent), [constructor_subtable_bits](#target-zlib-inftrees-spec-subtable-goal-constructor-subtable-bits), [inflate](#target-zlibf-spec-public-goal-inflate), [inflateCopy](#target-zlibf-spec-public-goal-inflatecopy), [inflate_sequence_safety](#target-zlibf-spec-public-goal-inflate-sequence-safety), [uncompress2_safe](#target-zlibf-spec-public-goal-uncompress2-safe), [uncompress2_z_safe](#target-zlibf-spec-public-goal-uncompress2-z-safe), [uncompress_safe](#target-zlibf-spec-public-goal-uncompress-safe), [uncompress_z_safe](#target-zlibf-spec-public-goal-uncompress-z-safe) |
+| [Zlib.Inftrees.Proofs.Cover.invalid_leaf](../ZlibF/Proof/inftrees.c.cover.leaf.lean#L66) | [inflate_table_decoder_safe](#target-zlib-inftrees-spec-goal-inflate-table-decoder-safe), [inflate_table_read_extent](#target-zlib-inftrees-spec-goal-inflate-table-read-extent), [inflate](#target-zlibf-spec-public-goal-inflate), [inflateCopy](#target-zlibf-spec-public-goal-inflatecopy), [inflate_back_sequence_safety](#target-zlibf-spec-public-goal-inflate-back-sequence-safety), [inflate_sequence_safety](#target-zlibf-spec-public-goal-inflate-sequence-safety), [uncompress2_safe](#target-zlibf-spec-public-goal-uncompress2-safe), [uncompress2_z_safe](#target-zlibf-spec-public-goal-uncompress2-z-safe), [uncompress_safe](#target-zlibf-spec-public-goal-uncompress-safe), [uncompress_z_safe](#target-zlibf-spec-public-goal-uncompress-z-safe) |
+| [Zlib.Inftrees.Proofs.Cover.lenLeaf_of](../ZlibF/Proof/inftrees.c.cover.leaf.lean#L40) | [decode_table_matches_format](#target-zlib-inftrees-spec-decodesemantics-goal-decode-table-matches-format), [decode_table_leaf_sound](#target-zlib-inftrees-spec-decodesoundness-goal-decode-table-leaf-sound), [constructor_establishes_query_stability](#target-zlib-inftrees-spec-decodetablestability-goal-constructor-establishes-query-stability), [constructor_establishes_fast_leaf_flags](#target-zlib-inftrees-spec-fasttableflags-goal-constructor-establishes-fast-leaf-flags), [inflate_table_decoder_safe](#target-zlib-inftrees-spec-goal-inflate-table-decoder-safe), [inflate_table_read_extent](#target-zlib-inftrees-spec-goal-inflate-table-read-extent), [constructor_subtable_bits](#target-zlib-inftrees-spec-subtable-goal-constructor-subtable-bits), [inflate](#target-zlibf-spec-public-goal-inflate), [inflateCopy](#target-zlibf-spec-public-goal-inflatecopy), [inflate_back_sequence_safety](#target-zlibf-spec-public-goal-inflate-back-sequence-safety), [inflate_sequence_safety](#target-zlibf-spec-public-goal-inflate-sequence-safety), [uncompress2_safe](#target-zlibf-spec-public-goal-uncompress2-safe), [uncompress2_z_safe](#target-zlibf-spec-public-goal-uncompress2-z-safe), [uncompress_safe](#target-zlibf-spec-public-goal-uncompress-safe), [uncompress_z_safe](#target-zlibf-spec-public-goal-uncompress-z-safe) |
+| [Zlib.Inftrees.Proofs.Cover.root_cover](../ZlibF/Proof/inftrees.c.cover.root.lean#L90) | [decode_table_matches_format](#target-zlib-inftrees-spec-decodesemantics-goal-decode-table-matches-format), [short_decode_table_leaf_sound](#target-zlib-inftrees-spec-decodeshort-goal-short-decode-table-leaf-sound), [decode_table_leaf_sound](#target-zlib-inftrees-spec-decodesoundness-goal-decode-table-leaf-sound), [constructor_establishes_decode_table_invariant](#target-zlib-inftrees-spec-decodetableinvariant-goal-constructor-establishes-decode-table-invariant), [constructor_establishes_query_stability](#target-zlib-inftrees-spec-decodetablestability-goal-constructor-establishes-query-stability), [constructor_establishes_fast_leaf_flags](#target-zlib-inftrees-spec-fasttableflags-goal-constructor-establishes-fast-leaf-flags), [inflate_table_content](#target-zlib-inftrees-spec-goal-inflate-table-content), [inflate_table_decoder_safe](#target-zlib-inftrees-spec-goal-inflate-table-decoder-safe), [inflate_table_read_extent](#target-zlib-inftrees-spec-goal-inflate-table-read-extent), [constructor_subtable_bits](#target-zlib-inftrees-spec-subtable-goal-constructor-subtable-bits), [inflate](#target-zlibf-spec-public-goal-inflate), [inflateCopy](#target-zlibf-spec-public-goal-inflatecopy), [inflate_back_sequence_safety](#target-zlibf-spec-public-goal-inflate-back-sequence-safety), [inflate_sequence_safety](#target-zlibf-spec-public-goal-inflate-sequence-safety), [uncompress2_safe](#target-zlibf-spec-public-goal-uncompress2-safe), [uncompress2_z_safe](#target-zlibf-spec-public-goal-uncompress2-z-safe), [uncompress_safe](#target-zlibf-spec-public-goal-uncompress-safe), [uncompress_z_safe](#target-zlibf-spec-public-goal-uncompress-z-safe) |
+| [Zlib.Inftrees.Proofs.Cover.root_cover_complete_fn](../ZlibF/Proof/inftrees.c.cover.fn.lean#L140) | [inflate_table_decoder_safe](#target-zlib-inftrees-spec-goal-inflate-table-decoder-safe), [inflate_table_read_extent](#target-zlib-inftrees-spec-goal-inflate-table-read-extent), [constructor_subtable_bits](#target-zlib-inftrees-spec-subtable-goal-constructor-subtable-bits), [inflate](#target-zlibf-spec-public-goal-inflate), [inflateCopy](#target-zlibf-spec-public-goal-inflatecopy), [inflate_back_sequence_safety](#target-zlibf-spec-public-goal-inflate-back-sequence-safety), [inflate_sequence_safety](#target-zlibf-spec-public-goal-inflate-sequence-safety), [uncompress2_safe](#target-zlibf-spec-public-goal-uncompress2-safe), [uncompress2_z_safe](#target-zlibf-spec-public-goal-uncompress2-z-safe), [uncompress_safe](#target-zlibf-spec-public-goal-uncompress-safe), [uncompress_z_safe](#target-zlibf-spec-public-goal-uncompress-z-safe) |
 | [Zlib.Inftrees.Proofs.Cover.root_cover_fn](../ZlibF/Proof/inftrees.c.cover.fn.lean#L130) | No fixed-target composition recorded |
 | [Zlib.Inftrees.Proofs.Cover.root_single_fn](../ZlibF/Proof/inftrees.c.cover.fn.lean#L226) | No fixed-target composition recorded |
-| [Zlib.Inftrees.Proofs.inflate_fixed_ok](../ZlibF/Proof/inftrees.c.fixed.lean#L21) | No fixed-target composition recorded |
+| [Zlib.Inftrees.Proofs.inflate_fixed_ok](../ZlibF/Proof/inftrees.c.fixed.lean#L21) | [inflate_back_sequence_safety](#target-zlibf-spec-public-goal-inflate-back-sequence-safety) |
 | [Zlib.Inftrees.Proofs.inflate_table_correct_ret](../ZlibF/Proof/inftrees.c.lean#L65) | [inflate](#target-zlibf-spec-public-goal-inflate), [inflateCopy](#target-zlibf-spec-public-goal-inflatecopy), [inflate_sequence_safety](#target-zlibf-spec-public-goal-inflate-sequence-safety), [uncompress2_safe](#target-zlibf-spec-public-goal-uncompress2-safe), [uncompress2_z_safe](#target-zlibf-spec-public-goal-uncompress2-z-safe), [uncompress_safe](#target-zlibf-spec-public-goal-uncompress-safe), [uncompress_z_safe](#target-zlibf-spec-public-goal-uncompress-z-safe) |
 | [Zlib.Inftrees.Proofs.inflate_table_safe](../ZlibF/Proof/inftrees.c.lean#L34) | No fixed-target composition recorded |
 | [Zlib.Trees.Proofs.GB.kraft_clamped](../ZlibF/Proof/trees.c.heap.gbtree.lean#L132) | [compress2_safety](#target-zlibf-spec-public-goal-compress2-safety), [compress2_z_safety](#target-zlibf-spec-public-goal-compress2-z-safety), [compress_safety](#target-zlibf-spec-public-goal-compress-safety), [compress_z_safety](#target-zlibf-spec-public-goal-compress-z-safety), [deflate](#target-zlibf-spec-public-goal-deflate), [deflateCopy](#target-zlibf-spec-public-goal-deflatecopy), [deflate_sequence_safety](#target-zlibf-spec-public-goal-deflate-sequence-safety) |
@@ -1758,7 +1812,7 @@ They are not additional fixed targets and do not grant a caller coverage colour.
 | [ZlibF.Spec.Gzip.ext](../ZlibF/Proof/Format/Wrapper.lean) | [dict_roundtrip](#target-zlibf-spec-api-goal-dict-roundtrip), [format_deterministic](#target-zlibf-spec-api-goal-format-deterministic), [format_prefix_free](#target-zlibf-spec-api-goal-format-prefix-free), [inflate_completes](#target-zlibf-spec-api-goal-inflate-completes), [inflate_decodes](#target-zlibf-spec-api-goal-inflate-decodes), [inflate_deferred_distance](#target-zlibf-spec-api-goal-inflate-deferred-distance) |
 | [ZlibF.Spec.Prefix.det](../ZlibF/Proof/Format/Deflate.lean) | No fixed-target composition recorded |
 | [ZlibF.Spec.Prefix.ext](../ZlibF/Proof/Format/Deflate.lean) | [compress_roundtrip](#target-zlibf-spec-api-goal-compress-roundtrip), [dict_roundtrip](#target-zlibf-spec-api-goal-dict-roundtrip), [format_deterministic](#target-zlibf-spec-api-goal-format-deterministic), [format_prefix_free](#target-zlibf-spec-api-goal-format-prefix-free), [inflate_completes](#target-zlibf-spec-api-goal-inflate-completes), [inflate_decodes](#target-zlibf-spec-api-goal-inflate-decodes), [inflate_deferred_distance](#target-zlibf-spec-api-goal-inflate-deferred-distance) |
-| [ZlibF.Spec.Proofs.prefixFree](../ZlibF/Proof/Format/Huffman.lean#L105) | [short_decode_table_leaf_sound](#target-zlib-inftrees-spec-decodeshort-goal-short-decode-table-leaf-sound), [decode_table_leaf_sound](#target-zlib-inftrees-spec-decodesoundness-goal-decode-table-leaf-sound), [constructor_establishes_query_stability](#target-zlib-inftrees-spec-decodetablestability-goal-constructor-establishes-query-stability), [short_rejected_leaf_stays_invalid](#target-zlib-inftrees-spec-decodetablestability-goal-short-rejected-leaf-stays-invalid), [constructor_establishes_fast_leaf_flags](#target-zlib-inftrees-spec-fasttableflags-goal-constructor-establishes-fast-leaf-flags), [compress_roundtrip](#target-zlibf-spec-api-goal-compress-roundtrip), [dict_roundtrip](#target-zlibf-spec-api-goal-dict-roundtrip), [format_deterministic](#target-zlibf-spec-api-goal-format-deterministic), [format_prefix_free](#target-zlibf-spec-api-goal-format-prefix-free), [inflate_completes](#target-zlibf-spec-api-goal-inflate-completes), [inflate_decodes](#target-zlibf-spec-api-goal-inflate-decodes), [inflate_deferred_distance](#target-zlibf-spec-api-goal-inflate-deferred-distance), [compress2_safety](#target-zlibf-spec-public-goal-compress2-safety), [compress2_z_safety](#target-zlibf-spec-public-goal-compress2-z-safety), [compress_safety](#target-zlibf-spec-public-goal-compress-safety), [compress_z_safety](#target-zlibf-spec-public-goal-compress-z-safety), [deflate](#target-zlibf-spec-public-goal-deflate), [deflateCopy](#target-zlibf-spec-public-goal-deflatecopy), [deflate_sequence_safety](#target-zlibf-spec-public-goal-deflate-sequence-safety) |
+| [ZlibF.Spec.Proofs.prefixFree](../ZlibF/Proof/Format/Huffman.lean#L105) | [short_decode_table_leaf_sound](#target-zlib-inftrees-spec-decodeshort-goal-short-decode-table-leaf-sound), [decode_table_leaf_sound](#target-zlib-inftrees-spec-decodesoundness-goal-decode-table-leaf-sound), [constructor_establishes_query_stability](#target-zlib-inftrees-spec-decodetablestability-goal-constructor-establishes-query-stability), [short_rejected_leaf_stays_invalid](#target-zlib-inftrees-spec-decodetablestability-goal-short-rejected-leaf-stays-invalid), [constructor_establishes_fast_leaf_flags](#target-zlib-inftrees-spec-fasttableflags-goal-constructor-establishes-fast-leaf-flags), [compress_roundtrip](#target-zlibf-spec-api-goal-compress-roundtrip), [dict_roundtrip](#target-zlibf-spec-api-goal-dict-roundtrip), [format_deterministic](#target-zlibf-spec-api-goal-format-deterministic), [format_prefix_free](#target-zlibf-spec-api-goal-format-prefix-free), [inflate_completes](#target-zlibf-spec-api-goal-inflate-completes), [inflate_decodes](#target-zlibf-spec-api-goal-inflate-decodes), [inflate_deferred_distance](#target-zlibf-spec-api-goal-inflate-deferred-distance), [compress2_safety](#target-zlibf-spec-public-goal-compress2-safety), [compress2_z_safety](#target-zlibf-spec-public-goal-compress2-z-safety), [compress_safety](#target-zlibf-spec-public-goal-compress-safety), [compress_z_safety](#target-zlibf-spec-public-goal-compress-z-safety), [deflate](#target-zlibf-spec-public-goal-deflate), [deflateCopy](#target-zlibf-spec-public-goal-deflatecopy), [deflate_sequence_safety](#target-zlibf-spec-public-goal-deflate-sequence-safety), [inflate_back_sequence_safety](#target-zlibf-spec-public-goal-inflate-back-sequence-safety) |
 | [ZlibF.Spec.Public.Proofs.DeflateCore.completes](../ZlibF/Proof/deflate.c.default-core-completes.lean#L89) | No fixed-target composition recorded |
 | [ZlibF.Spec.Public.Proofs.DeflateCore.correct](../ZlibF/Proof/deflate.c.default-core-completes.lean#L140) | No fixed-target composition recorded |
 | [ZlibF.Spec.Public.Proofs.DeflateCore.safe_encoding_and_cleanup](../ZlibF/Proof/deflate.c.default-core.lean#L181) | No fixed-target composition recorded |
@@ -2235,10 +2289,14 @@ Safety of the gzip file interface (result 5, owner's decision of 2026-11-12): no
 behaviour, no memory error, no leak of a block or of the descriptor, and termination, on every
 history of a handle. The goal `Goal.gz_sequence_safety` and its definitions (`GzHistory`,
 `GzCloseSafe`, `GzOpenSafe`, `GzDopenSafe`) are on `dev` in `ZlibF/Spec/Public/GzSafety.lean`
-(`61fc2678`), over `GzInv` and `GzCallSafe` of `gz.inv-model`. The skeleton is on the branch
-`skeleton/gz`, commit `7efd3e5e`, a merge of `dev`: files `gz.skeleton-model.lean` (the two loop rules
-only), `gz.skeleton.lean` and `gz.skeleton-read.lean`. It type-checks: `Goal.gz_sequence_safety`
-is proved there from the open lemmas below. A skeleton leaf that `dev` proves with exactly its
+(`61fc2678`), over `GzInv` and `GzCallSafe` of `gz.inv-model`. The assembly is on `dev`:
+`gz_sequence_safety_of` (`gz.sequence-safety`, `7d3c6b80`) has the conclusion `Goal.gz_sequence_safety`
+and one premise, `GzReadLeaves`: the six open read leaves `gzread_step`, `gzfread_step`, `gzgetc_step`,
+`gzungetc_step`, `gzgets_step`, `gzdirect_step`, each with the skeleton's exact statement. Every other
+leaf is used from `dev` directly; no loop rule is used. The skeleton is on the branch `skeleton/gz`,
+commit `17770416`, after a merge of `dev`: files `gz.skeleton-model.lean` (the two loop rules only),
+`gz.skeleton-read.lean` (the open read leaves) and `gz.skeleton.lean` (`gz_sequence_safety_of` applied to
+the read leaves). It type-checks: `Goal.gz_sequence_safety` is proved there from the open lemmas below. A skeleton leaf that `dev` proves with exactly its
 statement is deleted from the skeleton (or closed by the `dev` theorem) and listed as checked.
 The goal ranges over every open (`gzopen`, `gzopen64`, `gzdopen`), every public call of
 `GzOperation`, every close, caller edits outside the handle and changes of the file-system world
@@ -2260,18 +2318,19 @@ are unchanged.
 | --- | --- | --- | ---: | --- |
 | `GzInv.caller`, `GzInv.gz_error`, `GzInv.gz_reset`, `GzInv.put_scalars` | Interface lemmas of `GzInv`. | checked: `gz.inv-frame`, `gzlib.c.error-inv-premises`, `gz.inv-reset`, `gz.inv-put-scalars` | 0 | batch 1, deflate owner |
 | `gwhile_partial`, `gdoWhile_partial` | Partial-correctness loop rules (`gz.skeleton-model`); no proof uses them yet. | open | 2 | unassigned |
-| `gzopen_safe` | `gzopen` returns; NULL leaves nothing; a handle is in `GzInv` with only its descriptor new. | open | 6 | batch C |
-| `gzopen64_safe` | `gzopen64` is `gzopen`. | checked (skeleton, from `gzopen_safe`) | 0 | batch C |
-| `gzdopen_safe` | As `gzopen_safe`, with no descriptor opened or closed. | open | 2 | batch C |
+| `gzopen_safe` | `gzopen` returns; NULL leaves nothing; a handle is in `GzInv` with only its descriptor new. | checked: `gzopen_safe` (`gz.inv-open-fresh`, `5252a412`) | 0 | batch C |
+| `gzopen64_safe` | `gzopen64` is `gzopen`. | checked: `gzopen64_safe` (`gz.inv-open-fresh`, `5252a412`) | 0 | batch C |
+| `gzdopen_safe` | As `gzopen_safe`, with no descriptor opened or closed. | checked: `gzdopen_safe` (`gz.inv-open`, `8c2bba51`) | 0 | batch C |
 | `gzclose_dispatch_inv` | `gzclose` is `gzclose_r` or `gzclose_w` by mode. | checked: `gzclose_dispatch_inv` (`gz.inv-queries`) | 0 | batch 1 |
-| `gzclose_step` | `gzclose` from the dispatch and the two close steps. | checked (skeleton, no open leaf below it); to move to `dev` | 0.5 | batch C |
+| `gzclose_step` | `gzclose` from the dispatch and the two close steps. | checked: `gzclose_step` (`gz.inv-close`, `fdb8c613`) | 0 | batch C |
 | `gzseek64_step`, `gzseek_step` | Seek is safe on `GzInv`. | checked: `gzseek64_step`, `gzseek_step` (`gz.inv-seek`) | 0 | batch 1 |
 | `gztell64_step`, `gztell_step`, `gzeof_step`, `gzbuffer_step` | Tell, eof and buffer; with `post_unchanged`, `safe_of_unchanged`. | checked: same names (`gz.inv-queries`) | 0 | batch 1 |
 | `gzerror_step` | `gzerror` stores the code in the caller's cell. | checked: `gzerror_step` (`gz.inv-frame`) | 0 | batch 1 |
+| `gzerror_string` | The pointer `gzerror` returns is a C string after the call (goal conjunct added by audit C1). | checked: `gzerror_string` (`gz.inv-frame`) | 0 | batch C |
 | `gzclearerr_step` | `gzclearerr` through `gz_error`. | checked: `gzclearerr_step` (`gz.inv-clearerr`) | 0 | batch 1 |
-| `gzoffset64_step`, `gzoffset_step` | One `lseek` (M3); nothing else changes. | in progress (batch C, `gz.inv-offset-rewind`) | 2 | batch C |
-| `gzrewind_step` | `lseek` (M3) and `gz_reset`. | in progress (batch C, `gz.inv-offset-rewind`) | 2 | batch C |
-| `history_inv`, `operation_safe`, `close_safe`, `gz_sequence_safety` | Assembly, re-checked under `dev`'s `GzInv` and `GzSafety`. | checked (skeleton) | 0 | batch C |
+| `gzoffset64_step`, `gzoffset_step` | One `lseek` (M3); nothing else changes. | checked: same names (`gz.inv-offset-rewind`, `646b1ab6`) | 0 | batch C |
+| `gzrewind_step` | `lseek` (M3) and `gz_reset`. | checked: `gzrewind_step` (`gz.inv-offset-rewind`, `646b1ab6`) | 0 | batch C |
+| `history_inv`, `operation_safe`, `close_safe`, `gz_sequence_safety` | Assembly, re-checked under `dev`'s `GzInv` and `GzSafety`. | checked given hypotheses: `gz_sequence_safety_of` (`gz.sequence-safety`, `7d3c6b80`), premise `GzReadLeaves` (the six open read leaves below); `gz_sequence_safety` on the skeleton | 0 | batch C |
 | `gz_init_safe`, `gz_comp_safe`, `gz_zero_safe`, `gz_write_safe`, `gz_vacate_safe` | Write-side helpers. | checked: same names (`gzwrite.c.safety`) | 0 | batch C |
 | `gzwrite_step`, `gzfwrite_step`, `gzputc_step`, `gzputs_step`, `gzvprintf_step`, `gzprintf_step`, `gzflush_step`, `gzsetparams_step` | Write-side public calls. | checked: same names (`gzwrite.c.safety`) | 0 | batch C |
 | `gzclose_w_step` | Finish, `deflateEnd`, frees, descriptor released. | checked: `gzclose_w_step` (`gzwrite.c.safety`, stated with `GzCloseSafe`) | 0 | batch C |
@@ -2281,17 +2340,17 @@ are unchanged.
 | `gz_load_safe` | The `read` loop (M1). Difference: `GzRead.gz_load_safe` (`gz.read-load-error`) has the extra hypotheses `hm` (`mode = GZ_READ`), `hsz` (`size ≠ 0`), `hroot` (the buffer is a data buffer or not owned) and `heofin` (`eof ≠ 0 → avail_in = 0`), and a stronger conclusion. | open (align) | 1 | read side (deflate owner) |
 | `gz_avail_safe` | Refill `in`. Difference: `GzRead.gz_avail_safe` (`gz.read-avail`) has the extra hypothesis `hm` (`mode = GZ_READ`), and a stronger conclusion. | open (align) | 0.5 | read side (deflate owner) |
 | `gz_look_safe` | Lazy buffers, `inflateInit2`, COPY. Difference: `GzRead.gz_look_safe : GzLookSpec` takes `GzInvUpToOutput` (weaker than `GzInv`) and the premises `how = LOOK` and `MsgLit s`; its post is over `GzInvOut`, not `GzInv`. | open (align) | 2 | read side (deflate owner) |
-| `gz_decomp_safe` | Inflate steps. Difference: `gz_decomp_safe_of` needs the premise `InflateHeadUsesInput`; `GzDecompSpec` adds the premises `MsgLit s` and `out.length ≠ 0`, replaces the separation premise (`out` not owned, or `out = s.out`), and terminates under `ReadsBounded`, not unconditionally. | open (align, one premise) | 3 | read side (deflate owner) |
-| `gz_fetch_safe` | The dispatcher. Difference: `gz_fetch_safe_of` needs `GzLookSpec` and `GzDecompSpec`; `GzFetchSafe` takes `GzInvUpToOutput` and the premises `err ≠ Z_STREAM_END`, `how = COPY → avail_in = 0`, `MsgLit s`; post over `GzInvOut`; termination under `ReadsBounded`, not `ReadsFinite`. | open (align, callee premises) | 2 | read side (deflate owner) |
+| `gz_decomp_safe` | Inflate steps. Difference: `gz_decomp_safe_of` needs one premise, `InflateStuckNoOutput` (a call from `BAD` or `MEM` returns an error with no output and no input used), proved by batch 3 (`inflateStuckNoOutput_holds`, `inflate.c.stuck-no-output`); the HEAD fact is proved (`inflateHeadUsesInputR_holds`, `inflate.c.head-uses-input`); `GzDecompSpec` adds the premises `MsgLit s` and `out.length ≠ 0`, replaces the separation premise (`out` not owned, or `out = s.out`), and terminates under `ReadsFinite`, not unconditionally. | open (align, one premise) | 3 | read side (deflate owner) |
+| `gz_fetch_safe` | The dispatcher. Difference: `gz_fetch_safe_of` needs `GzLookSpec` and `GzDecompSpec`; `GzFetchSafe` takes `GzInvUpToOutput` and the premises `err ≠ Z_STREAM_END`, `how = COPY → avail_in = 0`, `MsgLit s`; post over `GzInvOut`; termination under `ReadsFinite`. Its post carries the progress clauses that `gz_read` and `gz_skip` need for their fuel bound (`fetchRank`: a fetch fills its buffer unless it fails, ends the input, reaches `GZ_OFF_MAX`, or lowers the rank by 2; a bad error stays bad, and a `Stuck` stream gives no output). | open (align, callee premises) | 2 | read side (deflate owner) |
 | `gz_skip_safe` | The skip loop. Difference: `gz_skip_safe_of` needs `GzFetchSpec`, `GzFetchProgress` (and `GzErrorSpec`, `GzErrorOwn`, proved); it takes `GzInvUpToSkip` (weaker than `GzInv`). | open (callee premises) | 1 | read side (deflate owner) |
-| `gz_read_safe` | Three paths, caller range, `x.pos` (F-1). No `dev` theorem. | open | 12 | read side (deflate owner) |
-| `gzread_step`, `gzfread_step` | Wrappers of `gz_read`. No `dev` theorem. | open | 4 | read side (deflate owner) |
+| `gz_read_safe` | Three paths, caller range, `x.pos` (F-1). Checked as `gz_read_safe_of (skip : GzSkipRead) (fetch : GzFetchSafe) (decomp : GzDecompSpec) : GzReadSafe` (`gz.read-read`). `GzReadSafe` is the skeleton statement plus the premises `err ≠ Z_STREAM_END`, `how = COPY → avail_in = 0` and `MsgLit s` (clauses of `GzReadInv`), kept in the post. Termination: the measure `min(len, GZ_OFF_MAX - pos)/8 + fetchRank + phase terms` stays below `2^64` under `ReadsFinite`. `GzSkipRead` is `gzSkipRead_holds` (`gzread.c.skip-fetch`). Closed with no premise as `gz_read_safe : GzReadSafe` (`gz.read-assembly`). | checked | 0 | read side (deflate owner) |
+| `gzread_step`, `gzfread_step` | Wrappers of `gz_read`. Checked as `gzread_step_of_read` (`gz.read-gzread`) and `gzfread_step_of_read` (`gzread.c.fread`) from `GzReadSafe`, and closed with no premise as `gzread_step` and `gzfread_step` (`gz.read-assembly`): the skeleton leaves. | checked | 0 | read side (deflate owner) |
 | `gzgetc_step` (`gzgetc__step` from it) | One byte. Difference: `GetcUngetc.gzgetc_step_of` needs the premise `GzReadSpec`. | open (callee premise) | 1 | read side (deflate owner) |
 | `gzungetc_step` | Push back inside `out`. Difference: `GetcUngetc.gzungetc_step_of` needs `GzLookSpec'` and `GzSkipSpec'`. | open (callee premises) | 1 | read side (deflate owner) |
 | `gzgets_step` | Bounded `memchr`, copy, NUL. No `dev` theorem. | open | 6 | read side (deflate owner) |
 | `gzdirect_step` | One `gz_look` and `gz_skip_have`. No `dev` theorem. | open | 3 | read side (deflate owner) |
 | Merge the `deflate.c.quiet-*` restated copies | Cleanup, not on the critical path. | open | 4 | later |
-| **Total remaining** | batch C 12.5 (4 of them in progress); read side 36.5; unassigned 2 | | **51** | |
+| **Total remaining** | batch C 0; read side 36.5; unassigned 2 | | **38.5** | |
 
 
 ### No-fault coverage of zlib.h functions
@@ -2362,8 +2421,8 @@ Abbreviations:
 | function | route | theorem (Lean name, file) | registered? | domain gap or note |
 | --- | --- | --- | --- | --- |
 | inflateBackInit_ (macro inflateBackInit) | own goal | `ZlibF.Spec.Public.InflateBackInitProof.back_init_public`, `public-infback-init.lean` | yes | Full: bad version or size, NULL strm, NULL window, bad `windowBits`, allocation failure. The success branch needs a writable window of `2^wb` bytes (zlib.h's own rule). |
-| inflateBack | sequence (`Goal.inflate_back_sequence_safety`) | **none unconditional**. Only `inflate_back_sequence_safety_of (fast : FastOk)`, `infback.c.safety-reach.lean` | no | **Open**: `LEN_fast_p` and `fast_alias` are open (progress.md, about 15 h). Own `Goal.inflateBack` (functional) is not planned. NULL strm and state NULL are covered (`inflateBack_nullstream`, `inflateBack_nostate`, registered). The goal also narrows: `inputBound < 2^48`, the window is a slice of a heap byte block, every input chunk lies in a heap byte block (deviation rows). |
-| inflateBackEnd | own goal | `ZlibF.Spec.Public.InflateBackEndProof.back_end_public`, `public-infback-end.lean` | yes | Full: NULL, state NULL or zfree NULL, and `BackValid`. Clause 4 of the inflateBack sequence goal is also proved inside the conditional theorem only. |
+| inflateBack | sequence (`Goal.inflate_back_sequence_safety`) | `Zlib.Infback.Safety.inflate_back_sequence_safety`, `infback.c.safety-fast.lean` (checked, c7169b54) | yes | Registered, with eleven structural proof mutants of `inflateBack`, `inflateBackInit_` and `inflateBackEnd` (`tests/proof-mutants/infback-sequence.tsv`), each killed and rejected by the kernel replay of the goal theorem. Own `Goal.inflateBack` (functional) is not planned. NULL strm and state NULL are covered (`inflateBack_nullstream`, `inflateBack_nostate`, registered). The goal also narrows: `inputBound < 2^48`, the window is a slice of a heap byte block, every input chunk lies in a heap byte block (deviation rows). |
+| inflateBackEnd | own goal | `ZlibF.Spec.Public.InflateBackEndProof.back_end_public`, `public-infback-end.lean` | yes | Full: NULL, state NULL or zfree NULL, and `BackValid`. Clause 4 of the inflateBack sequence goal is proved in `inflate_back_sequence_safety` (`back_end_blk`). |
 
 #### Checksums
 
@@ -2391,43 +2450,39 @@ Abbreviations:
 
 #### Gzip file interface
 
-There is **no registered gz safety goal on dev**. `Goal.gz_sequence_safety` is defined on `dev` in
-`ZlibF/Spec/Public/GzSafety.lean` (`61fc2678`) and proved only on branch `skeleton/gz`, from open
-lemmas. It is in neither `goals.txt` nor `public-api.json` `safety_goals`. `Goal.gz_sequence` (functional) is not planned and has no
-theorem. The registered own-goal theorems below are functional contracts over `GzValid`,
-`GzReachable` or a live `gzstates` entry, and some over `RegularOs fs` (the deterministic
-regular-file world, not every OS-call oracle world).
+`Goal.gz_sequence_safety` (`ZlibF/Spec/Public/GzSafety.lean`) is the safety goal of the gzip interface. It is
+registered in `goals.txt` and in `safety_goals`, and open on dev. `gz_sequence_safety_of (L : GzReadLeaves)`
+(`gz.sequence-safety.lean`) proves it from six read leaves. Every other call is proved directly: the open calls,
+the close calls, the write calls and the queries. `gzread_step` and `gzfread_step` close with the read side's
+`gz.read-assembly`. `gzgetc_step`, `gzungetc_step`, `gzgets_step` and `gzdirect_step` are batch C's. The goal's
+domain is every history of one handle (`GzHistory`) in every OS world (`GzWorldStep`). An adversarial reading
+(2026-11-14) found no false clause and three gaps: the `gzgetc` macro's inline path, `NULL`
+handles, and an unlisted fd rule (rows below). The fd rule is removed from the goal (B1).
 
 | function | route | theorem | registered? | domain gap or note |
 | --- | --- | --- | --- | --- |
-| gzopen, gzopen64 | open | none (`gzopen_null`, `gzopen*_alloc_failure` registered) | partial only | Path-open branch is open. |
-| gzdopen | own goal | `Zlib.Gzlib.Proofs.gzdopen_complete`, `gzlib.c.dopen-complete.lean` | yes | Every `fd`. Mode is NULL or a C string. Not shown for every oracle world. |
-| gzbuffer | own goal | `ZlibF.Spec.Public.Proofs.gzbuffer_public` | yes | NULL and any live handle. |
-| gzeof | own goal | `ZlibF.Spec.Public.Proofs.gzeof_public` | yes | NULL and any live handle. |
-| gzerror | own goal | `ZlibF.Spec.Public.GzErrorProof.gzerror` | yes | Needs `GzValid`. That invariant is not yet derived for every history (only gzdopen establishes it). |
-| gzclearerr | own goal | `ZlibF.Spec.Public.Proofs.gzclearerr` | yes | Needs `GzValid` (same remark). |
-| gzoffset, gzoffset64 | own goal | `ZlibF.Spec.Public.OffsetProof.gzoffset_public_goal` / `gzoffset64_public_goal` | yes | Needs `GzReachable`, `GzValid` and `RegularOs fs` (deviation row "Gz file data"). |
-| gzrewind | own goal | `ZlibF.Spec.Public.GzRewindProof.rewind_public` | yes | Needs `GzReachable`, `GzValid` and `RegularOs fs`. |
-| gzseek, gzseek64 | open | pieces: `gzseek64_safe` (needs `GzGood`, `PosInv`, ...) registered; `gzseek64_step` checked (`gz.inv-seek`) | partial only | |
-| gztell, gztell64 | open | `gztell64_spec` registered, but needs `PosInv`, which no history theorem derives | partial only | |
-| gzclose | open | `gzclose_null`, `gzclose_dispatch` registered | partial only | |
-| gzclose_r | open | `gzclose_r_step_safe` (`gz.read-close.lean`, over `GzInv`), checked, unregistered | no | `GzInv` is not derived from histories. |
-| gzclose_w | open | none | no | |
-| gzread, gzfread, gzgetc, gzgetc_, gzungetc, gzgets, gzdirect | open | none at public level (internal `gz_look_safe`, `gz_fetch_safe_of`, `gzungetc_step_of` checked) | no | The `gzgetc` macro's inline path (reads `have`, `next`, `pos`) is not translated. It needs a handle invariant (**to confirm**). |
-| gzwrite, gzfwrite, gzputc, gzputs, gzprintf, gzflush, gzsetparams | open | none at public level | no | |
+| gzopen, gzopen64 | open leaf | `gzopen_safe` (`gz.inv-open-fresh`), `gzopen64_safe` | no (checked) | Every path, mode and world. |
+| gzdopen | open leaf + own goal | `gzdopen_safe` (`gz.inv-open`); `gzdopen_complete` (`Goal.gzdopen`) | yes (own goal) | Every `fd`. |
+| gzbuffer, gzeof, gzerror, gzclearerr, gztell, gztell64, gzoffset, gzoffset64, gzrewind, gzseek, gzseek64 | sequence leaf | `gzbuffer_step`, `gzeof_step`, `gzerror_step`, `gzclearerr_step`, `gztell*_step`, `gzoffset*_step`, `gzrewind_step`, `gzseek*_step` (`gz.inv-*`) | no (checked) | Own functional goals of gzbuffer, gzeof, gzerror, gzclearerr, gzoffset and gzrewind are registered separately. |
+| gzwrite, gzfwrite, gzputc, gzputs, gzprintf, gzvprintf, gzflush, gzsetparams | sequence leaf | `gzwrite.c.safety` (`gzwrite_step` …) | no (checked) | `gzprintf`/`gzvprintf`: `GzArguments` asks for a representable format on every call, even on a reader (audit B3). |
+| gzclose, gzclose_w, gzclose_r | close leaf | `gzclose_step`, `gzclose_w_step`, `gzclose_r_step_safe` | no (checked) | |
+| gzread, gzfread | read leaf | `gzread_step_of_read`, `gzfread_step_of_read` (from `GzReadSafe`), closing in `gz.read-assembly` | no | Open until `gz.read-assembly` is on dev. |
+| gzgetc, gzgetc_, gzungetc, gzgets, gzdirect | read leaf | open (batch C) | no | **Gap (audit A1):** the `gzgetc` macro's inline path is not a history step. |
+| all gz functions on a `NULL` handle | own safety goal | `ZlibF.Spec.Public.GzRefusalProof.gz_refusal` (`Goal.gz_refusal`, `public-gz-refusal.lean`) | no (checked) | Closed (audit A2): each of the 29 functions returns its documented value with the heap and the world unchanged. C test `tests/goals/gz-refusal`: 204 calls, no violation. The `gzgetc` macro on `NULL` is undefined behaviour in C; the goal states the function. |
+| a second handle on the same fd | world step | `GzHistory.world` | no | Covered (audit B1, corrected): `GzWorldStep` is any well-formed world, so another party may close or reuse the handle's fd ([regression](../tests/verification/regressions/gz-world-closes-fd.lean)). |
 
 #### Miscounts and open items
 
 Documented functions with no checked no-fault theorem for their full documented domain:
 
-1. **inflateBack**: open. Only `inflate_back_sequence_safety_of (FastOk)`; `LEN_fast_p` and `fast_alias` are open. progress.md also lists the target row as "Not proved".
+1. **inflateBack**: registered (`inflate_back_sequence_safety`). The domain narrows as the deviation rows say: `inputBound < 2^48`, the window and every input chunk in a heap byte block.
 2. **deflateCopy**: registered. `source ≠ dest` is assumed (deviation row).
 3. **inflateEnd**: closed. NULL, state NULL, after `End`, after a failed init and the destination of a failed copy are covered by `Goal.inflate_refusal` (checked).
 4. **inflateCopy**: closed. An inconsistent source is covered by `Goal.inflate_refusal` (checked).
 5. **NULL or inconsistent stream refusal**: closed. `Goal.inflate_refusal` and `Goal.deflate_refusal` (checked) cover `inflate`, `deflate`, `inflateEnd`, `inflateReset`, `inflateReset2`, `inflateGetDictionary`, `inflateSetDictionary`, `inflateCopy`, `deflateSetDictionary`, `deflateParams`, `deflateGetDictionary` and `deflateCopy`. These goals and `deflateGetDictionary_reject` are registered.
 6. **deflateParams, deflateSetDictionary, deflatePrime, deflateBound, deflateBound_z, inflateSync**: no own-goal theorem. No-fault on reachable streams comes only through SeqI or SeqD. That suffices for planned safety, but per-call own goals stay open.
 7. **adler32, adler32_z**: domain narrower than zlib.h (NULL only with `len = 0`). `len = 1` is a real C fault (deviation row). NULL with `len ≥ 2` is safe but unproved.
-8. **Every gz function except** gzdopen, gzbuffer, gzeof, gzerror, gzclearerr, gzoffset(64), gzrewind: open (gzopen, gzopen64, gzclose, gzclose_r, gzclose_w, gzread, gzfread, gzgetc, gzgetc_, gzungetc, gzgets, gzdirect, gzwrite, gzfwrite, gzputc, gzputs, gzprintf, gzflush, gzsetparams, gzseek, gzseek64, gztell, gztell64). The registered gz theorems rest on `GzValid` or `GzReachable` (and `RegularOs` for gzoffset and gzrewind), not on every history and every oracle world. No gz safety goal is registered on dev (`Goal.gz_sequence_safety` is defined in `GzSafety.lean` and proved only on `skeleton/gz`).
+8. **gz functions**: `Goal.gz_sequence_safety` is registered and open; it follows from `gz_sequence_safety_of` once the six read leaves close (gzread and gzfread with `gz.read-assembly`; gzgetc, gzungetc, gzgets and gzdirect with batch C). Two gaps from the adversarial reading of 2026-11-14 are not covered by any planned theorem: the `gzgetc` macro path and a second handle on one fd (with batch C). `NULL` handles are covered by `Goal.gz_refusal`.
 9. Related, not a function: `Goal.deflate_initialisation_domain` (nonvacuity) has no theorem.
 
 ### Ordered next work
@@ -2550,8 +2605,11 @@ block. Deviation rows: "Callback decoder window", "Callback decoder input chunks
 row and "Callbacks". Candidate generalisation, not planned now: an input chunk at any byte reference
 (a caller's structure field, static data) for both decoders together, `inflate` and `inflateBack`;
 both rest on `inflate_fast`, whose entry takes a raw byte block.
-Composition (6f9575e7): `inflate_back_sequence_safety_of` proves the goal from `FastOk`, the fast
-path of `case LEN` on the invariant; `LEN_fast_p` and `fast_alias` are what is left.
+Composition: `inflate_back_sequence_safety` (c7169b54) composes the lemmas below with `lenFast_of_blk`,
+the fast path at a window in a heap byte block, and no open premise; every history has its window there
+(`back_reach_window`). The earlier composition `inflate_back_sequence_safety_of`, from the premise
+`FastOk` (the fast path at every window), is deleted; `docs/proof/callbacks.md` says why the premise was
+not proved. Registered with proof mutants (`tests/proof-mutants/infback-sequence.tsv`).
 
 | Lemma | Meaning | State | Hours |
 | --- | --- | --- | ---: |
@@ -2563,15 +2621,16 @@ path of `case LEN` on the invariant; `LEN_fast_p` and `fast_alias` are what is l
 | `STORED_p` | `case STORED`: length check and the copy through `PULL` and `ROOM`; the chunk may share the window's block | checked (eec477cd) | 0 |
 | `TABLE_p` | `case TABLE`: header, code-length code, decoded lengths, three `inflate_table` calls, tables installed (`TablesOk`, with the decode invariant and query stability), and the fall-through into `LEN` | checked (650c8931) | 0 |
 | `BitsShort` | Fewer than 8 bits held at the start of a round in `TYPE`, `TABLE`, `LEN` (`Short` in `Round`): lookups with pull witnesses, `consumed_gt` from `StableQuery` and `PrefixQuery`, the code-length decoding of `TABLE` by `CodeLengthContents` | checked (57c7fabd, 9e93b576) | 0 |
-| `fast_alias` | `inflate_fast` with the output inside the window block (`wnext = 0`): `Env.hwin` of `Goal.fast_safe` asks for a separate window block; plan: allow the output block with `wnext = 0` and copy through `Src.out` (`cpyG`), the exact-content lemmas keeping the separate case | open | 12 |
+| `fast_env` | From `PInv` at `LEN` after `RESTORE`: an `EnvG true` with `start = wsize`; the window aliasing itself is covered by c51943af (`EnvG true`, `inflate_fast_safe_progress`). Owner: batch C | checked (c7169b54) | 0 |
+| `fast_consumes` | `inflate_fast` on an `EnvG α` whose length table has `LenLeavesPositive` strictly consumes bits: `bits' + 8·avail_in' < bits + 8·avail_in` unless it ends in `TYPE` or `BAD` (the measure of route (a)). Owner: batch C | checked (02e8c222) | 0 |
 | `LEN_slow_p` | `case LEN` without the fast path: literal, end of block, length/distance with the distance check and the copy through `ROOM`, invalid codes | checked (06e4a17d) | 0 |
-| `LEN_fast_p` | `case LEN` with the fast path: `RESTORE`, `fast_alias`, `LOAD` | open | 3 |
+| `LEN_fast_p` | `case LEN` with the fast path: `RESTORE`, `inflate_fast` on `fast_env`, `LOAD`; `PInv`, the measure (from `fast_consumes`) and `Short` afterwards. Owner: batch C | checked (c7169b54) | 0 |
 | `dispatch_p` | One round of the dispatch: every mode reachable from `PInv`; the measure falls or the call leaves with one of three results; the fast path is the premise `LenFast` until `LEN_fast_p` | checked (650c8931) | 0 |
 | `loop_p` | The dispatch loop ends within the fuel (`backMeasure < 2^64` from `inputBound < 2^48`) | checked (650c8931) | 0 |
 | `back_call` | One call: prologue, `loop_p`, epilogue (the last partial window to `out`, `next_in`, `avail_in`): `back_call_partial` (a call that returns, any input) and `back_call_total` (input below `2^48`) | checked (3a2a8753, f91f401d) | 0 |
-| `back_null`, `back_end` | Null stream; `inflateBackEnd` on a reachable history (`back_end_public`) | checked (6f9575e7) | 0 |
-| `back_reach_valid` | Every reachable history leaves a valid state over the caller's window (init, rebuffer, `back_call_partial` with the loop rule without a measure) | checked (6f9575e7) | 0 |
-| **Total** | | | **15** |
+| `back_null`, `back_end_blk` | Null stream; `inflateBackEnd` on a reachable history (`back_end_public`) | checked (6f9575e7, c7169b54) | 0 |
+| `back_reach_valid_blk` | Every reachable history leaves a valid state over the caller's window (init, rebuffer, `back_call_partial` with the loop rule without a measure) | checked (6f9575e7, c7169b54) | 0 |
+| **Total** | | | **0** |
 
 #### Next work for every unfinished public target
 
@@ -2705,6 +2764,14 @@ not yet submitted upstream ([patches](../patches/README.md)).
 - W7, [gzwrite position overflow](findings/gzwrite-pos-overflow/README.md): a transparent writer
   on `/dev/null` that seeks to `INT64_MAX - 10` overflows `x.pos` in `gzwrite` (and in `gzputc` at
   `INT64_MAX`). Confirmed by UBSan on x86_64 Linux with the real device. Patch 0004.
+- [gz look COPY past the limit](findings/gz-position-copy-overflow.md): `gz_look`'s COPY branch
+  buffered all pending input without the room bound, so a reader after a gzip member, trailing
+  data and `gzclearerr` near `GZ_OFF_MAX` returned with `x.pos + x.have` past it. Confirmed in the
+  model (`gz.position-copy-overflow-regression`) and by reading the C; not reproducible in practice
+  (about 2^63 decoded bytes). Patch 0004, extended on 2026-11-13. Statement changes with it:
+  `GzLookSpec`'s COPY disjunct is now `how = COPY ∧ avail_in = 0 ∧ (x.have ≠ 0 ∨ x.pos =
+  GZ_OFF_MAX) ∧ x.pos + x.have ≤ GZ_OFF_MAX` (was `how = COPY ∧ x.have ≠ 0`); `BodyPost` of
+  `gz_fetch` lets the loop continue in COPY with `avail_in = 0`, and its measure ranks COPY 0.
 - R-3, [x.next never written](findings/gz-reset-next-uninitialised/README.md): `gzseek` and
   `gzdirect` right after `gzopen` advance the never-written `x.next` by zero. Undefined by the
   letter of C; no sanitizer report. Patch 0005.

@@ -347,7 +347,10 @@ theorem GzInv.frame_data (inv : GzInv h i s) (fr : Frame h after (fun b => ¬ Gz
       posHave := r.posHave
       againSize := r.againSize
       haveSkip := r.haveSkip
-      againEof := r.againEof }
+      againEof := r.againEof
+      errEnd := r.errEnd
+      copyIn := r.copyIn
+      msgLit := r.msgLit }
   · intro hm
     have w := inv.writer hm
     exact {
@@ -1023,7 +1026,7 @@ theorem upToOutput_flags {h : Heap} {i : Nat} {s : GzState} (hu : GzInvUpToOutpu
   refine inv.put_scalars ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩ ⟨c.want.1, c.want.2, Or.inr rfl⟩
     c.pos (Nat.le_refl _) (fun _ => ⟨rd.how, rd.copyDirect, rd.gzipDirect, rd.junk, hef, rd.flags.2.1, hag,
       fun hz => (rd.unalloc hz).2.2.1, hsz, rd.posHave, fun hh => absurd rfl hh, hae⟩)
-    (fun hw => absurd (hm'.symm.trans hw) (by decide))
+    (fun hw => absurd (hm'.symm.trans hw) (by decide)) (fun _ => rd.copyIn)
 
 theorem upd_self_heap {H : Heap} {i : Nat} {s : GzState} (hs : H.gzstates i = some s) : putGz H i s = H := by
   show { H with gzstates := upd H.gzstates i (some s) } = H

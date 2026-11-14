@@ -137,17 +137,22 @@ theorem history_inv (L : GzReadLeaves) {h : Heap} {fs : Fs} {i : Nat} (hist : Gz
     rw [hs0] at inv0
     exact ⟨hfs, s, inv0.caller hf hfit⟩
   | @world h fs fs' i s _ _ hw ih =>
-    exact ⟨And.left hw, ih.2⟩
+    exact ⟨hw, ih.2⟩
 
 /-- **Safety of every gz file history, from the open read leaves.** The conclusion is exactly
 `Goal.gz_sequence_safety`; the only premises are the six open read leaves of the skeleton (`GzReadLeaves`). -/
 theorem gz_sequence_safety_of (L : GzReadLeaves) : Goal.gz_sequence_safety := by
-  refine ⟨fun h fs i hist => history_inv L hist, ?_, ?_, gzopen_safe, gzopen64_safe, gzdopen_safe⟩
+  refine ⟨fun h fs i hist => history_inv L hist, ?_, ?_, ?_, gzopen_safe, gzopen64_safe, gzdopen_safe⟩
   · intro h fs i s call hist hs hop hargs
     obtain ⟨hfs, s0, inv0⟩ := history_inv L hist
     have hs0 := inv0.state_eq hs
     rw [hs0] at inv0
     exact (operation_safe L hop) h fs s inv0 hfs hargs
+  · intro h fs i s errnum hist hs hargs value fs' after e
+    obtain ⟨_, s0, inv0⟩ := history_inv L hist
+    have hs0 := inv0.state_eq hs
+    rw [hs0] at inv0
+    exact gzerror_string inv0 hargs e
   · intro h fs i s call hist hs hc
     obtain ⟨hfs, s0, inv0⟩ := history_inv L hist
     have hs0 := inv0.state_eq hs

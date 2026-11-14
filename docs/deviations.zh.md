@@ -1,4 +1,4 @@
-<!-- source-sha256: 2a3e52345f20816ca97277260ab0ed81773750e624aa78a14dd81c7efacbae17 -->
+<!-- source-sha256: abb62eb61473b192844f7c5b7bf9054c8b6fd52c45074f5c404aac2e22c11fe7 -->
 # 调用者定义域与表示限制
 
 超出模型能力的定理不是 C 正确性结果。本登记记录 API 适配器的受限定义域和缺口。每个强于 `zlib.h` 的前置条件，也必须写入定理文档字符串。聚焦手册中的狭窄例子不改变固定公开目标，也不把排除调用判为未定义。见[契约约定](spec/api/contracts.md)。[Sanitizer 报告](sanitizer-reports.md)列出 sanitizer 在真实 C 上报告的每种调用者布局，以及排除它的前提。
@@ -36,6 +36,8 @@
 | 流缓冲区（`StreamBuffers`） | 输入范围（`next_in`、`avail_in`）与输出范围（`next_out`、`avail_out`）互相分离，且都不在流自己拥有的存储内。每个范围或为 NULL，或可读，输出范围还须可写。 | `Goal.inflate` 与 `Goal.deflate` 以它为前提。输入与输出重叠，或缓冲区落在流自身状态内的调用不在覆盖范围内。 |
 | 整缓冲区压缩（`CompressArguments`） | 源与目标不重叠：`Separate source n dest c`。 | 适用于 `compress`、`compress2` 及其 `_z` 形式。源与目标重叠的调用不在覆盖范围内。 |
 | 计数解压（`UtilitySeparation`、`UncompressSingle`） | 源、目标、目标长度单元和源长度单元两两分离。`uncompress` 与 `uncompress_z` 需要源与目标、长度单元与数据的分离。 | 适用于 `uncompress`、`uncompress2` 及其 `_z` 形式。长度单元与数据缓冲区或另一个单元重叠的调用不在覆盖范围内。 |
+| Gz 调用者缓冲区（`GzArguments` 中的 `GzRange`） | `gzread`、`gzfread`、`gzwrite`、`gzfwrite`、`gzputs`、`gzgets` 与 `gzerror` 的调用者缓冲区与句柄拥有的块分开：它们的字节根都不被句柄拥有（`GzOwned`）。 | 每个入口都先调用 `gz_error(state, Z_OK, NULL)`，它在触及缓冲区之前释放 `state->msg`。`gzerror` 返回的字符串就是 `state->msg`，所以把它传回去在 C 中是释放后使用：在停滞的写入者上执行 `gzputs(f, gzerror(f, &e))`，AddressSanitizer 报告 `strlen` 中的堆释放后使用（[复现](../tests/regression/gzprintf-error-string/README.md)，也覆盖 `gzwrite` 与 `gzread`）。zlib.h 只提醒之后的 `gzerror` 调用。调用者缓冲区和字面量都在覆盖范围内。 |
+| Gz printf 字符串（`GzArguments`） | `gzprintf` 与 `gzvprintf` 的格式串以及每个字符串参数（`%s`）都与句柄拥有的块分开：它们的字节根都不被句柄拥有（`GzOwned`），正如 `GzRange` 对 `gzwrite`、`gzputs` 与 `gzread` 的缓冲区所要求的。 | `gzvprintf` 在 `vsnprintf` 读取格式串和参数之前调用 `gz_error(state, Z_OK, NULL)`，它会释放 `state->msg`。`gzerror` 返回的字符串就是 `state->msg`，所以把它传回去在 C 中是释放后使用（[复现](../tests/regression/gzprintf-error-string/README.md)）；zlib.h 只提醒之后的 `gzerror` 调用。字面量和调用者字符串都在覆盖范围内。 |
 | 被拒绝的流（`RefusedInflate`、`RefusedDeflate`；`Goal.inflate_refusal`、`Goal.deflate_refusal`） | 被拒绝的流是 `NULL`，或者是一个可读记录，其状态为 `NULL`、其 `zalloc` 或 `zfree` 为 `NULL`，或其状态是一个被检查拒绝的存活状态记录（反向指针、模式或状态错误）。 | 这包括 `End` 之后、初始化失败之后、复制失败的目标，以及存活记录的结构体副本。状态字段为垃圾指针的记录在定义域之外，例如从未初始化的自动 `z_stream`。检查会经由该指针读取，在 C 中这是未定义行为。模型同样无法表达它：在模型中，新内存里的指针为 `NULL`（`docs/trusted-base.md`，“Uninitialised pointers become NULL”一行）。 |
 | 复制目标（`Goal.inflateCopy`、`Goal.deflateCopy`、`Goal.deflateCopy_safety`） | 目标记录不是源记录（`source ≠ dest`）。模型把 `z_stream` 记录放在自己的表中，与字节和字缓冲区以及状态记录分开。因此无法表达部分重叠源记录、缓冲区或源所拥有的状态记录的目标。 | 当 `dest == source` 时，C 的 `zmemcpy(dest, source, sizeof(z_stream))` 把对象复制到自身上，这是未定义行为；该情况不在覆盖范围内。部分重叠的目标同样在定理之外：独立的记录表把它假设掉了（`docs/trusted-base.md`，地址与布局模型）。zlib.h 没有说明是否允许这种布局。 |
 | 字典缓冲区 | 字典的目标或源与流的窗口分离。 | 适用于 `inflateGetDictionary`、`deflateGetDictionary`、`inflateSetDictionary` 与 `deflateSetDictionary`。 |
@@ -64,10 +66,10 @@ gz 世界是堆之外的可信语义。目前范围小于 C 调用的系统接�
 
 | 领域 | 当前限制 | 影响 |
 | --- | --- | --- |
-| gz 读取终止（M7） | gz 序列安全目标终止的那一半，对 `gzread`、`gzfread`、`gzgetc`、`gzgetc_`、`gzgets` 和 `gzungetc` 假设句柄的描述符编号具有有限读取额度（`fs.readBudget fd ≠ none`，前提 `ReadsFinite`）。关闭后重用的编号继承剩余额度 | zlib.h 不限制输入。永远交付只解码为空内容的数据（空 gzip 成员）的来源会让 `gz_fetch` 一直循环；对无穷来源进行巨大待跳过量的 `gz_skip` 会永远读取：这是 C 真实的不终止，任何有限额度都覆盖不了。有额度时每个循环都有界。该前提不排除任何故障：无故障的那一半和后置条件对每个世界成立，不需要额度。`gzdirect`、写入一侧和 `gzseek` 不需要它。 |
+| gz 读取终止（M7） | gz 序列安全目标终止的那一半，对 `gzread`、`gzfread`、`gzgetc`、`gzgetc_`、`gzgets` 和 `gzungetc` 假设句柄的描述符编号具有小于 `2^61` 字节的有限读取额度（`fs.readBudget fd = some b` 且 `b < 2^61`，前提 `ReadsFinite`）：即该描述符还能交付的总字节数。关闭后重用的编号继承剩余额度 | zlib.h 不限制输入。永远交付只解码为空内容的数据（空 gzip 成员）的来源会让 `gz_fetch` 一直循环；对无穷来源进行巨大待跳过量的 `gz_skip` 会永远读取：这是 C 真实的不终止，任何有限额度都覆盖不了。有额度时每个循环都有界。`2^61` 这个数是模型的限制，不是 zlib 的：模型的每个循环有 `2^64` 次燃料。读取循环由输入剩余量、读取额度与尚待交付的字节数构成的度量限定（`fetchRank`，以及 `gz_read` 与 `gz_skip` 的度量）。一次取数填满缓冲区，除非失败、输入结束、到达 `GZ_OFF_MAX` 或降低 `fetchRank`，因此额度小于 `2^61` 使这些度量以及循环次数都小于 `2^64`。该上界的依据：`tests/verification/regressions/gz-read-budget-fuel.lean` 表明旧前提（任意大小的额度）允许一个额度，其中空 gzip 成员所需的轮数超过循环燃料。它只是算术核心，不是对 `gz_fetch` 返回 `outOfFuel` 的一次已检查运行。该前提不排除任何故障：无故障的那一半和后置条件对每个世界成立，不需要额度。`gzdirect`、写入一侧和 `gzseek` 不需要它。终止一共依赖三条世界规则：读取调用的 `ReadsFinite`；OS 事实“非空 `write` 从不返回 0”（“gz 操作系统事实”一行），它约束写入一侧；以及 `GzWorldStep`，它在两次调用之间保持句柄描述符的打开状态（只有库打开或关闭它）。最后一条正在审查：同一描述符上的第二个句柄在历史之外（2026-11-14 的对抗性审读，交由 batch C）。 |
 | gz 操作系统事实 | 非空 `write` 从不返回 0；`close` 失败时也释放描述符 | Linux 行为，可信，未检查。`write` 永远返回 0 会让 C 中的 `gz_comp` 无限循环（`docs/progress.md` 中的观察记录）。 |
 | gz 文件数据 | 功能性的 gz 契约（`FileData`、`CloseContract`、`GzWriterFormat`、读写结果值）以及已登记目标 `Goal.gzoffset64`、`Goal.gzoffset` 和 `Goal.gzrewind`（自 `caad9db4` 起带前提 `RegularOs fs`）针对系统调用预言的普通文件实例（`RegularOs`）陈述 | 它们描述普通文件。预言的 `lseek` 可以返回而不移动描述符，某些 Linux 设备即如此；此时偏移与回绕的结果值不成立（[回归](../tests/verification/regressions/gz-offset-regular-world.lean)）。安全目标不使用这些契约。`gzoffset64`、`gzoffset` 和 `gzrewind` 在每个世界上的安全属于 `Goal.gz_sequence_safety`，经由步骤引理 `gzoffset64_step`、`gzoffset_step` 和 `gzrewind_step`（分支 `skeleton/gz`，对每个 `fs` 陈述，无 `RegularOs`；未完成）。文件系统权限、父目录、链接、所有权和锁未被表示；预言的失败覆盖它们对每次调用的影响。 |
-| 格式化 | 表示出的整数、字符和字符串参数，以及支持的标志、宽度、精度和长度修饰符 | 浮点、指针、写计数和其他未表示转换需要扩展模型。草案契约显式要求可表示的有效格式化结果。 |
+| 格式化 | 表示出的整数、字符和字符串参数，以及支持的标志、宽度、精度和长度修饰符 | 浮点、指针、写计数和其他未表示转换需要扩展模型。草案契约显式要求可表示的有效格式化结果。`GzArguments` 在 `Goal.gz_sequence_safety` 的每个 `gzprintf` 与 `gzvprintf` 步骤上都要求可表示的格式（`Formatted`），读取者或处于错误中的句柄也不例外，而 C 在那里根本不读格式串。定义域之外：`%f` 及其他浮点转换、`%p`、`%n`、长度修饰符 `h` 与 `hh`（`%hd`、`%hhu`）、`*` 宽度与精度（`%*d`）、没有 NUL 的数组上的 `%.3s`，以及给定 `unsigned` 参数的 `%c` 或 `%d`（值可表示时 `va_arg` 允许）。 |
 | 外部错误字符串 | `strerror` 返回带有调用代次的只读外部视图，不消耗分配尝试，也不增加库拥有的存活块；下一次调用使旧借用视图失效 | 模型选取顺序调用和固定区域设置下的文本，不表示并发调用、区域设置更改或旧指针身份的再次复用。文本复制与借用保持是独立证明义务。这不是完整的 libc 对应结论。 |
 | 循环额度 | 每个翻译循环使用固定运行时额度 | 即使每个外部操作都返回，也不能据此证明任意有限回调或外部世界行为终止。 |
 

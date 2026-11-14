@@ -37,7 +37,8 @@ theorem GzInv.put_consume {h : Heap} {i : Nat} {s s' : GzState} (inv : GzInv h i
       (s.size = 0 → s'.how = LOOK) ∧ (s.size = 0 → s'.again = 0) ∧
       s'.x.pos.toInt + s'.x.have.toNat ≤ 9223372036854775807 ∧ (s'.x.have ≠ 0 → s'.skip = 0) ∧
       (s'.again ≠ 0 → s'.eof ≠ 0 → s'.strm.avail_in = 0))
-    (wr : s.mode = GZ_WRITE → s'.reset = 0 ∨ s'.reset = 1) :
+    (wr : s.mode = GZ_WRITE → s'.reset = 0 ∨ s'.reset = 1)
+    (cp : s.mode = GZ_READ → s'.how = GZ_COPY → s'.strm.avail_in = 0) :
     GzInv (putGz h i s') i s' := by
   obtain ⟨hpath, hmsg, hin, hout, hsize, hmode, hdirect, hstrm, herr⟩ := same
   have hrec := inv.common.recordFree
@@ -138,7 +139,12 @@ theorem GzInv.put_consume {h : Heap} {i : Nat} {s s' : GzState} (inv : GzInv h i
       posHave := hph
       againSize := fun hz => hagz (by rw [← hsize]; exact hz)
       haveSkip := hhs
-      againEof := hae }
+      againEof := hae
+      errEnd := by rw [herr]; exact r.errEnd
+      copyIn := cp hm
+      msgLit := fun hz => by
+        rw [hstrm]
+        exact r.msgLit (by rw [← hsize]; exact hz) }
   · intro hm'
     have hm : s.mode = GZ_WRITE := by rw [← hmode]; exact hm'
     have w := inv.writer hm
@@ -309,7 +315,7 @@ theorem GzInv.upToSkip {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) : 
   have z : (0 : Int64).toInt = 0 := by decide
   refine ⟨c.record, ?_, c.pos.1, c.pos.2.1⟩
   refine inv.put_scalars ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩ ⟨c.want.1, c.want.2, Or.inr rfl⟩
-    ⟨?_, ?_, c.pos.2.2⟩ (Nat.le_refl _) ?_ ?_
+    ⟨?_, ?_, c.pos.2.2⟩ (Nat.le_refl _) ?_ ?_ (fun hm => (inv.reader hm).copyIn)
   · show 0 ≤ (0 : Int64).toInt
     rw [z]; exact Int.le_refl _
   · show s.x.pos.toInt + (0 : Int64).toInt ≤ _
@@ -331,7 +337,7 @@ theorem GzInvUpToSkip.inv {h : Heap} {i : Nat} {s : GzState} (u : GzInvUpToSkip 
   have e : putGz (putGz h i (clearSkip s)) i s = h := by rw [putGz_putGz, putGz_self hrec]
   rw [← e]
   refine inv.put_scalars (s' := s) ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
-    ⟨c.want.1, c.want.2, Or.inr rfl⟩ ⟨hp, hb, c.pos.2.2⟩ (Nat.le_refl _) ?_ ?_
+    ⟨c.want.1, c.want.2, Or.inr rfl⟩ ⟨hp, hb, c.pos.2.2⟩ (Nat.le_refl _) ?_ ?_ (fun hm => (inv.reader hm).copyIn)
   · intro hm
     have r := inv.reader hm
     exact ⟨r.how, r.copyDirect, r.gzipDirect, r.junk, r.flags.1, r.flags.2.1, r.flags.2.2,
@@ -400,7 +406,7 @@ theorem gz_skip_have_run' {h : Heap} {i : Nat} {s : GzState} (u : GzInvUpToSkip 
   refine inv.put_consume ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩ (skipN s).toNat (skipRec_next s)
     (by show (skipN s).toNat + (skipRec s).x.have.toNat ≤ s.x.have.toNat; rw [hhv]; omega)
     ⟨c.want.1, c.want.2, Or.inr rfl⟩ ⟨by rw [hski]; omega, by rw [hpos, hski]; omega,
-      by rw [hpos, hhv]; omega⟩ ?_ ?_
+      by rw [hpos, hhv]; omega⟩ ?_ ?_ (fun hm => (inv.reader hm).copyIn)
   · intro hm
     have r := inv.reader hm
     have hph : s.x.pos.toInt + s.x.have.toNat ≤ 9223372036854775807 := r.posHave

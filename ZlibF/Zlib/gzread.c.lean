@@ -8,8 +8,9 @@ Source: `gzread.c` of the verified source (with `patches/0003-gzread-partial-cop
 `patches/0004-gz-position-overflow.patch`), default x86_64 Linux build (`errno`, `EAGAIN == EWOULDBLOCK`,
 `STDC`). Reads go through `Zlib.GzFs`.
 
-Patch 0004 (local, F-1): `gz_room` bounds what `gz_fetch` loads and what `gz_read` and `gzgets` deliver, so that
-`x.pos` never passes `GZ_OFF_MAX`; data beyond it gives `Z_DATA_ERROR` "position overflow".
+Patch 0004 (local, F-1): `gz_room` bounds what `gz_look`'s COPY branch buffers, what `gz_fetch` loads and what
+`gz_read` and `gzgets` deliver, so that `x.pos` never passes `GZ_OFF_MAX`; data beyond it gives `Z_DATA_ERROR`
+"position overflow".
 
 `gz_fetch`, `case COPY` follows the patched C (R-2, upstream PR 1363, applied as patch 0003): `x.next = out` is set
 before `gz_load`, so a failing `read` that returned some bytes leaves `x.have != 0` with `x.next` at the new bytes.
@@ -103,6 +104,17 @@ def gz_avail (state : GzStatePtr) : G Int32 := do
     updZ strm fun z => { z with avail_in := z.avail_in + got, next_in := s.«in» }
   return 0
 
+/-- `local unsigned gz_room(gz_statep state, unsigned max)` (patch 0004). `GZ_OFF_MAX - state->x.pos < max`
+compares in `z_off64_t` (the `unsigned` operand converts to `long`). -/
+def gz_room (state : GzStatePtr) (max : UInt32) : M UInt32 := do
+  -- if (state->x.pos > 0 && GZ_OFF_MAX - state->x.pos < max) return (unsigned)(GZ_OFF_MAX - state->x.pos);
+  let s ← ldS state
+  if s.x.pos > 0 then
+    let d ← i64sub GZ_OFF_MAX s.x.pos
+    if d < u32ToI64 max then return d.toUInt64.toUInt32
+  -- return max;
+  return max
+
 /-- `local int gz_look(gz_statep state)` -/
 def gz_look (state : GzStatePtr) : G Int32 := do
   let strm := strmOf state
@@ -168,8 +180,13 @@ def gz_look (state : GzStatePtr) : G Int32 := do
   let s ← ldS state
   updX state fun x => { x with next := s.out }
   memcpyB s.out z.next_in z.avail_in.toNat
-  -- state->x.have = strm->avail_in; strm->avail_in = 0; state->how = COPY; return 0;
-  updX state fun x => { x with «have» := z.avail_in }
+  -- state->x.have = gz_room(state, strm->avail_in);   (patch 0004)
+  let room ← gz_room state z.avail_in
+  updX state fun x => { x with «have» := room }
+  -- if (state->x.have < strm->avail_in) gz_error(state, Z_DATA_ERROR, "position overflow");   (patch 0004)
+  if (← ldS state).x.«have» < (← ldZ strm).avail_in then
+    gz_error state Z_DATA_ERROR (← strLit "position overflow")
+  -- strm->avail_in = 0; state->how = COPY; return 0;
   updZ strm fun z => { z with avail_in := 0 }
   updS state fun s => { s with how := GZ_COPY }
   return 0
@@ -232,17 +249,6 @@ def gz_decomp (state : GzStatePtr) : G Int32 := do
     return 0
   -- return ret != Z_OK ? -1 : 0;
   return if ret != Z_OK then -1 else 0
-
-/-- `local unsigned gz_room(gz_statep state, unsigned max)` (patch 0004). `GZ_OFF_MAX - state->x.pos < max`
-compares in `z_off64_t` (the `unsigned` operand converts to `long`). -/
-def gz_room (state : GzStatePtr) (max : UInt32) : M UInt32 := do
-  -- if (state->x.pos > 0 && GZ_OFF_MAX - state->x.pos < max) return (unsigned)(GZ_OFF_MAX - state->x.pos);
-  let s ← ldS state
-  if s.x.pos > 0 then
-    let d ← i64sub GZ_OFF_MAX s.x.pos
-    if d < u32ToI64 max then return d.toUInt64.toUInt32
-  -- return max;
-  return max
 
 /-- `local int gz_fetch(gz_statep state)`. With patches 0003 (upstream PR 1363) and 0004, see the file comment. The
 control tag of the loop is the result (`some r`: return `r`). The local `unsigned room` is assigned before each

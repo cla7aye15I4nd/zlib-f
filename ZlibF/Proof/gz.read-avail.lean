@@ -108,7 +108,8 @@ theorem copy_loop (b : Nat) (a : Nat) :
 
 /-- **Setting the input window to the start of `in`** (`next_in = in`, `avail_in = n ≤ size`) keeps `GzInv`. -/
 theorem GzInv.set_input {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) (hm0 : s.mode = GZ_READ)
-    (hz0 : s.size ≠ 0) (n : UInt32) (hn : n.toNat ≤ s.size.toNat) (hae : s.again ≠ 0 → s.eof ≠ 0 → n = 0) :
+    (hz0 : s.size ≠ 0) (n : UInt32) (hn : n.toNat ≤ s.size.toNat) (hae : s.again ≠ 0 → s.eof ≠ 0 → n = 0)
+    (hnc : s.how ≠ GZ_COPY) :
     GzInv (putGz h i { s with strm := { s.strm with avail_in := n, next_in := s.«in» } }) i
       { s with strm := { s.strm with avail_in := n, next_in := s.«in» } } ∧
     (∀ b, GzOwned (putGz h i { s with strm := { s.strm with avail_in := n, next_in := s.«in» } }) i
@@ -197,7 +198,10 @@ theorem GzInv.set_input {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) (
       posHave := r.posHave
       againSize := r.againSize
       haveSkip := r.haveSkip
-      againEof := hae }
+      againEof := hae
+      errEnd := r.errEnd
+      copyIn := fun hc => absurd hc hnc
+      msgLit := r.msgLit }
   · intro hm
     exact absurd (hm0.symm.trans hm) (by decide)
 
@@ -446,11 +450,11 @@ def AvailFs (s s' : GzState) (fs fs' : Fs) : Prop :=
   BudgetAcc s.fd fs fs' (s'.strm.avail_in.toNat - s.strm.avail_in.toNat) ∧
     s.strm.avail_in.toNat ≤ s'.strm.avail_in.toNat ∧ (s'.err = s.err ∨ s'.err = Z_ERRNO ∨ s'.err = Z_MEM_ERROR)
 
-/-- The result and the flags across `gz_avail`: a `-1` leaves an error that is not `Z_OK`; a `0` keeps the error, and
+/-- The result and the flags across `gz_avail`: a `-1` leaves an error that is neither `Z_OK` nor `Z_BUF_ERROR`; a `0` keeps the error, and
 a `0` with no input left has reached the end of the file (`eof ≠ 0`). A `0` that leaves `eof = 0` read at least one
 byte: `gz_load` ran, and a load of nothing sets `eof`. -/
 def AvailFlags (r : Int32) (s s' : GzState) : Prop :=
-  (r = -1 → s'.err ≠ Z_OK) ∧ (r = 0 → s'.err = s.err) ∧ (r = 0 → s'.strm.avail_in = 0 → s'.eof ≠ 0) ∧
+  (r = -1 → s'.err ≠ Z_OK ∧ s'.err ≠ Z_BUF_ERROR) ∧ (r = 0 → s'.err = s.err) ∧ (r = 0 → s'.strm.avail_in = 0 → s'.eof ≠ 0) ∧
     (r = 0 → s'.eof = 0 → s.strm.avail_in.toNat < s'.strm.avail_in.toNat)
 
 theorem AvailFs.refl (s : GzState) (fs : Fs) : AvailFs s s fs fs :=
@@ -459,7 +463,7 @@ theorem AvailFs.refl (s : GzState) (fs : Fs) : AvailFs s s fs fs :=
 /-- **The tail of `gz_avail`**: load behind the pending input, then set the window. -/
 theorem availLoad_run {h : Heap} {i : Nat} {s : GzState} {fs : Fs} (hu : GzInvUpToOutput h i s)
     (hm : s.mode = GZ_READ) (hsz : s.size ≠ 0) (hfs : FileSystem fs)
-    (hav : s.strm.avail_in.toNat ≤ s.size.toNat) (heof0 : s.eof = 0) :
+    (hav : s.strm.avail_in.toNat ≤ s.size.toNat) (heof0 : s.eof = 0) (hnc : s.how ≠ GZ_COPY) :
     ∃ r fs' after, availLoad i fs h = .ok ((r, fs'), after) ∧ (r = 0 ∨ r = -1) ∧ FdsKept fs fs' ∧
       GzPost h i s [] fs' after GzInvUpToOutput ∧ ∃ s', after.gzstates i = some s' ∧ AvailRec s s' ∧ AvailFs s s' fs fs' ∧
         AvailFlags r s s' ∧ ∀ k, after.istates k = h.istates k := by
@@ -533,7 +537,7 @@ theorem availLoad_run {h : Heap} {i : Nat} {s : GzState} {fs : Fs} (hu : GzInvUp
   have hae2 : s2.again ≠ 0 → s2.eof ≠ 0 → (s2.strm.avail_in + got) = 0 := fun ha he => by
     have : ef = 0 := (hfa ha).trans heof0
     exact absurd this he
-  obtain ⟨inv3c, own3c⟩ := GzInv.set_input inv'.2 hm hsz (s2.strm.avail_in + got) hn hae2
+  obtain ⟨inv3c, own3c⟩ := GzInv.set_input inv'.2 hm hsz (s2.strm.avail_in + got) hn hae2 hnc
   have e3 : putGz (putGz h2 i s3) i (clearOut s3) = putGz (putGz h2 i (clearOut s2)) i (clearOut s3) := by
     rw [putGz_putGz', putGz_putGz']
   have hs3 : (putGz h2 i s3).gzstates i = some s3 := by simp [putGz]
@@ -576,7 +580,8 @@ reader; `gz_avail` is a reading helper). It does not fault, returns `0` or `-1`,
 satisfies `GzPost` with no caller region; the record changes only in its flags, error, message and input window.
 `AvailFlags` ties the result to the error and the end of the file. -/
 theorem gz_avail_safe (i : Nat) (h : Heap) (fs : Fs) (s : GzState)
-    (hu : GzInvUpToOutput h i s) (hm : s.mode = GZ_READ) (hfs : FileSystem fs) (hsz : s.size ≠ 0) :
+    (hu : GzInvUpToOutput h i s) (hm : s.mode = GZ_READ) (hfs : FileSystem fs) (hsz : s.size ≠ 0)
+    (hnc : s.how ≠ GZ_COPY) :
     RunSafe (Zlib.Gzread.gz_avail (gzSt i)) fs h True fun r fs' after =>
       (r = 0 ∨ r = -1) ∧ FdsKept fs fs' ∧ GzPost h i s [] fs' after GzInvUpToOutput ∧
       ∃ s', after.gzstates i = some s' ∧ AvailRec s s' ∧ AvailFs s s' fs fs' ∧ AvailFlags r s s' ∧
@@ -593,7 +598,7 @@ theorem gz_avail_safe (i : Nat) (h : Heap) (fs : Fs) (s : GzState)
     by_cases herr : (s.err != Z_OK && s.err != Z_BUF_ERROR) = true
     · rw [if_pos herr]
       exact ⟨-1, fs, h, rfl, Or.inr rfl, fun _ => Iff.rfl, post_refl hu hfs, s, hs, by unfold AvailRec; rfl, AvailFs.refl s fs,
-        ⟨(fun _ e => by rw [e] at herr; revert herr; decide), (fun h0 => absurd h0 (by decide)),
+        ⟨(fun _ => ⟨fun e => by rw [e] at herr; revert herr; decide, fun e => by rw [e] at herr; revert herr; decide⟩), (fun h0 => absurd h0 (by decide)),
         (fun h0 => absurd h0 (by decide)), (fun h0 => absurd h0 (by decide))⟩, fun _ => rfl⟩
     rw [if_neg herr]
     by_cases heof : ¬ (s.eof == 0) = true
@@ -621,12 +626,12 @@ theorem gz_avail_safe (i : Nat) (h : Heap) (fs : Fs) (s : GzState)
         have crun' : (StateT.lift (cdoWhile copyBody copyCond (s.«in», s.strm.next_in, s.strm.avail_in)) :
             G _) fs h = .ok ((st, fs), Z) := by rw [g_lift_app, crun]
         simp only [g_bind_app, crun']
-        obtain ⟨r, fs', after, run, hr, hk, post, s', hs', hrec, hfs', hfl, hist⟩ := availLoad_run huZ hm hsz hfs hav heof0
+        obtain ⟨r, fs', after, run, hr, hk, post, s', hs', hrec, hfs', hfl, hist⟩ := availLoad_run huZ hm hsz hfs hav heof0 hnc
         exact ⟨r, fs', after, run, hr, hk, post_pre frZ hliveZ hownZ post, s', hs', hrec, hfs', hfl, fun k => (hist k).trans (by rw [histZ])⟩
       · rw [if_neg h2]
-        exact availLoad_run hu hm hsz hfs hav heof0
+        exact availLoad_run hu hm hsz hfs hav heof0 hnc
     · rw [if_neg h1]
-      exact availLoad_run hu hm hsz hfs hav heof0
+      exact availLoad_run hu hm hsz hfs hav heof0 hnc
   obtain ⟨r, fs', after, run, post⟩ := key
   refine ⟨fun e he => ?_, fun _ => ⟨r, fs', after, run⟩, fun r' fs3 after' he => ?_⟩
   · rw [run] at he; cases he

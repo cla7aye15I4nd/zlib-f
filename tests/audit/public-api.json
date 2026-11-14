@@ -803,7 +803,8 @@
     "ZlibF.Spec.Public.Goal.inflate_initialisation_domain",
     "ZlibF.Spec.Public.Goal.deflate_initialisation_domain",
     "ZlibF.Spec.Public.Goal.inflate_back_initialisation_domain",
-    "ZlibF.Spec.Public.Goal.gz_initialisation_domain"
+    "ZlibF.Spec.Public.Goal.gz_initialisation_domain",
+    "ZlibF.Spec.Public.Goal.gz_sequence_nonvacuity"
   ],
   "safety_goals": [
     "ZlibF.Spec.Public.Goal.inflate_sequence_safety",
@@ -820,6 +821,7 @@
     "ZlibF.Spec.Public.Goal.deflateCopy_safety",
     "ZlibF.Spec.Public.Goal.inflate_refusal",
     "ZlibF.Spec.Public.Goal.deflate_refusal",
-    "ZlibF.Spec.Public.Goal.gz_sequence_safety"
+    "ZlibF.Spec.Public.Goal.gz_sequence_safety",
+    "ZlibF.Spec.Public.Goal.gz_refusal"
   ]
 }

@@ -11,7 +11,7 @@ over the OS-call oracle of `ZlibF/Zlib/gzfs.lean`:
    C's W1–W10 folded into the write part. Other modules use its interface lemmas, not the definition.
 2. `GzCallSafe`: safety of one public call on a handle in `GzInv`, for every world.
 3. `ReadsFinite`: the M7 premise of the termination half of the reading calls: the descriptor is non-negative and
-   has a finite read budget in the OS-call oracle (`Fs.readBudget`).
+   has a read budget below `2^61` bytes in the OS-call oracle (`Fs.readBudget`).
 
 Corrections against the skeleton at `7d896179` (strengthenings):
 - `GzCommon.next` also excludes the message block (`blkOf s.msg ≠ some b`), as `NextOk` does. Without it `x.next`
@@ -45,11 +45,19 @@ def FdOpen (fs : Fs) (j : Nat) : Prop := ∃ f, fs.fds[j]? = some (some f)
 
 end GzOracle
 
-/-- **M7, the finiteness premise.** The handle's descriptor is non-negative and has a finite read budget, so every
-later read is cut to a bound. A premise of the termination half only, and only for the calls of `NeedsReadBound`;
-`docs/deviations.md`, "Gz reading termination". A negative descriptor is unbudgeted (`readCap` does not cut its
-reads), hence the first conjunct. -/
-def ReadsFinite (fs : Fs) (fd : Int32) : Prop := 0 ≤ fd.toInt ∧ fs.readBudget fd.toInt.toNat ≠ none
+/-- The handle's descriptor is non-negative and has a read budget in the OS-call oracle, so every later read is cut
+to it. A negative descriptor is unbudgeted (`readCap` does not cut its reads), hence the first conjunct. -/
+def HasBudget (fs : Fs) (fd : Int32) : Prop := 0 ≤ fd.toInt ∧ fs.readBudget fd.toInt.toNat ≠ none
+
+/-- **M7, the finiteness premise.** The handle's descriptor has a read budget (`HasBudget`) below `2^61` bytes: the
+total the descriptor can still deliver. A premise of the termination half only, and only for the calls of
+`NeedsReadBound`; `docs/deviations.md`, "Gz reading termination". A finite budget is a real requirement: an endless
+source (an endless `FNAME`, or endless empty gzip members) makes one `gzread` call run forever in C. The figure `2^61`
+is the model's limit, not zlib's: a loop of the model has `2^64` trips of fuel, and the reading loops are bounded by
+measures built from the input left, the read budget and the bytes still to deliver (`fetchRank`, and the measures of
+`gz_read` and `gz_skip`), which a budget below `2^61` keeps below `2^64`. -/
+def ReadsFinite (fs : Fs) (fd : Int32) : Prop :=
+  HasBudget fs fd ∧ (fs.readBudget fd.toInt.toNat).getD 0 < 2 ^ 61
 
 /-- The calls whose termination needs M7: the loops of `gz_fetch` (over empty gzip members), `gz_skip` and
 `gz_read` read until the input ends. `gzread`, `gzfread`, `gzgetc`, `gzgetc_`, `gzgets` reach them, `gzungetc`
@@ -127,6 +135,12 @@ structure GzCommon (h : Heap) (i : Nat) (s : GzState) : Prop where
   the record block. -/
   recordFree : ¬ StreamOwned h (gzStrm i) i
 
+/-- The message of the embedded stream is `NULL` or a string literal of the sources (`inflateInit2_` and
+`inflateReset` clear it, `inflate` sets literals). `gz_decomp` hands it to `gz_error`. Only asked with buffers: a
+failed `inflateInit2` in `gz_look` sets `size = 0`. -/
+def MsgLit (s : GzState) : Prop :=
+  s.size ≠ 0 → s.strm.msg = .null ∨ ∃ j, j < strTable.size ∧ s.strm.msg = .ref (.str j) 0
+
 /-- The reader part (`s.mode = GZ_READ`). The note's clause "past ≠ 0 → skip = 0" is not included: a forward
 `gzseek` after a short read keeps `past` and sets `skip` (`Api.GzSeek`). -/
 structure GzReadInv (h : Heap) (i : Nat) (s : GzState) : Prop where
@@ -171,6 +185,14 @@ structure GzReadInv (h : Heap) (i : Nat) (s : GzState) : Prop where
   set only by a stalled `gz_load`, which runs with `eof = 0`; the junk path of `gz_decomp` sets `eof` with
   `avail_in = 0`; `gzclearerr` and `gz_reset` clear `eof` or `again`; `gz_look`'s COPY branch zeroes `avail_in`. -/
   againEof : s.again ≠ 0 → s.eof ≠ 0 → s.strm.avail_in = 0
+  /-- `Z_STREAM_END` is never recorded: `state->err` is written only at open (`Z_OK`) and by `gz_error`,
+  and no caller passes `Z_STREAM_END`. `gz_decomp` would return 0 on a failed `gz_avail` with this code. -/
+  errEnd : s.err ≠ Z_STREAM_END
+  /-- COPY has no pending input: `gz_look` zeroes `avail_in` when it sets COPY, `gzseek64` zeroes it in COPY, and in
+  COPY only `gz_load` into `out` reads. -/
+  copyIn : s.how = GZ_COPY → s.strm.avail_in = 0
+  /-- the embedded stream's message is `NULL` or a literal (`MsgLit`) -/
+  msgLit : MsgLit s
 
 /-- The writer part (`s.mode = GZ_WRITE`): batch C's W1–W10. W1 and W9 are in `GzCommon`; W10 needs no fact;
 W7 is the position clause of `GzCommon` (relies on the local patch for W7). -/
@@ -205,10 +227,13 @@ def GzInv (h : Heap) (i : Nat) (s : GzState) : Prop :=
 
 /-! ## The shape of a safe call -/
 
-/-- The caller regions a call may write. -/
+/-- The caller regions a call may write. A zero-length read names no region: `BufferFrame` keeps the view of every
+named region, and with `len = 0` the buffer may be any pointer, also one into a block the call frees
+(regression `tests/verification/regressions/gz-read-empty-region.lean`). -/
 def GzWriteRegions : Call → List Region
-  | .gzread _ p n => if n.toNat < 2 ^ 31 then [⟨p, n.toNat⟩] else []
-  | .gzfread p size n _ => if size.toNat * n.toNat < 2 ^ 64 then [⟨p, size.toNat * n.toNat⟩] else []
+  | .gzread _ p n => if 0 < n.toNat ∧ n.toNat < 2 ^ 31 then [⟨p, n.toNat⟩] else []
+  | .gzfread p size n _ =>
+      if 0 < size.toNat * n.toNat ∧ size.toNat * n.toNat < 2 ^ 64 then [⟨p, size.toNat * n.toNat⟩] else []
   | .gzgets _ p n => if 1 ≤ n.toInt then [⟨p, n.toInt.toNat⟩] else []
   | .gzerror _ p => [⟨p, 4⟩]
   | _ => []

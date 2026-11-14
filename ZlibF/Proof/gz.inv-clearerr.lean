@@ -96,6 +96,7 @@ theorem freeStr_facts {h : Heap} {s : GzState} (u : Zlib.Gzlib.Spec.Uniq h)
 /-- **Dropping the message keeps `GzInv`.** The owned message is freed, the pointer cleared, the code set to `e`,
 and (for a reader) `eof` and `past` set to `e1` and `p1`. -/
 theorem GzInv.clear_message {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) (e1 p1 e : Int32)
+    (he : e ≠ Z_STREAM_END)
     (rd : s.mode = GZ_READ → (e1 = 0 ∨ e1 = 1) ∧ (p1 = 0 ∨ p1 = 1) ∧ (s.again ≠ 0 → e1 ≠ 0 → s.strm.avail_in = 0)) :
     GzInv (putGz (freeStr h s.msg) i { s with eof := e1, past := p1, msg := .null, err := e }) i
         { s with eof := e1, past := p1, msg := .null, err := e } ∧
@@ -282,7 +283,10 @@ theorem GzInv.clear_message {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i 
       posHave := r.posHave
       againSize := r.againSize
       haveSkip := r.haveSkip
-      againEof := hae }
+      againEof := hae
+      errEnd := he
+      copyIn := r.copyIn
+      msgLit := r.msgLit }
   · intro hm
     have w := inv.writer hm
     exact {
@@ -346,7 +350,7 @@ theorem gzclearerr_step (i : Nat) : GzCallSafe i (.gzclearerr (some (.in_gzstate
       simp [Zlib.Gzlib.Spec.errNull, Zlib.Gzlib.Spec.clearRec, hm']
   obtain ⟨e1, p1, rd, es⟩ := key
   rw [es] at hrun
-  obtain ⟨inv', hown, hlive, hframe⟩ := inv.clear_message e1 p1 Z_OK rd
+  obtain ⟨inv', hown, hlive, hframe⟩ := inv.clear_message e1 p1 Z_OK (by decide) rd
   have e : Call.execute (.gzclearerr (some (.in_gzstate_x i))) fs h =
       .ok (((), fs), putGz (Zlib.Gzlib.Proofs.freeStr h s.msg) i
         { s with eof := e1, past := p1, msg := .null, err := Z_OK }) := by

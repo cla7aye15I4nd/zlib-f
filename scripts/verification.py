@@ -287,7 +287,8 @@ def replay_public_mutants(manifest: dict, selected: set[str] | None = None) -> N
 
 
 SAFETY_MUTANT_LISTS = ("tests/proof-mutants/deflate-header.tsv", "tests/proof-mutants/deflate-strategies.tsv",
-                       "tests/proof-mutants/deflate-ops.tsv", "tests/proof-mutants/stream-refusal.tsv")
+                       "tests/proof-mutants/deflate-ops.tsv", "tests/proof-mutants/stream-refusal.tsv",
+                       "tests/proof-mutants/infback-sequence.tsv")
 
 
 def mutation_partition(manifest: dict, count: int = 1, index: int = 0) -> tuple[set[str], dict[str, list[str]]]:
@@ -446,10 +447,11 @@ def coverage() -> dict:
     groups = {
         "sequence_goals": ["inflate_sequence", "deflate_sequence", "inflate_back_sequence", "gz_sequence"],
         "nonvacuity_goals": ["inflate_initialisation_domain", "deflate_initialisation_domain",
-                              "inflate_back_initialisation_domain", "gz_initialisation_domain"],
+                              "inflate_back_initialisation_domain", "gz_initialisation_domain",
+                              "gz_sequence_nonvacuity"],
         "safety_goals": ["inflate_sequence_safety", "deflate_sequence_safety", "uncompress_safe", "uncompress_z_safe", "uncompress2_safe", "uncompress2_z_safe", "compress_safety", "compress_z_safety", "compress2_safety", "compress2_z_safety",
                          "inflate_back_sequence_safety", "deflateCopy_safety",
-                         "inflate_refusal", "deflate_refusal", "gz_sequence_safety"],
+                         "inflate_refusal", "deflate_refusal", "gz_sequence_safety", "gz_refusal"],
     }
     for group, suffixes in groups.items():
         expected = ["ZlibF.Spec.Public.Goal." + suffix for suffix in suffixes]
@@ -462,9 +464,10 @@ def coverage() -> dict:
     check_imports()
     run([sys.executable, "scripts/gen_public_calls.py", "--check"])
     print(f"coverage: {len(exports)} public declarations, "
-          f"{len(goals) - 8 - len(manifest['safety_goals'])} default-build entries "
+          f"{len(goals) - len(manifest['sequence_goals']) - len(manifest['nonvacuity_goals']) - len(manifest['safety_goals'])} default-build entries "
           f"({len(required_public_goals(manifest))} required, the rest undocumented in zlib.h), "
-          f"4 sequence targets, 4 initialisation-domain targets, {len(manifest['safety_goals'])} safety targets")
+          f"{len(manifest['sequence_goals'])} sequence targets, {len(manifest['nonvacuity_goals'])} non-vacuity targets, "
+          f"{len(manifest['safety_goals'])} safety targets")
     return manifest
 
 

@@ -1,4 +1,4 @@
-<!-- source-sha256: c849cc59a0009a45ffec2dae096857d00dcbd5433292ba43c51a58e41a411ae0 -->
+<!-- source-sha256: 1498d6e58c65611f36fa380fdba07b57a0e52f4b633f742a4eb1ef90067978bf -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -15,7 +15,7 @@
 | 2 | `deflate` 对任何输入和任意缓冲区切分都安全，也包括它的调用序列。 | `deflateInit2_`、`deflate`、`deflate_sequence_safety` |
 | 3 | 第 1、2 项在完整缓冲区上的组合。 | `compress*`、`uncompress*` 的安全 |
 | 4 | 回调解码器对任何输入和任何调用者协议都安全，也包括它的调用序列（所有者 2026-11-12 的要求）。 | `inflate_back_sequence_safety` |
-| 5 | gzip 文件接口在一个句柄的每条调用历史上、对每个文件系统世界都安全（所有者 2026-11-12 的决定）。只证安全，不证功能正确性。 | `gzopen`、`gzopen64`、`gzclose`、`gzclose_r`、`gzclose_w`、`gzread`、`gzfread`、`gzgetc`、`gzgetc_`、`gzungetc`、`gzgets`、`gzdirect`、`gzwrite`、`gzfwrite`、`gzputc`、`gzputs`、`gzprintf`、`gzvprintf`、`gzflush`、`gzsetparams`、`gzseek`、`gzseek64`、`gztell`、`gztell64`，经由 `gz_sequence_safety` |
+| 5 | gzip 文件接口在一个句柄的每条调用历史上、对每个文件系统世界都安全（所有者 2026-11-12 的决定）。只证安全，不证功能正确性。 | `gzopen`、`gzopen64`、`gzdopen`、`gzbuffer`、`gzclose`、`gzclose_r`、`gzclose_w`、`gzread`、`gzfread`、`gzgetc`、`gzgetc_`、`gzungetc`、`gzgets`、`gzdirect`、`gzwrite`、`gzfwrite`、`gzputc`、`gzputs`、`gzprintf`、`gzvprintf`、`gzflush`、`gzsetparams`、`gzseek`、`gzseek64`、`gztell`、`gztell64`、`gzoffset`、`gzoffset64`、`gzrewind`、`gzeof`、`gzerror`、`gzclearerr`，经由 `gz_sequence_safety`；`NULL` 句柄经由 `gz_refusal`。终止：每个调用在每个世界中都终止，但 `gzread`、`gzfread`、`gzgetc`、`gzgetc_`、`gzgets` 与 `gzungetc` 需要小于 `2^61` 的读取额度（`ReadsFinite`），即使 C 会立即返回也是如此 |
 
 上述结论在证明中需要的目标，作为依赖仍在计划内。sequence 目标所涉及的其他流调用属于这种情况，例如 `inflateSync`、`inflateCopy`、`deflateCopy`、`deflateParams`、`deflatePrime` 和 `deflateSetDictionary`。`gzvprintf` 在 zlib.h 中未文档化，但 `gzprintf` 经过它，所以它随第 5 项结论一起在计划内。
 
@@ -1838,12 +1838,12 @@ gzip 文件接口的安全（第 5 项结论，所有者 2026-11-12 的决定）
 | `gz_load_safe` | `read` 循环（M1）：`-1` 或 `0`，`have ≤ len`，只写缓冲区。已检查为 `gz_load_safe`（`gz.read-load-error`）：`fsRead_contract`（M1，对预言机的每个取值）、`gz_load_paths`（`gz.read-store`：循环和返回 `0` 的收尾路径）以及 `gz_load_error_tail`（经由 `gz_error_upToOutput`（`gzlib.c.error-inv-rec`）的 `gz_error(Z_ERRNO, strerror)` 报告）。发现的前提：`size ≠ 0`（读取停滞会置 `again`），缓冲区是数据缓冲块或不属于句柄，以及 `eof ≠ 0 → avail_in = 0`（停滞保留 `eof`；`GzReadInv.againEof`）。 | 已检查 | 0 | 读取侧（deflate 负责人） |
 | `gz_avail_safe` | 重新填充 `in`；保持输入窗口。已检查（`gz.read-avail`）：压缩复制（`copy_loop`、`copy_run`；对每个调用者都是死代码，但仍然证明）、在待处理输入之后的 `gz_load_safe`，以及新的窗口（`GzInv.set_input`）；记录只在标志、错误、消息和窗口上改变（`AvailRec`）。前提：读取句柄（`s.mode = GZ_READ`）。为此 `gz_load_safe` 现在也陈述调用后的记录。 | 已检查 | 0 | 读取侧（deflate owner） |
 | `gz_look_safe` | 延迟分配的缓冲区与 `inflateInit2`，失败时的账目，COPY 复制。已检查（`gz.read-look`）：`gz_look_safe : GzLookSpec` 覆盖每条路径（`in`/`out` 的分配和 `inflateInit2_` 及其每种失败、重置分支、`gz_avail`、魔数检查、gzip 分支、透明 COPY）。后置条件 `GzInvOut`（COPY 的输出可越过 `GZ_OFF_MAX`）；前提 `how = LOOK`。 | 已检查 | 0 | 读取侧（deflate owner） |
-| `gz_decomp_safe` | inflate 历史中的 inflate 步骤；`x.next` 在输出窗口内。已作为 `gz_decomp_safe_of (head : InflateHeadUsesInput) : GzDecompSpec`（`gz.read-decomp`）检查：在嵌入流上调用 `gz_avail` 和 `inflate` 的循环（`inflate_public`；记录只在其流上改变，流消息保持为 NULL 或字面量，由 inflate 整次运行框架的新 `Keeps` 条款 `gz` 与 `msgs` 给出），在 `ReadsBounded` 下终止，错误分支经由 `gz_error`。未完成的前提 `InflateHeadUsesInput`：从模式 `HEAD`、`bits = 0`、`last = 0` 且有输入时的一次 `inflate` 调用会消耗输入（需要一个说明输入计数从不回升的框架）。 | 已检查（基于一个前提） | 3 | 读取侧（deflate owner） |
-| `gz_fetch_safe` | 分派函数；在 M7 下终止。陈述 `GzFetchSafe`（`gz.read-fetch-specs`）：后置条件 `GzInvOut`（输出可越过 `GZ_OFF_MAX`，直到调用者丢弃它），在 `ReadsBounded`（预算小于 `2^61`，见 M7 上界问题）下终止，前提 `err ≠ Z_STREAM_END` 与 `how = COPY → avail_in = 0`（将成为不变量条款）。已作为 `gz_fetch_safe_of`（`gz.read-fetch`）从 `GzLookSpec` 和 `GzDecompSpec` 检查；二者证明后即闭合。 | 已检查（基于被调用者前提） | 1 | 读取侧（deflate owner） |
+| `gz_decomp_safe` | inflate 历史中的 inflate 步骤；`x.next` 在输出窗口内。已作为 `gz_decomp_safe_of (stuck : InflateStuckNoOutput) : GzDecompSpec`（`gz.read-decomp`）检查（HEAD 事实已证明：`inflateHeadUsesInputR_holds`，`inflate.c.head-uses-input`；前提 `InflateStuckNoOutput` 由 batch 3 证明：`inflateStuckNoOutput_holds`）：在嵌入流上调用 `gz_avail` 和 `inflate` 的循环（`inflate_public`；记录只在其流上改变，流消息保持为 NULL 或字面量，由 inflate 整次运行框架的新 `Keeps` 条款 `gz` 与 `msgs` 给出），在 `ReadsFinite` 下终止，错误分支经由 `gz_error`。未完成的前提 `InflateHeadUsesInput`：从模式 `HEAD`、`bits = 0`、`last = 0` 且有输入时的一次 `inflate` 调用会消耗输入（需要一个说明输入计数从不回升的框架）。未完成的前提 `InflateStuckNoOutput`：从模式 `BAD` 或 `MEM` 的一次调用返回错误，不产生输出，也不消耗输入。 | 已检查（基于两个前提） | 3 | 读取侧（deflate owner） |
+| `gz_fetch_safe` | 分派函数；在 M7 下终止。陈述 `GzFetchSafe`（`gz.read-fetch-specs`）：后置条件 `GzInvOut`（输出可越过 `GZ_OFF_MAX`，直到调用者丢弃它），在 `ReadsFinite`（预算小于 `2^61`）下终止，前提 `err ≠ Z_STREAM_END` 与 `how = COPY → avail_in = 0`（将成为不变量条款）。已作为 `gz_fetch_safe_of`（`gz.read-fetch`）从 `GzLookSpec` 和 `GzDecompSpec` 检查；二者证明后即闭合。其后置条件带有 `gz_read` 与 `gz_skip` 的燃料上界所需的进展条款（`fetchRank`：一次取数填满缓冲区，除非失败、输入结束、到达 `GZ_OFF_MAX`，或秩下降 2；严重错误保持；`Stuck` 的流不产生输出）。 | 已检查（基于被调用者前提） | 1 | 读取侧（deflate owner） |
 | `gz_skip_have_safe` | 消耗缓冲中的 skip 字节（`gzread.c.skip-have`，09fe8c0f；以及 `GzInv.put_consume`）。 | 已检查 | 0 | 读取侧（batch 3） |
 | `gz_skip_safe` | skip 循环；在 M7 下终止。已检查为 `gz_skip_safe_of`（6c974c42），前提是 `gz_fetch_safe`、两个请求的 `gz_fetch` 事实（进展、保持 size）和 `gz_error` 的不占用事实；这些证明后即完成。 | 已检查（基于被调用者前提） | 1 | 读取侧（batch 3） |
-| `gz_read_safe` | 三条路径，调用者区域，重置 `x.next`（R-4），`x.pos`（F-1）。 | 未完成 | 12 | 读取侧（deflate owner） |
-| `gzread_step`、`gzfread_step` | 包装函数。 | 未完成 | 4 | 读取侧（deflate owner） |
+| `gz_read_safe` | 三条路径，调用者区域，重置 `x.next`（R-4），`x.pos`（F-1）。已作为 `gz_read_safe_of (skip : GzSkipRead) (fetch : GzFetchSafe) (decomp : GzDecompSpec) : GzReadSafe`（`gz.read-read`）检查。`GzReadSafe` 是骨架陈述加上前提 `err ≠ Z_STREAM_END`、`how = COPY → avail_in = 0` 与 `MsgLit s`（`GzReadInv` 的条款），并在后置条件中保持。终止：度量 `min(len, GZ_OFF_MAX - pos)/8 + fetchRank + 阶段项` 在 `ReadsFinite` 下小于 `2^64`。`GzSkipRead` 即 `gzSkipRead_holds`（`gzread.c.skip-fetch`）。无前提地闭合为 `gz_read_safe : GzReadSafe`（`gz.read-assembly`）。 | 已检查 | 0 | 读取侧（deflate owner） |
+| `gzread_step`、`gzfread_step` | 包装函数。已作为 `gzread_step_of_read`（`gz.read-gzread`）与 `gzfread_step_of_read`（`gzread.c.fread`）从 `GzReadSafe` 检查，并无前提地闭合为 `gzread_step` 与 `gzfread_step`（`gz.read-assembly`）：即骨架叶子。 | 已检查 | 0 | 读取侧（deflate owner） |
 | `gzgetc_step` | 读取一个字节的 `gz_read` 包装函数（`gzgetc__step` 已在骨架中检查）。按现在的 `GzInv` 不成立（有缓冲字节时的 skip 请求）；不变式由 batch 1 决定。 | 未完成 | 2 | 读取侧（batch 3） |
 | `gzungetc_step` | 在 `out` 内回退。已检查为 `gzungetc_step_of`（b7e5cc07），前提是加了两项请求的 `gz_look_safe`、`gz_skip_safe_of'` 和 `gz_error`。 | 已检查（基于被调用者前提） | 1 | 读取侧（batch 3） |
 | `gzgets_step` | 有界的 `memchr`、复制、NUL。 | 未完成 | 6 | 读取侧（batch 3） |
@@ -1916,8 +1916,8 @@ zlib.h 文档化的每个函数占一行。每行给出表明该调用不会出�
 | 函数 | 路线 | 定理（Lean 名称，文件） | 已登记？ | 定义域缺口或备注 |
 | --- | --- | --- | --- | --- |
 | inflateBackInit_（宏 inflateBackInit） | 自身目标 | `ZlibF.Spec.Public.InflateBackInitProof.back_init_public`，`public-infback-init.lean` | 是 | 完整：错误版本或大小、NULL strm、NULL 窗口、错误的 `windowBits`、分配失败。成功分支需要一个可写的 `2^wb` 字节窗口（zlib.h 自己的规则）。 |
-| inflateBack | 序列（`Goal.inflate_back_sequence_safety`） | **无无条件定理**。只有 `inflate_back_sequence_safety_of (fast : FastOk)`，`infback.c.safety-reach.lean` | 否 | **open**：`LEN_fast_p` 和 `fast_alias` 未完成（progress.md，约 15 小时）。自身的 `Goal.inflateBack`（功能性）不在计划内。NULL strm 和 state 为 NULL 已覆盖（`inflateBack_nullstream`、`inflateBack_nostate`，已登记）。该目标还有收窄：`inputBound < 2^48`，窗口是堆字节块的一个切片，每个输入块都位于堆字节块内（偏差行）。 |
-| inflateBackEnd | 自身目标 | `ZlibF.Spec.Public.InflateBackEndProof.back_end_public`，`public-infback-end.lean` | 是 | 完整：NULL、state 为 NULL 或 zfree 为 NULL，以及 `BackValid`。inflateBack 序列目标的第 4 子句也只在条件定理内部得到证明。 |
+| inflateBack | 序列（`Goal.inflate_back_sequence_safety`） | `Zlib.Infback.Safety.inflate_back_sequence_safety`，`infback.c.safety-fast.lean`（已检查，c7169b54） | 是 | 已登记，带 `inflateBack`、`inflateBackInit_` 与 `inflateBackEnd` 的十一个结构性证明变异（`tests/proof-mutants/infback-sequence.tsv`），每个都被杀死，并被目标定理的内核重放拒绝。自身的 `Goal.inflateBack`（功能性）不在计划内。NULL strm 和 state 为 NULL 已覆盖（`inflateBack_nullstream`、`inflateBack_nostate`，已登记）。该目标还有收窄：`inputBound < 2^48`，窗口是堆字节块的一个切片，每个输入块都位于堆字节块内（偏差行）。 |
+| inflateBackEnd | 自身目标 | `ZlibF.Spec.Public.InflateBackEndProof.back_end_public`，`public-infback-end.lean` | 是 | 完整：NULL、state 为 NULL 或 zfree 为 NULL，以及 `BackValid`。inflateBack 序列目标的第 4 子句在 `inflate_back_sequence_safety` 中得到证明（`back_end_blk`）。 |
 
 #### 校验和
 
@@ -1945,38 +1945,36 @@ zlib.h 文档化的每个函数占一行。每行给出表明该调用不会出�
 
 #### Gzip 文件接口
 
-**`dev` 上没有 gz 安全目标。** `Goal.gz_sequence_safety` 只作为定义存在于分支 `skeleton/gz` 的一个证明文件中（`gz.skeleton-model.lean`）。它既不在 `goals.txt` 中，也不在 `public-api.json` 的 `safety_goals` 中。`Goal.gz_sequence`（功能性）不在计划内，也没有定理。下面已登记的自身目标定理是针对 `GzValid`、`GzReachable` 或活动 `gzstates` 条目的功能性契约，其中一些还针对 `RegularOs fs`（确定性的常规文件世界，不是每个 OS 调用预言世界）。
+`Goal.gz_sequence_safety`（`ZlibF/Spec/Public/GzSafety.lean`）是 gzip 接口的安全目标。它已登记在 `goals.txt`
+和 `safety_goals` 中，在 dev 上仍为 open。`gz_sequence_safety_of (L : GzReadLeaves)`（`gz.sequence-safety.lean`）从六个读取叶子证明它。
+其他调用都直接证明：打开、关闭、写入和查询。`gzread_step` 与 `gzfread_step` 随读取侧的 `gz.read-assembly` 关闭。
+`gzgetc_step`、`gzungetc_step`、`gzgets_step` 与 `gzdirect_step` 属于 batch C。目标的定义域是单个句柄的每条历史（`GzHistory`）在每个 OS 世界中（`GzWorldStep`）。
+一次对抗性审读（2026-11-14）未发现错误的子句，发现三个缺口：`gzgetc` 宏的内联路径、`NULL` 句柄，以及一条未列出的 fd 规则（见下表）。fd 规则已从目标中删除（B1）。
 
-| 函数 | 路线 | 定理 | 已登记？ | 定义域缺口或备注 |
+| 函数 | 途径 | 定理 | 已登记？ | 定义域缺口或说明 |
 | --- | --- | --- | --- | --- |
-| gzopen, gzopen64 | 打开 | 无（`gzopen_null`、`gzopen*_alloc_failure` 已登记） | 仅部分 | 路径打开分支为 open。 |
-| gzdopen | 自身目标 | `Zlib.Gzlib.Proofs.gzdopen_complete`，`gzlib.c.dopen-complete.lean` | 是 | 每个 `fd`。mode 为 NULL 或 C 字符串。未对每个预言世界证明。 |
-| gzbuffer | 自身目标 | `ZlibF.Spec.Public.Proofs.gzbuffer_public` | 是 | NULL 和任意活动句柄。 |
-| gzeof | 自身目标 | `ZlibF.Spec.Public.Proofs.gzeof_public` | 是 | NULL 和任意活动句柄。 |
-| gzerror | 自身目标 | `ZlibF.Spec.Public.GzErrorProof.gzerror` | 是 | 需要 `GzValid`。该不变量尚未对每个历史推导（只有 gzdopen 建立它）。 |
-| gzclearerr | 自身目标 | `ZlibF.Spec.Public.Proofs.gzclearerr` | 是 | 需要 `GzValid`（同上说明）。 |
-| gzoffset, gzoffset64 | 自身目标 | `ZlibF.Spec.Public.OffsetProof.gzoffset_public_goal` / `gzoffset64_public_goal` | 是 | 需要 `GzReachable`、`GzValid` 和 `RegularOs fs`（偏差行“Gz file data”）。 |
-| gzrewind | 自身目标 | `ZlibF.Spec.Public.GzRewindProof.rewind_public` | 是 | 需要 `GzReachable`、`GzValid` 和 `RegularOs fs`。 |
-| gzseek, gzseek64 | open | 片段：`gzseek64_safe`（需要 `GzGood`、`PosInv` 等）已登记；`gzseek64_step` 已检查（`gz.inv-seek`） | 仅部分 | |
-| gztell, gztell64 | open | `gztell64_spec` 已登记，但需要 `PosInv`，没有历史定理推导它 | 仅部分 | |
-| gzclose | open | `gzclose_null`、`gzclose_dispatch` 已登记 | 仅部分 | |
-| gzclose_r | open | `gzclose_r_step_safe`（`gz.read-close.lean`，针对 `GzInv`），已检查，未登记 | 否 | `GzInv` 未从历史推导。 |
-| gzclose_w | open | 无 | 否 | |
-| gzread, gzfread, gzgetc, gzgetc_, gzungetc, gzgets, gzdirect | open | 公开层面无（内部的 `gz_look_safe`、`gz_fetch_safe_of`、`gzungetc_step_of` 已检查） | 否 | `gzgetc` 宏的内联路径（读取 `have`、`next`、`pos`）尚未翻译。它需要句柄不变量（**待确认**）。 |
-| gzwrite, gzfwrite, gzputc, gzputs, gzprintf, gzflush, gzsetparams | open | 公开层面无 | 否 | |
+| gzopen、gzopen64 | 打开叶子 | `gzopen_safe`（`gz.inv-open-fresh`）、`gzopen64_safe` | 否（checked） | 每个路径、模式与世界。 |
+| gzdopen | 打开叶子 + 自身目标 | `gzdopen_safe`（`gz.inv-open`）；`gzdopen_complete`（`Goal.gzdopen`） | 是（自身目标） | 每个 `fd`。 |
+| gzbuffer、gzeof、gzerror、gzclearerr、gztell、gztell64、gzoffset、gzoffset64、gzrewind、gzseek、gzseek64 | 序列叶子 | `gzbuffer_step`、`gzeof_step`、`gzerror_step`、`gzclearerr_step`、`gztell*_step`、`gzoffset*_step`、`gzrewind_step`、`gzseek*_step`（`gz.inv-*`） | 否（checked） | gzbuffer、gzeof、gzerror、gzclearerr、gzoffset 与 gzrewind 的自身功能目标另行登记。 |
+| gzwrite、gzfwrite、gzputc、gzputs、gzprintf、gzvprintf、gzflush、gzsetparams | 序列叶子 | `gzwrite.c.safety`（`gzwrite_step` …） | 否（checked） | `gzprintf`/`gzvprintf`：`GzArguments` 在每次调用时都要求可表示的格式，读取者也不例外（审读 B3）。 |
+| gzclose、gzclose_w、gzclose_r | 关闭叶子 | `gzclose_step`、`gzclose_w_step`、`gzclose_r_step_safe` | 否（checked） | |
+| gzread、gzfread | 读取叶子 | `gzread_step_of_read`、`gzfread_step_of_read`（来自 `GzReadSafe`），在 `gz.read-assembly` 中关闭 | 否 | 在 `gz.read-assembly` 上 dev 之前为 open。 |
+| gzgetc、gzgetc_、gzungetc、gzgets、gzdirect | 读取叶子 | open（batch C） | 否 | **缺口（审读 A1）：**`gzgetc` 宏的内联路径不是一个历史步骤。 |
+| `NULL` 句柄上的所有 gz 函数 | 自身安全目标 | `ZlibF.Spec.Public.GzRefusalProof.gz_refusal`（`Goal.gz_refusal`，`public-gz-refusal.lean`） | 否（checked） | 已关闭（审读 A2）：29 个函数中的每一个都返回其文档化的值，堆和世界不变。C 测试 `tests/goals/gz-refusal`：204 次调用，无违例。`gzgetc` 宏用于 `NULL` 在 C 中是未定义行为；目标陈述的是函数。 |
+| 同一 fd 上的第二个句柄 | 世界步骤 | `GzHistory.world` | 否 | 已覆盖（审读 B1，已更正）：`GzWorldStep` 是任意良构的世界，另一方可以关闭或重用句柄的 fd（[回归](../tests/verification/regressions/gz-world-closes-fd.lean)）。 |
 
 #### 误计与未完成项
 
 对完整文档化定义域没有已检查无故障定理的已文档化函数：
 
-1. **inflateBack**：open。只有 `inflate_back_sequence_safety_of (FastOk)`；`LEN_fast_p` 和 `fast_alias` 未完成。progress.md 也把该目标行列为“Not proved”。
+1. **inflateBack**：已登记（`inflate_back_sequence_safety`）。定义域按偏差行收窄：`inputBound < 2^48`，窗口与每个输入块都在堆字节块中。
 2. **deflateCopy**：已登记。假设 `source ≠ dest`（偏差行）。
 3. **inflateEnd**：已关闭。NULL、state 为 NULL、`End` 之后、初始化失败之后，以及复制失败的目标由 `Goal.inflate_refusal`（checked）覆盖。
 4. **inflateCopy**：已关闭。不一致的源由 `Goal.inflate_refusal`（checked）覆盖。
 5. **NULL 或不一致流的 refusal**：已关闭。`Goal.inflate_refusal` 与 `Goal.deflate_refusal`（checked）覆盖 `inflate`、`deflate`、`inflateEnd`、`inflateReset`、`inflateReset2`、`inflateGetDictionary`、`inflateSetDictionary`、`inflateCopy`、`deflateSetDictionary`、`deflateParams`、`deflateGetDictionary` 与 `deflateCopy`。这些目标与 `deflateGetDictionary_reject` 已登记。
 6. **deflateParams、deflateSetDictionary、deflatePrime、deflateBound、deflateBound_z、inflateSync**：没有自身目标定理。可达流上的无故障只经由 SeqI 或 SeqD 得到。这对计划内的安全性已足够，但逐调用的自身目标仍为 open。
 7. **adler32、adler32_z**：定义域比 zlib.h 更窄（NULL 只在 `len = 0` 时允许）。`len = 1` 是真实的 C 错误（偏差行）。`len ≥ 2` 的 NULL 安全但未证明。
-8. **除 gzdopen、gzbuffer、gzeof、gzerror、gzclearerr、gzoffset(64)、gzrewind 之外的每个 gz 函数**：open（gzopen、gzopen64、gzclose、gzclose_r、gzclose_w、gzread、gzfread、gzgetc、gzgetc_、gzungetc、gzgets、gzdirect、gzwrite、gzfwrite、gzputc、gzputs、gzprintf、gzflush、gzsetparams、gzseek、gzseek64、gztell、gztell64）。已登记的 gz 定理依赖 `GzValid` 或 `GzReachable`（gzoffset 和 gzrewind 还依赖 `RegularOs`），而不是每个历史和每个预言世界。dev 上没有登记 gz 安全目标（`gz_sequence_safety` 只在 `skeleton/gz` 上）。
+8. **gz 函数**：`Goal.gz_sequence_safety` 已登记，仍为 open；六个读取叶子关闭后（gzread 与 gzfread 随 `gz.read-assembly`；gzgetc、gzungetc、gzgets 与 gzdirect 随 batch C），它由 `gz_sequence_safety_of` 得出。2026-11-14 的对抗性审读发现的两个缺口不在任何计划中的定理内：`gzgetc` 宏路径与同一 fd 上的第二个句柄（交由 batch C）。`NULL` 句柄由 `Goal.gz_refusal` 覆盖。
 9. 相关，但不是函数：`Goal.deflate_initialisation_domain`（非空性）没有定理。
 
 ### 按顺序的下一步工作
@@ -2037,7 +2035,7 @@ zlib.h 文档化的每个函数占一行。每行给出表明该调用不会出�
 问题（不在计划内的功能目标）：`Goal.inflateBack` 对 `inputBound` 没有上限，因此输入超过循环额度的协议在模型中使它为假。
 所需不变量：`inflate_fast` 假定入口处 `state->bits < 8`。`inflate.c` 在快速路径前检查它（上游 e7bb978）；`infback.c` 不检查，因此证明要说明每轮以 `TYPE`、`TABLE` 或 `LEN` 开始时持有的位少于 8（`BitsShort` 行）。若持有 8 位或更多，`inflate_fast` 可能把 `next` 退回到 `in` 给出的数据块之前。证据：`tests/goals/infback-callbacks/bits8.sh`（60000 个用例，未触发陷阱）。
 目标修正（46ce3a0a、200f80e1）：历史为 `BackSafeReachable`。窗口是一个堆字节块的切片；在每次调用所在的堆上以及每个回调步骤之后，每个字节对象都小于 `2^63` 字节（`BackPlatform`）；每个输入块都位于一个堆字节块中（`BackFirstChunk`、`BackPlatform`）；两次调用之间的调用者修改保持存活块的只读标志。偏差行："回调解码器窗口"、"回调解码器输入块"、平台行与"回调"。候选推广（现在不做）：让两个解码器 `inflate` 与 `inflateBack` 一起接受位于任意字节引用的输入块（调用者结构体字段、静态数据）；两者都依赖 `inflate_fast`，其入口要求原始字节块。
-组合（6f9575e7）：`inflate_back_sequence_safety_of` 由 `FastOk`（不变量上 `case LEN` 的快速路径）证明目标；剩余的是 `LEN_fast_p` 与 `fast_alias`。
+组合：`inflate_back_sequence_safety`（c7169b54）用 `lenFast_of_blk`（窗口位于堆字节块时的快速路径）组合下列引理，没有未证前提；每个历史的窗口都在这样的块中（`back_reach_window`）。较早的组合 `inflate_back_sequence_safety_of` 以前提 `FastOk`（每个窗口上的快速路径）为条件，已删除；`docs/proof/callbacks.md` 说明该前提为何没有证明。已登记，带证明变异（`tests/proof-mutants/infback-sequence.tsv`）。
 
 | 引理 | 含义 | 状态 | 小时 |
 | --- | --- | --- | ---: |
@@ -2049,15 +2047,16 @@ zlib.h 文档化的每个函数占一行。每行给出表明该调用不会出�
 | `STORED_p` | `case STORED`：长度检查以及经 `PULL` 和 `ROOM` 的复制；数据块可与窗口同属一个块 | 已检查（eec477cd） | 0 |
 | `TABLE_p` | `case TABLE`：头部、码长码、解码出的码长、三次 `inflate_table` 调用，表已安装（`TablesOk`，含解码不变量与查询稳定性），以及转入 `LEN` | 已检查（650c8931） | 0 |
 | `BitsShort` | 每轮以 `TYPE`、`TABLE`、`LEN` 开始时持有的位少于 8（`Round` 中的 `Short`）：带读入见证的查表、由 `StableQuery` 与 `PrefixQuery` 得到的 `consumed_gt`、依据 `CodeLengthContents` 的 `TABLE` 码长解码 | 已检查（57c7fabd、9e93b576） | 0 |
-| `fast_alias` | 输出位于窗口块内的 `inflate_fast`（`wnext = 0`）：`Goal.fast_safe` 的 `Env.hwin` 要求窗口块与输出块不同；计划：在 `wnext = 0` 时允许输出块，经 `Src.out`（`cpyG`）复制，精确内容引理保留不同块的情形 | 待完成 | 12 |
 | `LEN_slow_p` | 不走快速路径的 `case LEN`：字面量、块结束、带距离检查并经 `ROOM` 复制的长度/距离对、无效码 | 已检查（06e4a17d） | 0 |
-| `LEN_fast_p` | 走快速路径的 `case LEN`：`RESTORE`、`fast_alias`、`LOAD` | 待完成 | 3 |
+| `fast_env` | 在 `RESTORE` 之后由 `LEN` 处的 `PInv` 得到 `start = wsize` 的 `EnvG true`；窗口与自身的别名由 c51943af 覆盖（`EnvG true`、`inflate_fast_safe_progress`）。负责人：batch C | 已检查（c7169b54） | 0 |
+| `fast_consumes` | 在长度表满足 `LenLeavesPositive` 的 `EnvG α` 上，`inflate_fast` 严格消耗位：除非结束于 `TYPE` 或 `BAD`，有 `bits' + 8·avail_in' < bits + 8·avail_in`（路线 (a) 的度量）。负责人：batch C | 已检查（02e8c222） | 0 |
+| `LEN_fast_p` | 走快速路径的 `case LEN`：`RESTORE`、在 `fast_env` 上调用 `inflate_fast`、`LOAD`；之后的 `PInv`、度量（由 `fast_consumes`）与 `Short`。负责人：batch C | 已检查（c7169b54） | 0 |
 | `dispatch_p` | 调度的一轮：`PInv` 可达的每种模式；度量下降，或调用以三种结果之一离开；在 `LEN_fast_p` 之前快速路径是前提 `LenFast` | 已检查（650c8931） | 0 |
 | `loop_p` | 调度循环在额度内结束（由 `inputBound < 2^48` 得 `backMeasure < 2^64`） | 已检查（650c8931） | 0 |
 | `back_call` | 一次调用：入口、`loop_p`、出口（把最后的部分窗口交给 `out`，写 `next_in`、`avail_in`）：`back_call_partial`（返回的调用，任意输入）与 `back_call_total`（输入少于 `2^48`） | 已检查（3a2a8753、f91f401d） | 0 |
-| `back_null`、`back_end` | 空流；可达历史上的 `inflateBackEnd`（`back_end_public`） | 已检查（6f9575e7） | 0 |
-| `back_reach_valid` | 每个可达历史都在调用者窗口上留下有效状态（初始化、换缓冲区、使用无度量循环规则的 `back_call_partial`） | 已检查（6f9575e7） | 0 |
-| **合计** | | | **15** |
+| `back_null`、`back_end_blk` | 空流；可达历史上的 `inflateBackEnd`（`back_end_public`） | 已检查（6f9575e7、c7169b54） | 0 |
+| `back_reach_valid_blk` | 每个可达历史都在调用者窗口上留下有效状态（初始化、换缓冲区、使用无度量循环规则的 `back_call_partial`） | 已检查（6f9575e7、c7169b54） | 0 |
+| **合计** | | | **0** |
 
 #### 每个未完成公开目标的下一步
 
@@ -2124,6 +2123,7 @@ zlib.h 文档化的每个函数占一行。每行给出表明该调用不会出�
 
 - F-1，[gzread 位置溢出](findings/gzread-pos-overflow/README.md)：在 Linux 的 `/dev/zero` 上透明 `gzseek` 到 `INT64_MAX` 之后，`gzread` 使有符号的 `x.pos` 溢出。在 x86_64 Linux 上由 UBSan 确认。补丁 0004。
 - W7，[gzwrite 位置溢出](findings/gzwrite-pos-overflow/README.md)：`/dev/null` 上的透明写入者定位到 `INT64_MAX - 10` 后，`gzwrite` 使 `x.pos` 溢出（在 `INT64_MAX` 处的 `gzputc` 也是）。在 x86_64 Linux 上用真实设备由 UBSan 确认。补丁 0004。
+- [gz look COPY 越过上限](findings/gz-position-copy-overflow.md)：`gz_look` 的 COPY 分支缓冲了全部待处理输入而没有空间上限，因此在一个 gzip 成员、尾随数据和 `gzclearerr` 之后、接近 `GZ_OFF_MAX` 的读取者返回时 `x.pos + x.have` 越过该上限。已在模型中确认（`gz.position-copy-overflow-regression`）并通过阅读 C 确认；实际上无法复现（约 2^63 个解码字节）。补丁 0004，于 2026-11-13 扩展。随之的陈述变化：`GzLookSpec` 的 COPY 析取项现为 `how = COPY ∧ avail_in = 0 ∧ (x.have ≠ 0 ∨ x.pos = GZ_OFF_MAX) ∧ x.pos + x.have ≤ GZ_OFF_MAX`（原为 `how = COPY ∧ x.have ≠ 0`）；`gz_fetch` 的 `BodyPost` 允许循环在 `avail_in = 0` 的 COPY 中继续，其度量把 COPY 记为 0。
 - R-3，[x.next 从未写入](findings/gz-reset-next-uninitialised/README.md)：`gzopen` 之后立即调用的 `gzseek` 和 `gzdirect` 把从未写入的 `x.next` 前进零。按 C 标准的字面规定未定义；没有 sanitizer 报告。补丁 0005。
 - R-4，[直接读取之后 x.next 悬空](findings/gz-next-dangling-after-direct-read/README.md)：大块 `gzread` 读入调用者随后释放的缓冲区之后，`gzseek` 和 `gzdirect` 在已释放的缓冲区内把 `x.next` 前进零。按 C 标准的字面规定未定义；没有 sanitizer 报告。补丁 0005。
 

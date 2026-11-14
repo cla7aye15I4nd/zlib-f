@@ -100,7 +100,7 @@ end run
 /-- The skeleton statement `GzInv.gz_error` (branch `skeleton/gz`, `gz.skeleton-model.lean`). -/
 def GzErrorSpec : Prop :=
   ∀ {h : Heap} {i : Nat} {s : GzState}, GzInv h i s → ∀ (err : Int32) (msg : BPtr),
-    (msg = .null ∨ ∃ t, CString h msg t ∧ ∀ b, ByteRoot msg b → ¬ GzOwned h i s b) →
+    (msg = .null ∨ ∃ t, CString h msg t ∧ ∀ b, ByteRoot msg b → ¬ GzOwned h i s b) → err ≠ Z_STREAM_END →
     ∃ after s', C.run (Zlib.Gzlib.gz_error (gzSt i) err msg) h = .ok ((), after) ∧ GzInv after i s' ∧
       s' = { s with err := s'.err, msg := s'.msg } ∧ (s'.err = err ∨ (s'.err = Z_MEM_ERROR ∧ s'.msg = .null)) ∧
       Frame h after (fun b => b = i ∨ blkOf s.msg = some b) ∧
@@ -110,7 +110,7 @@ def GzErrorSpec : Prop :=
 a block owned after the call that was live before was owned before. -/
 def GzErrorOwn : Prop :=
   ∀ (h : Heap) (i : Nat) (s : GzState) (err : Int32) (msg : BPtr) (after : Heap), GzInv h i s →
-    (msg = .null ∨ ∃ t, CString h msg t ∧ ∀ b, ByteRoot msg b → ¬ GzOwned h i s b) →
+    (msg = .null ∨ ∃ t, CString h msg t ∧ ∀ b, ByteRoot msg b → ¬ GzOwned h i s b) → err ≠ Z_STREAM_END →
     C.run (Zlib.Gzlib.gz_error (gzSt i) err msg) h = .ok ((), after) →
     ∀ s', after.gzstates i = some s' → ∀ b, GzOwned after i s' b → h.live b → GzOwned h i s b
 
@@ -503,7 +503,10 @@ theorem inv_out_put {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) (hm :
       posHave := r.posHave
       againSize := r.againSize
       haveSkip := r.haveSkip
-      againEof := r.againEof }
+      againEof := r.againEof
+      errEnd := r.errEnd
+      copyIn := r.copyIn
+      msgLit := r.msgLit }
   · intro hw
     exact absurd (hm.symm.trans hw) read_ne_write
 
@@ -590,7 +593,10 @@ theorem put_push {h : Heap} {i : Nat} {s s' : GzState} (inv : GzInv h i s) (hm :
       posHave := pos3
       againSize := fun hz' => absurd (by rw [← hsize]; exact hz') hz
       haveSkip := hhs
-      againEof := fun ha he => by rw [hstrm]; exact r.againEof (by rw [← hagain]; exact ha) (by rw [← heof]; exact he) }
+      againEof := fun ha he => by rw [hstrm]; exact r.againEof (by rw [← hagain]; exact ha) (by rw [← heof]; exact he)
+      errEnd := by rw [herr]; exact r.errEnd
+      copyIn := fun hc => by rw [hstrm]; exact r.copyIn (by rw [← hhow]; exact hc)
+      msgLit := fun hz' => by rw [hstrm]; exact r.msgLit (by rw [← hsize]; exact hz') }
   · intro hw
     rw [hmode] at hw
     exact absurd (hm.symm.trans hw) read_ne_write
@@ -964,8 +970,8 @@ theorem tSkip_run (gzerr : GzErrorSpec) (gzerrOwn : GzErrorOwn) {i : Nat} {c : I
       obtain ⟨p, hp, ⟨t, ht⟩, hroot⟩ := lit_room hh
       have hmsg : p = .null ∨ ∃ t, CString hh p t ∧ ∀ b, ByteRoot p b → ¬ GzOwned hh i s3 b :=
         Or.inr ⟨t, ht, fun b hb => absurd hb (hroot b)⟩
-      obtain ⟨after, s', hrun, inv', hs', -, fr, lc⟩ := gzerr inv3 Z_DATA_ERROR p hmsg
-      have own := gzerrOwn hh i s3 Z_DATA_ERROR p after inv3 hmsg hrun s' inv'.common.record
+      obtain ⟨after, s', hrun, inv', hs', -, fr, lc⟩ := gzerr inv3 Z_DATA_ERROR p hmsg (by decide)
+      have own := gzerrOwn hh i s3 Z_DATA_ERROR p after inv3 hmsg (by decide) hrun s' inv'.common.record
       have hrun' : Zlib.Gzlib.gz_error (some (.tab i)) Z_DATA_ERROR p hh = .ok ((), after) := hrun
       refine RunSafe.bind_lift hp (RunSafe.bind_lift hrun' (RunSafe.pure' ?_))
       exact Eff.trans e inv3 (post_of_gz_error inv3 inv' hs' fr lc own e.2.1) (fun _ => Iff.rfl)
@@ -1072,7 +1078,7 @@ theorem again_step {h : Heap} {i : Nat} {s : GzState} {fs : Fs} (u : GzInvUpToSk
       GzPost h i s [] fs (setS (freeStr h s.msg) i { s with msg := .null, err := Z_OK }) GzInvUpToSkip := by
   obtain ⟨hs, inv, hp, hbd⟩ := u
   have r := inv.reader hm
-  obtain ⟨inv', hown', hlive', -⟩ := inv.clear_message (clearSkip s).eof (clearSkip s).past Z_OK
+  obtain ⟨inv', hown', hlive', -⟩ := inv.clear_message (clearSkip s).eof (clearSkip s).past Z_OK (by decide)
     (fun _ => ⟨r.flags.1, r.flags.2.1, r.againEof⟩)
   have hs2 : (setS (freeStr h s.msg) i { s with msg := .null, err := Z_OK }).gzstates i =
       some { s with msg := .null, err := Z_OK } := setS_gz_same _ _ _
@@ -1333,7 +1339,7 @@ theorem getc_buffered {i : Nat} {h : Heap} {s : GzState} {fs fs1 : Fs} {h1 : Hea
       fun hz => (r.unalloc hz).2.2.1, r.againSize,
       by show (Int64.ofInt (s1.x.pos.toInt + 1)).toInt + ((s1.x.have - 1).toNat : Int) ≤ _; rw [hpos, hhv]; omega,
       fun _ => hsk0, r.againEof⟩)
-    (fun hw => absurd (hm1.symm.trans hw) read_ne_write)
+    (fun hw => absurd (hm1.symm.trans hw) read_ne_write) (fun hm => (inv1.reader hm).copyIn)
   exact Eff.trans e inv1 (rec_step inv1 inv2 ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩ rfl e.2.1)
     (fun _ => Iff.rfl)
 
@@ -1555,8 +1561,8 @@ theorem gzgetc_step_of (read : GzReadSpec) (gzerr : GzErrorSpec) (gzerrOwn : GzE
     refine RunSafe.ite (fun _ => RunSafe.pure' (Eff.refl inv hfs)) (fun _ => ?_)
     dsimp only
     refine RunSafe.ite (fun _ => ?_) (fun _ => gTail_run read (Eff.refl inv hfs) inv hm' rfl)
-    obtain ⟨after, s2, hrun, inv2, hs2, -, fr, lc⟩ := gzerr inv Z_OK .null (Or.inl rfl)
-    have own := gzerrOwn h i s Z_OK .null after inv (Or.inl rfl) hrun s2 inv2.common.record
+    obtain ⟨after, s2, hrun, inv2, hs2, -, fr, lc⟩ := gzerr inv Z_OK .null (Or.inl rfl) (by decide)
+    have own := gzerrOwn h i s Z_OK .null after inv (Or.inl rfl) (by decide) hrun s2 inv2.common.record
     have hrun' : Zlib.Gzlib.gz_error (some (.tab i)) Z_OK .null h = .ok ((), after) := hrun
     refine RunSafe.bind_lift hrun' ?_
     have e2 := Eff.trans (Eff.refl inv hfs) inv (post_of_gz_error inv inv2 hs2 fr lc own hfs) (fun _ => Iff.rfl)

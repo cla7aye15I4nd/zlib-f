@@ -138,6 +138,7 @@ import ZlibF.Proof.«inflate.c.copy-public»
 import ZlibF.Proof.«public-inflate-copy»
 import ZlibF.Proof.«public-deflate-copy»
 import ZlibF.Proof.«public-stream-refusal»
+import ZlibF.Proof.«public-gz-refusal»
 import ZlibF.Proof.«inflate.c.leave-ret-codes»
 import ZlibF.Proof.«inflate.c.default-view-construction-rank»
 import ZlibF.Proof.«inflate.c.fast-view-dispatch-rank»
@@ -967,6 +968,7 @@ import ZlibF.Proof.«gzwrite.c.borrowed-error-refusal-entry»
 import ZlibF.Proof.«gzwrite.c.borrowed-error-regression»
 import ZlibF.Proof.«gzwrite.c.printf-oracle-regression»
 import ZlibF.Proof.«gz.position-overflow-regression»
+import ZlibF.Proof.«gz.position-copy-overflow-regression»
 import ZlibF.Proof.«gzwrite.c.comp-errno-output»
 import ZlibF.Proof.«inflate.c.borrow-stable-dispatch-fast»
 import ZlibF.Proof.«inflate.c.borrow-stable-dispatch-macros»
@@ -1186,6 +1188,8 @@ import ZlibF.Proof.«infback.c.safety-len»
 import ZlibF.Proof.«infback.c.safety-dispatch»
 import ZlibF.Proof.«infback.c.safety-call»
 import ZlibF.Proof.«infback.c.safety-reach»
+import ZlibF.Proof.«inffast.c.consume»
+import ZlibF.Proof.«infback.c.safety-fast»
 import ZlibF.Proof.«inflate.c.completes-reachable»
 import ZlibF.Proof.«inflate.c.len-end-drops»
 
@@ -1679,7 +1683,9 @@ import ZlibF.Proof.«gz.inv-model»
 import ZlibF.Proof.«gz.inv-put-scalars»
 import ZlibF.Proof.«gzread.c.skip-have»
 import ZlibF.Proof.«gzread.c.skip-gets»
+import ZlibF.Proof.«gzread.c.skip-fetch»
 import ZlibF.Proof.«gzread.c.getc-ungetc»
+import ZlibF.Proof.«gzread.c.fread»
 import ZlibF.Proof.«gz.inv-queries»
 import ZlibF.Proof.«gz.inv-frame»
 import ZlibF.Proof.«gz.record-free»
@@ -1695,8 +1701,17 @@ import ZlibF.Proof.«gz.read-fetch-specs»
 import ZlibF.Proof.«gz.read-budget»
 import ZlibF.Proof.«gz.read-fetch»
 import ZlibF.Proof.«gz.read-look»
+import ZlibF.Proof.«gz.read-read»
+import ZlibF.Proof.«gz.read-gzread»
+import ZlibF.Proof.«gz.read-assembly»
 import ZlibF.Proof.«gz.read-close»
 import ZlibF.Proof.«gz.read-decomp»
+import ZlibF.Proof.«inflate.c.head-uses-input»
+import ZlibF.Proof.«inflate.c.stuck-no-output»
+import ZlibF.Proof.«gz.read-leaf-common»
+import ZlibF.Proof.«gz.read-getc-step»
+import ZlibF.Proof.«gz.read-direct-step»
+import ZlibF.Proof.«gz.read-gets-step»
 import ZlibF.Proof.«gzwrite.c.upto-input»
 import ZlibF.Proof.«gzwrite.c.comp»
 import ZlibF.Proof.«gzwrite.c.zero»
@@ -1719,6 +1734,7 @@ import ZlibF.Proof.«gz.inv-open-path»
 import ZlibF.Proof.«gz.inv-open-fd»
 import ZlibF.Proof.«gz.inv-open-fresh»
 import ZlibF.Proof.«gz.sequence-safety»
+import ZlibF.Proof.«public-gz-sequence-nonvacuity»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.

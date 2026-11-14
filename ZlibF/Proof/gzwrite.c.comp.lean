@@ -1841,7 +1841,7 @@ theorem err_tail (err : GzErrorSpec) (errOwn : GzErrorOwn) {h0 h : Heap} {s0 s :
     rcases U.2.2.2.2 with hin | ⟨⟨xs, hb⟩, -⟩
     · exact Or.inl hin
     · exact Or.inr (fun b hr => root_live_of_bytes hb hr)
-  obtain ⟨h2, s2, run, W2, e2, fr, lc, own⟩ := gz_error_upToInputWeak err errOwn W Z_ERRNO _ hmsg hlive
+  obtain ⟨h2, s2, run, W2, e2, fr, lc, own⟩ := gz_error_upToInputWeak err errOwn W Z_ERRNO _ hmsg (by decide) hlive
   obtain ⟨m1o, -, hc⟩ := weak_facts W
   obtain ⟨m2o, o2l, -⟩ := weak_facts W2
   exact ⟨h2, run, post_of_error (K.borrow _) own0 U.1 W2.1 e2 fr lc own m1o m2o o2l hc hfs
@@ -2311,7 +2311,7 @@ theorem comp_rest (err : GzErrorSpec) (errOwn : GzErrorOwn) {h0 H after : Heap} 
     have W : GzInvUpToInput after i s' src := S'.up
     obtain ⟨t, ct⟩ := corrupt_cstring after hk'
     obtain ⟨h2, s2, run2, U2, e2, fr, lc, own⟩ := gz_error_upToInput err errOwn W Z_STREAM_ERROR
-      (.ref (.str k) 0) (Or.inr ⟨t, ct, fun b hb => by simp [ByteRoot] at hb⟩)
+      (.ref (.str k) 0) (Or.inr ⟨t, ct, fun b hb => by simp [ByteRoot] at hb⟩) (by decide)
     have run2' : Zlib.Gzlib.gz_error (gzSt i) Z_STREAM_ERROR (.ref (.str k) 0) after = .ok ((), h2) := run2
     have weak : ∀ {h : Heap} {v : GzState}, GzInvUpToInput h i v src → GzInvUpToInputWeak h i v src :=
       fun U => ⟨U.1, U.2.1, U.2.2.1, U.2.2.2.1, U.2.2.2.2.imp id (fun y => y.2)⟩

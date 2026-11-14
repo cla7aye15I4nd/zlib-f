@@ -102,6 +102,7 @@ theorem gzrewind_inv {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) {fs 
         Or.inl rfl, Or.inl rfl, Or.inl rfl, fun _ => rfl, fun _ => rfl,
         by show (0 : Int64).toInt + ((0 : UInt32).toNat : Int) ≤ 9223372036854775807; decide,
         fun hz => absurd rfl hz, fun he => absurd rfl he⟩
+      (fun hc => absurd hc (by show ¬ (LOOK = GZ_COPY); decide))
     exact post_gen inv hfs' hk hr inv1 rfl rfl _ inv.msg_owned own1 live1 fr1
 
 /-- `gzrewind`, from `rewind_public` restated to `GzInv` (`lseek` M3, `gz_reset`: local patch for R-3). -/

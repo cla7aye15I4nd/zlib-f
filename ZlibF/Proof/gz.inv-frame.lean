@@ -11,7 +11,8 @@ import ZlibF.Proof.PlatformMemory
 (`Shape`), and the global facts hold of the new heap, the invariant holds of the new heap with the same record,
 and the handle owns the same blocks. `GzInv.byte_put` instantiates it for one store into a byte view the handle
 does not own. `gzerror_step` (skeleton statement, unchanged) follows: `gzerror` stores the code into the
-caller's 4-byte cell and changes nothing else.
+caller's 4-byte cell and changes nothing else. `gzerror_string`: the pointer it returns is a C string in the
+heap after the call (a literal, or the handle's message, which `GzInv` holds after the store).
 -/
 
 namespace ZlibF.Spec.Public
@@ -273,7 +274,10 @@ theorem GzInv.frame_core (inv : GzInv h i s) (fr : Frame h after (fun b => ¬ Gz
       posHave := r.posHave
       againSize := r.againSize
       haveSkip := r.haveSkip
-      againEof := r.againEof }
+      againEof := r.againEof
+      errEnd := r.errEnd
+      copyIn := r.copyIn
+      msgLit := r.msgLit }
   · intro hm
     have w := inv.writer hm
     exact {
@@ -487,5 +491,92 @@ theorem gzerror_step (i : Nat) (errnum : BPtr) : GzCallSafe i (.gzerror (some (.
       simp only [arr]
       rw [← ZlibF.Spec.Public.GzErrorProof.set_four_slice a off hfit]
       simp [Array.set!_eq_setIfInBounds, Array.getElem?_setIfInBounds, h0, h1, h2, h3]
+
+/-- A literal of the sources whose bytes before the NUL contain no NUL is a C string. -/
+theorem strTable_cstring (h : Heap) {j : Nat} {t : String} (hj : strTable[j]? = some t) (xs : List UInt8)
+    (hb : strBytes t = (xs ++ [0]).toArray) (h0 : 0 ∉ xs) (hlen : xs.length < 2 ^ 64) :
+    CString h (.ref (.str j) 0) xs := by
+  have bound : j < strTable.size := by
+    by_cases inside : j < strTable.size
+    · exact inside
+    · have missing : strTable[j]? = none := Array.getElem?_eq_none (by omega)
+      rw [missing] at hj
+      cases hj
+  have hg : Space.get h (BRef.str j) = some (xs ++ [0]).toArray := by
+    change staticStringBytes h j = _
+    rw [staticStringBytes, if_pos bound, hj, ← hb]
+    rfl
+  have e : List.take (xs.length + 1) (xs ++ [0]) = xs ++ [0] := List.take_of_length_le (by simp)
+  exact ⟨Or.inr ⟨.str j, 0, _, rfl, hg, by simp, by simpa using e.symm⟩, h0, hlen⟩
+
+/-- The text `gzerror` returns on a handle in `GzInv` is a C string: `"out of memory"`, `""` or the handle's
+message. -/
+theorem errorMessage_cstring {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) :
+    ∃ q, ZlibF.Spec.Public.GzErrorProof.errorMessage s h = .ok (q, h) ∧ ∃ t, CString h q t := by
+  obtain ⟨q, hq, hdesc⟩ := ZlibF.Spec.Public.GzErrorProof.errorMessage_run h s
+  refine ⟨q, hq, ?_⟩
+  by_cases he : s.err = Z_MEM_ERROR
+  · simp only [he, ite_true] at hdesc
+    obtain ⟨j, rfl, hj⟩ := hdesc
+    exact ⟨_, strTable_cstring h hj [111, 117, 116, 32, 111, 102, 32, 109, 101, 109, 111, 114, 121]
+      (by decide +kernel) (by decide) (by decide)⟩
+  · simp only [he, ite_false] at hdesc
+    by_cases hn : s.msg = .null
+    · simp only [hn, ite_true] at hdesc
+      obtain ⟨j, rfl, hj⟩ := hdesc
+      exact ⟨_, strTable_cstring h hj [] (by decide +kernel) (by decide) (by decide)⟩
+    · simp only [hn, ite_false] at hdesc
+      subst hdesc
+      rcases inv.common.msg with h0 | ⟨m, hm, _⟩
+      · exact absurd h0 hn
+      · exact ⟨m, hm⟩
+
+/-- **`gzerror` returns a readable string**: when the call on a handle in `GzInv` returns, its result is a
+NUL-terminated string in the heap after the call (a literal, or the handle's message, which the store into
+`errnum` does not touch). -/
+theorem gzerror_string {i : Nat} {errnum : BPtr} {h after : Heap} {fs fs' : Fs} {s : GzState} {value : BPtr}
+    (inv : GzInv h i s) (ha : GzArguments h i s (.gzerror (some (.in_gzstate_x i)) errnum))
+    (e : (Call.gzerror (some (.in_gzstate_x i)) errnum).execute fs h = .ok ((value, fs'), after)) :
+    ∃ t, CString after value t := by
+  have hs := inv.common.record
+  have hm := inv.common.mode
+  have split := ZlibF.Spec.Public.GzErrorProof.gzerror_split hs hm errnum
+  rcases ha with hn | hrange
+  · subst hn
+    obtain ⟨q, hq, hc⟩ := errorMessage_cstring inv
+    have r : Zlib.Gzlib.gzerror (some (.in_gzstate_x i)) .null h = .ok (q, h) := by
+      change Zlib.Gzlib.gzerror (Zlib.Gzlib.Spec.hnd i) .null h = .ok (q, h)
+      rw [split]
+      simpa using hq
+    have e' : Call.execute (.gzerror (some (.in_gzstate_x i)) .null) fs h = .ok ((q, fs), h) := by
+      show heapCall _ fs h = _
+      simp only [heapCall, r]
+    rw [e'] at e
+    cases e
+    exact hc
+  · rcases hrange with h0 | ⟨_, hw, hnot⟩
+    · exact absurd h0 (by decide)
+    rcases hw rfl with ⟨_, h0⟩ | ⟨r, off, a, rfl, hg, hro, hfit⟩
+    · exact absurd h0 (by decide)
+    let arr : Array UInt8 := a.extract 0 off ++ #[s.err.toUInt32.toUInt8, (s.err.toUInt32 >>> 8).toUInt8,
+      (s.err.toUInt32 >>> 16).toUInt8, (s.err.toUInt32 >>> 24).toUInt8] ++ a.extract (off + 4) a.size
+    have hstore : store32 (.ref r off) s.err h = .ok ((), Space.put h r arr) :=
+      ZlibF.Spec.Public.GzErrorProof.store32_slice_run hg hro hfit s.err
+    have hmin : min off a.size = off := Nat.min_eq_left (by omega)
+    have hsz : arr.size = a.size := by
+      simp [arr, hmin] <;> omega
+    obtain ⟨inv', _, _⟩ := inv.byte_put hg hro hsz hnot
+    obtain ⟨q, hq, hc⟩ := errorMessage_cstring inv'
+    have run : Zlib.Gzlib.gzerror (some (.in_gzstate_x i)) (.ref r off) h = .ok (q, Space.put h r arr) := by
+      change Zlib.Gzlib.gzerror (Zlib.Gzlib.Spec.hnd i) (.ref r off) h = _
+      rw [split]
+      simp [bind_app, hstore, hq]
+    have e' : Call.execute (.gzerror (some (.in_gzstate_x i)) (.ref r off)) fs h =
+        .ok ((q, fs), Space.put h r arr) := by
+      show heapCall _ fs h = _
+      simp only [heapCall, run]
+    rw [e'] at e
+    cases e
+    exact hc
 
 end ZlibF.Spec.Public.GzSkeleton

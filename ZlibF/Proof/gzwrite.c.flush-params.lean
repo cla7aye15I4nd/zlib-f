@@ -381,6 +381,7 @@ theorem setTail_ok {h0 : Heap} {s0 : GzState} {fs0 fs : Fs} {H : Heap} {v : GzSt
   have inv' : GzInv (putGz H i { v with level, strategy }) i { v with level, strategy } :=
     GzInv.put_scalars inv ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩ ⟨c.want.1, c.want.2, Or.inr rfl⟩ c.pos
       (Nat.le_refl _) (fun hr => absurd (hw.symm.trans hr) (by decide)) (fun _ => w.reset)
+      (fun hr => absurd (hw.symm.trans hr) (by decide))
   have P := post_put (P := GzInv) (fs := fs) (v := { v with level, strategy }) hs c.live E.2.1
     (owned_rec (v := { v with level, strategy }) hs rfl rfl rfl rfl rfl rfl rfl rfl) rfl rfl inv'
   have hU : updS (gzSt i) (fun s => { s with level, strategy }) H = .ok ((), putGz H i { v with level, strategy }) :=

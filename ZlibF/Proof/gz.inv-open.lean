@@ -288,7 +288,7 @@ theorem open_inv {h : Heap} {i pb : Nat} {s : GzState} {mode : Api.GzMode} {leve
     (hdir : s.direct = -1 ∨ s.direct = 0 ∨ s.direct = 1)
     (hwdir : s.mode = GZ_WRITE → s.direct = 0 ∨ s.direct = 1) : GzInv h i s := by
   obtain ⟨⟨hrec, hm, hfresh, huniq, hglob, hpathx, hmsgx, hmemerr, hw8, hw31, -, -⟩,
-    hmode, -, -, -, -, -, hsize, -, -, hmsg, hhave, hpos, hpast, hagain, hskip, havail, hread⟩ := ho
+    hmode, -, -, -, -, -, hsize, -, herrO, hmsg, hhave, hpos, hpast, hagain, hskip, havail, hread⟩ := ho
   have nso : ∀ b, ¬ StreamOwned h (gzStrm i) b := noCodec_owned hrec hstate
   have hown : ownedPtrs s = [.ref (.blk pb) 0, .null] := by
     simp [ownedPtrs, hsize, hpath, hmsg]
@@ -359,7 +359,10 @@ theorem open_inv {h : Heap} {i pb : Nat} {s : GzState} {mode : Api.GzMode} {leve
         posHave := by simp [hpos, hhave]
         againSize := fun _ => hagain
         haveSkip := fun _ => hskip
-        againEof := fun ha => absurd hagain ha }
+        againEof := fun ha => absurd hagain ha
+        errEnd := by rw [herrO]; decide
+        copyIn := fun hc => absurd (hhow.symm.trans hc) (by decide)
+        msgLit := fun hs => absurd hsize hs }
   · exact
       { have0 := hhave
         direct := hwdir hw

@@ -1,8 +1,8 @@
 diff --git a/gzread.c b/gzread.c
 --- a/gzread.c
 +++ b/gzread.c
-@@ -246,6 +246,14 @@ local int gz_decomp(gz_statep state) {
-     return ret != Z_OK ? -1 : 0;
+@@ -81,6 +81,14 @@ local int gz_avail(gz_statep state) {
+     return 0;
  }
  
 +/* Return max, or less if delivering max more bytes would overflow the
@@ -13,10 +13,21 @@ diff --git a/gzread.c b/gzread.c
 +    return max;
 +}
 +
- /* Fetch data and put it in the output buffer.  Assumes state->x.have is 0.
-    Data is either copied from the input file or decompressed from the input
-    file depending on state->how.  If state->how is LOOK, then a gzip header is
-@@ -253,6 +261,7 @@ local int gz_decomp(gz_statep state) {
+ /* Look for gzip header, set up for inflate or copy.  state->x.have must be 0.
+    If this is the first time in, allocate required memory.  state->how will be
+    left unchanged if there is no more input data available, will be set to COPY
+@@ -170,7 +178,9 @@ local int gz_look(gz_statep state) {
+        space for gzungetc() */
+     state->x.next = state->out;
+     memcpy(state->x.next, strm->next_in, strm->avail_in);
+-    state->x.have = strm->avail_in;
++    state->x.have = gz_room(state, strm->avail_in);
++    if (state->x.have < strm->avail_in)     /* data past the largest position */
++        gz_error(state, Z_DATA_ERROR, "position overflow");
+     strm->avail_in = 0;
+     state->how = COPY;
+     return 0;
+@@ -253,6 +263,7 @@ local int gz_fetch(gz_statep state) {
     otherwise 0.  gz_fetch() will leave state->how as COPY or GZIP unless the
     end of the input file has been reached and all data has been processed.  */
  local int gz_fetch(gz_statep state) {
@@ -24,7 +35,7 @@ diff --git a/gzread.c b/gzread.c
      z_streamp strm = &(state->strm);
  
      /* after a serious error, only what is already in the output buffer is
-@@ -269,13 +278,17 @@ local int gz_fetch(gz_statep state) {
+@@ -269,13 +280,17 @@ local int gz_fetch(gz_statep state) {
                  return 0;
              break;
          case COPY:      /* -> COPY */
@@ -44,7 +55,7 @@ diff --git a/gzread.c b/gzread.c
              strm->next_out = state->out;
              if (gz_decomp(state) == -1)
                  return -1;
-@@ -362,6 +375,14 @@ local z_size_t gz_read(gz_statep state, voidp buf, z_size_t len) {
+@@ -362,6 +377,14 @@ local z_size_t gz_read(gz_statep state, voidp buf, z_size_t len) {
          if (n > len)
              n = (unsigned)len;
  
@@ -59,7 +70,7 @@ diff --git a/gzread.c b/gzread.c
          /* first just try copying data from the output buffer */
          if (state->x.have) {
              if (state->x.have < n)
-@@ -658,6 +679,12 @@ char * ZEXPORT gzgets(gzFile file, char *buf, int len) {
+@@ -658,6 +681,12 @@ char * ZEXPORT gzgets(gzFile file, char *buf, int len) {
  
          /* look for end-of-line in current output buffer */
          n = state->x.have > left ? left : state->x.have;
