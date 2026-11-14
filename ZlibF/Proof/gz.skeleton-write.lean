@@ -31,7 +31,7 @@ def GzInvUpToInput (h : Heap) (i : Nat) (s : GzState) (src : Region) : Prop :=
   h.gzstates i = some s ∧ GzInv (putGz h i (clearIn s)) i (clearIn s) ∧ s.mode = GZ_WRITE ∧
   ((s.strm.next_in = .null ∧ s.strm.avail_in = 0) ∨
     ∃ a, s.strm.next_in = padv src.pointer a ∧ a + s.strm.avail_in.toNat ≤ src.length) ∧
-  (src.pointer = s.«in» ∧ src.length = s.size.toNat ∨
+  (src.pointer = s.«in» ∧ src.length ≤ 2 * s.size.toNat ∨
     (∃ xs, Bytes h src.pointer src.length xs) ∧ ∀ b, ByteRoot src.pointer b → ¬ GzOwned h i s b)
 
 /-- `GzInvUpToInput` without the readability of a caller region: what holds after `gz_comp` fails. A failed write
@@ -42,7 +42,7 @@ def GzInvUpToInputWeak (h : Heap) (i : Nat) (s : GzState) (src : Region) : Prop 
   h.gzstates i = some s ∧ GzInv (putGz h i (clearIn s)) i (clearIn s) ∧ s.mode = GZ_WRITE ∧
   ((s.strm.next_in = .null ∧ s.strm.avail_in = 0) ∨
     ∃ a, s.strm.next_in = padv src.pointer a ∧ a + s.strm.avail_in.toNat ≤ src.length) ∧
-  (src.pointer = s.«in» ∧ src.length = s.size.toNat ∨ ∀ b, ByteRoot src.pointer b → ¬ GzOwned h i s b)
+  (src.pointer = s.«in» ∧ src.length ≤ 2 * s.size.toNat ∨ ∀ b, ByteRoot src.pointer b → ¬ GzOwned h i s b)
 
 /-! ## Deflate quiescence (a functional fact of deflate a safety proof needs: in scope) -/
 
