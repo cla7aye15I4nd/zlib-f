@@ -29,6 +29,45 @@ GROUPS = {'queries': 'Library queries', 'checksums': 'Checksums', 'addresses': '
 STATUSES = {'registered': 'Registered proof', 'local': 'Locally checked',
             'open': 'Not proved', 'blocked': 'Blocked'}
 
+# The Chinese twin docs/progress.zh.md carries the same generated region. It is written from the same
+# graph, with these fixed phrases, so a regeneration updates both pages (the documentation site needs
+# every target anchor on both).
+GROUPS_ZH = {'queries': '库信息查询', 'checksums': '校验和', 'addresses': '字节地址模型', 'inflate': '解压流',
+             'fast': '快速解码器的证明义务', 'tables': '解码表的证明义务', 'copy': '回引用复制',
+             'deflate': '压缩流', 'back': '回调解码', 'gzip': 'gzip 文件', 'buffers': '完整缓冲区操作',
+             'models': '格式与 API 模型', 'lifecycle': '生命周期与调用序列', 'internal': '内部证明义务'}
+STATUSES_ZH = {'registered': '已登记证明', 'local': '本地已检查', 'open': '未证明', 'blocked': '存在阻碍'}
+COVERAGE_ZH = {'unproved': '未证明', 'default': '默认输入', 'common': '常见输入', 'all': '陈述所允许的全部输入'}
+FAMILIES_ZH = {'runtime object and arithmetic lemmas': '运行时对象与算术引理', 'heap-free mathematics': '不涉及堆的数学证明',
+               'format-model lemmas': '格式模型引理', 'API-model lemmas': 'API 模型引理', 'specification lemmas': '规格引理',
+               'api-model proofs': 'API 模型证明', 'format proofs': '格式证明',
+               'deflate construction proofs': 'deflate 状态构造证明', 'deflate entry composition': 'deflate 入口组合证明',
+               'inflate entry composition': 'inflate 入口组合证明', 'public entry composition': '公开入口组合证明',
+               'inflate mode and exit proofs': 'inflate 模式与退出证明', 'inflate storage and bit proofs': 'inflate 存储与读位证明',
+               'deflate window and match proofs': 'deflate 窗口与匹配证明', 'deflate lifecycle proofs': 'deflate 生命周期证明',
+               'tree construction and emission proofs': '编码树构造与输出证明', 'ByteAddress proofs': 'ByteAddress 字节地址模型证明'}
+
+
+def family_zh(label):
+    if label in FAMILIES_ZH: return FAMILIES_ZH[label]
+    return re.sub(r'^(.*) proofs$', r'\1 的证明', label)
+
+
+def read_readiness_zh():
+    """Chinese readiness labels by anchor, from the twin's own readiness table (absent: English kept)."""
+    path = ROOT / 'docs/progress.zh.md'
+    if not path.is_file(): return {}
+    text = path.read_text()
+    start, end = '<!-- proof-readiness:start -->', '<!-- proof-readiness:end -->'
+    if text.count(start) != 1 or text.count(end) != 1: return {}
+    labels = {}
+    for line in text.split(start, 1)[1].split(end, 1)[0].splitlines():
+        if not line.startswith('| `'): continue
+        cells = [cell.strip() for cell in line.strip('|').split('|')]
+        anchors = re.findall(r'<a id="(readiness-[a-z0-9-]+)"></a>', cells[-1])
+        if len(cells) == 3 and anchors: labels[anchors[0]] = cells[1]
+    return labels
+
 def github_repository(remote):
     name = re.sub(r'^(?:git@github\.com:|ssh://git@github\.com/|https://github\.com/)', '', remote.strip())
     name = name.removesuffix('/').removesuffix('.git')
@@ -279,8 +318,8 @@ def support_family(path):
     stem = Path(path).stem
     if '/Runtime/' in path: return 'runtime object and arithmetic lemmas'
     if '/Math/' in path: return 'heap-free mathematics'
-    if '/Spec/Format/' in path: return 'format-model lemmas'
-    if '/Spec/Api/' in path: return 'API-model lemmas'
+    if '/Spec/Functional/Format/' in path or '/Spec/Format/' in path: return 'format-model lemmas'
+    if '/Spec/Functional/Api/' in path or '/Spec/Api/' in path: return 'API-model lemmas'
     if '/Spec/' in path: return 'specification lemmas'
     if '/Proof/Api/' in path: return 'api-model proofs'
     if '/Proof/Format/' in path: return 'format proofs'
@@ -453,12 +492,12 @@ def mermaid(graph):
 START = '<!-- proof-progress:start -->'
 END = '<!-- proof-progress:end -->'
 
-def blocker_index(graph, page='progress.md'):
+def blocker_index(graph, page='progress.md', zh=False):
     groups = defaultdict(list)
     for node in graph['nodes']:
         if node['blocker']: groups[(node['blocker']['anchor'], node['blocker']['title'])].append(node)
-    if not groups: return 'No documented blockers in this snapshot.'
-    lines = ['| Blocked targets | Reason and next step |', '| --- | --- |']
+    if not groups: return '这一快照中没有记录在案的阻碍。' if zh else 'No documented blockers in this snapshot.'
+    lines = ['| 存在阻碍的目标 | 原因与下一步 |' if zh else '| Blocked targets | Reason and next step |', '| --- | --- |']
     for (anchor, title), nodes in sorted(groups.items()):
         targets = ', '.join(f'[{n["label"]}](./{page}#{target_anchor(n)})' for n in nodes)
         lines.append(f'| {targets} | [{title}](./progress.md#{anchor}) |')
@@ -556,10 +595,140 @@ allows: [No-fault coverage of zlib.h functions](#no-fault-coverage-of-zlibh-func
 
 Regenerate after proof or registry changes. The generator builds and inspects
 exact compiled theorem types. It never changes a proof, target or registry.
+It writes this region of this page and of its Chinese twin `docs/progress.zh.md`.
 Acceptance remains subject to [checking](checking/README.md).
 The view is stale only when what it shows changes: a target, a registration, a proof status, a
 link or a line anchor. Its links keep the revision they were generated at until then.
 """
+
+def detail_page_zh(graph):
+    """The evidence index of `detail_page` for the Chinese twin: the same rows, anchors and links."""
+    readiness_zh = read_readiness_zh()
+    rows = []
+    for key, title in GROUPS_ZH.items():
+        members = [n for n in graph['nodes'] if n['group'] == key]
+        if not members: continue
+        rows += [f'<a id="group-{key}"></a>', '', f'## {title}', '',
+                 '| 目标陈述 | 覆盖范围／证据状态 | 契约／输入范围 | 证明证据 | 已审查的后续工作 |',
+                 '| --- | --- | --- | --- | --- |']
+        for node in members:
+            source = '../' + node['source'] + (f"#L{node['line']}" if node['line'] else '')
+            label = f'<a id="{target_anchor(node)}"></a>[{node["label"]}]({source})'
+            evidence = '; '.join(f"[{p['name']}](../{p['source']}" +
+                (f"#L{p['line']}" if p.get('line') else '') + ')' for p in node['proofs']) or '—'
+            if node['candidates']:
+                evidence = '未检查的源码：' + '; '.join(f"[{p['name']}](../{p['source']}#L{p['line']})" for p in node['candidates'])
+            if node['blocker']:
+                evidence += f' [阻碍：{node["blocker"]["title"]}](progress.md#{node["blocker"]["anchor"]})'
+            contract = f'[契约](../{node["manual"]})' if node['manual'] else '确切目标陈述'
+            contract += f'; [输入范围](spec/input-configurations.md#{input_family(node)}-inputs)'
+            work = node.get('readiness')
+            if work and node['status'] in {'open', 'blocked'}:
+                next_work = f"[{readiness_zh.get(work['anchor'], work['label'])}](progress.md#{work['anchor']})"
+            else:
+                next_work = '前置义务尚未审查' if node['status'] == 'open' else '—'
+            coverage = COVERAGE_ZH[coverage_level(node)] + ' / ' + STATUSES_ZH[node['status']]
+            rows.append(f'| {label} | {coverage} | {contract} | {evidence} | {next_work} |')
+        rows.append('')
+    relations = []
+    labels = {n['id']: n['label'] for n in graph['nodes']}
+    for kind, title, explanation in [
+        ('proof', '已观察到的证明依赖', '左列是被复用的来源目标，右列是使用它的目标。右列目标的定理实际使用了左列目标的证明。'),
+        ('call', 'C 函数调用', '右列目标对应的实现调用左列入口。这种调用关系不意味着，证明时必须把左列入口的完整契约作为前提。'),
+        ('definition', '规格中的引用', '右列目标的定义引用左列目标或实现。这里记录的是定义中的引用，不是证明依赖。')]:
+        relations += [f'## {title}', '', explanation, '', '| 来源 | 目标 |', '| --- | --- |']
+        for e in graph['edges']:
+            if e['kind'] == kind:
+                relations.append(f'| [{labels[e["from"]]}](#'+target_anchor({'id':e['from']})+f') | [{labels[e["to"]]}](#'+target_anchor({'id':e['to']})+') |')
+        if not any(e['kind'] == kind for e in graph['edges']):
+            relations.append('这一快照中没有观察到固定目标之间的这类引用。')
+        relations.append('')
+    support = graph.get('proofSupport', {'nodes': [], 'edges': []})
+    family_labels = {row['id']: family_zh(row['id']) for row in support['nodes']}
+    all_labels = {**labels, **family_labels}
+    relations += ['## 辅助证明的引用关系', '',
+        '这里把已观察到的定理引用按来源类别分组。一个分组不表示对应文件已经整体证明。',
+        '本表保留分组之间的全部直接连接，包括总览图为简化显示而省去的箭头。', '',
+        '| 辅助证明来源 | 直接引用它的目标 |', '| --- | --- |']
+    for source in sorted({a for a,b in support['edges']}):
+        destinations = ', '.join(all_labels[b] for a,b in support['edges'] if a == source)
+        relations.append(f'| {all_labels[source]} | {destinations} |')
+    relations.append('')
+    auxiliary = ['## 其他已登记定理', '',
+                 '这些声明是已经登记的辅助执行结果、引理或见证。',
+                 '它们不是额外的固定目标，也不能单凭这些声明就为调用者标记某种输入覆盖状态。', '',
+                 '| 声明 | 被固定目标的证明使用 |', '| --- | --- |']
+    for proof in graph.get('auxiliary', []):
+        source = '../' + proof['source'] + (f"#L{proof['line']}" if proof['line'] else '')
+        users = ', '.join(f'[{labels[name]}](#'+target_anchor({'id':name})+')' for name in proof['usedBy']) or '未记录到固定目标的组合关系'
+        auxiliary.append(f'| [{proof["name"]}]({source}) | {users} |')
+    return f"""## 目标证据
+
+<!-- proof-link-revision: {graph['links']['revision']} -->
+
+[证明讲解](overview.md) · [全部目标图](#proof-progress-graph) · [输入配置](spec/input-configurations.md)
+
+本索引包含 **{len(graph['nodes'])} 个固定目标**，分为公开接口执行、调用序列、初始化、实现层义务和抽象模型。每个目标分别列出输入范围、登记情况、证明正文和剩余工作。
+抽象模型研究输入输出的数学关系；实现目标还要证明真实执行符合这些关系。一个本地证明完成后，仍需登记，并在具体提交上通过 CI 验收。所有证明都保留命题中写明的前置条件。
+依赖区展示记录中已经建立的联系。未完成目标还需要哪些证明，见本页后面的具体工作清单。出现不允许的公理时，生成过程会停止。
+
+## 状态说明
+
+<a id="status-registered"></a>已登记证明：存在精确覆盖该目标、经过检查且列入登记表的定理。
+<a id="status-local"></a>本地已检查：存在精确覆盖该目标的定理，但尚未列入登记表。
+<a id="status-open"></a>未证明：还没有精确覆盖该目标的定理。
+<a id="status-blocked"></a>存在阻碍：已有文档记录影响该目标的具体障碍。
+输入覆盖范围单独列出；CI 验收对应具体提交。
+“陈述所允许的全部输入”指目标自身陈述的每个输入。目标陈述的输入可能少于 zlib.h 允许的范围：
+[zlib.h 函数的无故障覆盖](#no-fault-coverage-of-zlibh-functions)列出了这些差距。
+
+{chr(10).join(rows)}
+{chr(10).join(relations)}
+{chr(10).join(auxiliary)}
+
+## 更新记录
+
+证明或登记表发生变化后，需要重新生成本页。生成过程会编译并检查
+定理的精确类型，不会修改证明、目标或登记表。生成器同时写出英文页和本页。
+结果是否通过项目验收，仍须依据[检查规则](checking/README.md)。
+只有当本页展示的内容发生变化时（目标、登记、证明状态、链接或行锚点），本页才算过期。在此之前，
+链接保持生成时的修订版本。
+"""
+
+
+def zh_block(graph):
+    counts = graph['counts']
+    public_count = sum(n['scope'] == 'public' for n in graph['nodes'])
+    return f"""{START}
+## 证明进度图
+
+**共有 {len(graph['nodes'])} 个固定目标：{public_count} 个公开目标，{len(graph['nodes'])-public_count} 个支撑目标。**
+精确覆盖相应目标的证明中，{counts.get('registered',0)} 个已登记，{counts.get('local',0)} 个仅在本地检查。
+这些数字按目标计数，不表示验证工作量的完成百分比，也不代表最终 CI 结果。
+
+**输入覆盖范围的颜色：** ⬜ 未证明 · 🟦 默认输入 · 🟨 常见输入 · 🟩 目标陈述所允许的全部输入。
+各档范围统一定义在[输入配置](spec/input-configurations.md)中。
+完整的固定目标证明，必须覆盖该目标的确切陈述所允许的全部输入。
+若只证明默认输入或常见输入，也必须有经过检查、明确限定范围的契约；局部分支引理和手工填写的标签不能代替这种证明。
+输入覆盖范围、证明是否登记、CI 是否通过，是三件不同的事。
+红色边框表示已记录的阻碍，不会抹去该目标已经建立的其他覆盖结果。
+
+每个当前固定目标只出现一次。公开 API、内部证明义务和抽象模型分组呈现。
+实线表示固定目标之间实际存在的证明复用关系，追踪范围包含经辅助引理间接发生的引用。
+虚线表示 C 函数调用，方向由被调用者指向调用者。它并不表示可以把被调用者的完整 API 契约当作证明前提：例如，默认初始化 `Init` 可以独立于通用初始化 `Init2` 完成证明。
+只有在同类路径仍然存在时，图中才会省略冗余箭头。[证据索引](progress.md)保留了每条观察到的连接、规格引用和支撑证明族。
+这些辅助证明不是额外的最终目标。缺少箭头既不能说明两个目标彼此独立，也不能列全今后需要完成的证明义务。
+
+```mermaid
+{mermaid(graph)}
+```
+
+展开组件后，再展开一个目标，即可查看它的输入范围、状态和双向依赖。[证据索引](progress.md)保留提交 `{graph['links']['revision'][:7]}` 的目标与证明链接。
+
+{blocker_index(graph, zh=True)}
+
+""" + detail_page_zh(graph) + END
+
 
 def outputs(graph):
     counts = graph['counts']
@@ -611,7 +780,23 @@ Each node opens its exact target or blocker at the fixed source snapshot
         marker = '## Recorded checkpoint'
         if marker not in page: raise ValueError('progress insertion point missing')
         page = page.replace(marker, generated + '\n\n' + marker, 1)
-    return {'docs/progress.md': page}
+    result = {'docs/progress.md': page}
+    twin_path = ROOT / 'docs/progress.zh.md'
+    if twin_path.is_file():
+        twin = twin_path.read_text()
+        if twin.count(START) != 1 or twin.count(END) != 1:
+            raise ValueError('invalid progress markers in the Chinese twin')
+        before, rest = twin.split(START, 1)
+        _, after = rest.split(END, 1)
+        twin = before + zh_block(graph) + after
+        # The stamp says the twin translates the English page. Only the generated region changed in
+        # both, so a twin that was current stays current; a stale twin keeps its stale stamp.
+        stamp = re.search(r'source-sha256:\s*([0-9a-f]{64})', twin)
+        old = (ROOT / 'docs/progress.md').read_text()
+        if stamp and stamp[1] == hashlib.sha256(old.encode()).hexdigest():
+            twin = twin.replace(stamp[1], hashlib.sha256(page.encode()).hexdigest(), 1)
+        result['docs/progress.zh.md'] = twin
+    return result
 
 
 def main():

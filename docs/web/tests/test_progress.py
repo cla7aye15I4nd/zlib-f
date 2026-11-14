@@ -51,10 +51,19 @@ class InventoryTests(unittest.TestCase):
         with self.assertRaises(ValueError): parse_progress(broken)
 
     def test_blocker_mismatch_is_rejected(self):
-        with self.assertRaises(ValueError): parse_progress(SOURCE.replace('  class n73 obstacle\n', ''))
+        # Independent of the current snapshot: drop a recorded obstacle, or mark an unblocked node.
+        obstacle = re.search(r'^  class (n\d+) obstacle\n', SOURCE, re.M)
+        if obstacle:
+            broken = SOURCE.replace(obstacle[0], '', 1)
+        else:
+            edge = re.search(r'^  n\d+ -->.*\n', SOURCE, re.M)
+            broken = SOURCE.replace(edge[0], edge[0] + '  class n19 obstacle\n', 1)
+        with self.assertRaises(ValueError): parse_progress(broken)
 
     def test_unsupported_drawn_dependency_is_rejected(self):
-        broken = SOURCE.replace('  n128 --> n129', '  n128 --> n129\n  n19 --> n20', 1)
+        # A self-edge is never an observed dependency.
+        edge = re.search(r'^  n\d+ --> n\d+\n', SOURCE, re.M)
+        broken = SOURCE.replace(edge[0], edge[0] + '  n19 --> n19\n', 1)
         with self.assertRaises(ValueError): parse_progress(broken)
 
     def test_unknown_observed_target_is_rejected(self):
