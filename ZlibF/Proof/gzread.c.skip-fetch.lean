@@ -138,7 +138,10 @@ theorem GzInv.put_out {H : Heap} {i : Nat} {t : GzState} (inv : GzInv H i t) (hm
       posHave := hph
       againSize := r.againSize
       haveSkip := hhs
-      againEof := r.againEof }
+      againEof := r.againEof
+      errEnd := r.errEnd
+      copyIn := r.copyIn
+      msgLit := r.msgLit }
 
 /-- The invariant after a fetch (`GzInvOut`), with the end of the output a representable position and the skip
 bounds, is the invariant up to the pending skip. -/
@@ -461,10 +464,10 @@ theorem gz_skip_run_fetch (fetch : GzFetchSafe)
         · obtain ⟨pl, hpl, ⟨t, ht⟩, hroot⟩ := lit_eof hc
           have hmsg : pl = .null ∨ ∃ t, CString hc pl t ∧ ∀ b, ByteRoot pl b → ¬ GzOwned hc i sc b :=
             Or.inr ⟨t, ht, fun b hb => absurd hb (hroot b)⟩
-          obtain ⟨after, s', hrun, inv', hs', herr, fr, lc⟩ := gzErrorSpec_holds invg Z_BUF_ERROR pl hmsg
+          obtain ⟨after, s', hrun, inv', hs', herr, fr, lc⟩ := gzErrorSpec_holds invg Z_BUF_ERROR pl hmsg (by decide)
           refine RunSafe.bind_lift hpl (RunSafe.bind_lift hrun ?_)
           have acc2 := acc.step invc ((post_of_gz_error invg inv' hs' fr lc
-            (gzErrorOwn_holds hc i sc _ _ after invg hmsg hrun) acc.fsys).mono fun _ x => x.upToSkip)
+            (gzErrorOwn_holds hc i sc _ _ after invg hmsg (by decide) hrun) acc.fsys).mono fun _ x => x.upToSkip)
             (fun _ => Iff.rfl) V
           have hsize' : s'.size = sc.size := by rw [hs']
           have ent' : SkipEnt s' := by
