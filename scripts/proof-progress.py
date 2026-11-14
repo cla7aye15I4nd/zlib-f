@@ -36,18 +36,17 @@ def github_repository(remote):
         raise ValueError('origin must name a GitHub repository for diagram links')
     return 'https://github.com/' + name
 
-def recorded_link_revision(digest):
+def recorded_link_revision():
+    """The revision the current page links to. It is kept while the page shows the same facts, so a
+    proof edit that changes nothing shown does not make the page stale."""
     path = ROOT / 'docs/progress.md'
     if not path.is_file(): return None
-    text = path.read_text()
-    revision = re.search(r'<!-- proof-link-revision: ([0-9a-f]{40}) -->', text)
-    fingerprint = re.search(r'Input fingerprint: `([0-9a-f]+)`', text)
-    if revision and fingerprint and fingerprint[1] == digest: return revision[1]
-    return None
+    revision = re.search(r'<!-- proof-link-revision: ([0-9a-f]{40}) -->', path.read_text())
+    return revision[1] if revision else None
 
-def link_context(digest):
+def link_context(revision=None):
     def git(*args): return subprocess.check_output(['git', *args], cwd=ROOT, text=True).strip()
-    revision = recorded_link_revision(digest) or git('rev-parse', 'HEAD')
+    revision = revision or recorded_link_revision() or git('rev-parse', 'HEAD')
     repository = github_repository(git('remote', 'get-url', 'origin'))
     files = git('ls-tree', '-r', '--name-only', revision).splitlines()
     def page(path): return git('show', revision + ':' + path) if path in files else ''
@@ -176,7 +175,7 @@ def line_of(path, declaration):
         if pattern.search(text): return number
     return None
 
-def build_graph(export, digest):
+def build_graph(export, digest, revision=None):
     goals = names(ROOT / 'tests/audit/goals.txt')
     if [row['name'] for row in export['goals']] != goals: raise ValueError('export does not match the complete goal registry')
     blockers = read_blockers()
@@ -265,7 +264,7 @@ def build_graph(export, digest):
             if dep in goals: continue
             row = declarations.get(dep)
             if row: todo.extend(row['refs'])
-    return {'version': 1, 'inputSha256': digest, 'links': link_context(digest),
+    return {'version': 1, 'inputSha256': digest, 'links': link_context(revision),
             'counts': dict(Counter(n['status'] for n in nodes)),
             'groups': GROUPS, 'statuses': STATUSES, 'nodes': nodes,
             'edges': [{'from': a, 'to': b, 'kind': k} for a, b, k in sorted(edges)],
@@ -546,6 +545,8 @@ Some Markdown viewers disable diagram links; use these ordinary source links.
 <a id="status-open"></a>Not proved: no exact theorem covers this target.
 <a id="status-blocked"></a>Blocked: a documented obstacle applies to the target.
 These labels do not assign input coverage or replace named-commit CI acceptance.
+"All stated inputs" means every input the goal itself states. A goal can state less than zlib.h
+allows: [No-fault coverage of zlib.h functions](#no-fault-coverage-of-zlibh-functions) lists the gaps.
 
 {chr(10).join(rows)}
 {chr(10).join(relations)}
@@ -556,8 +557,8 @@ These labels do not assign input coverage or replace named-commit CI acceptance.
 Regenerate after proof or registry changes. The generator builds and inspects
 exact compiled theorem types. It never changes a proof, target or registry.
 Acceptance remains subject to [checking](checking/README.md).
-
-Input fingerprint: `{graph['inputSha256']}`.
+The view is stale only when what it shows changes: a target, a registration, a proof status, a
+link or a line anchor. Its links keep the revision they were generated at until then.
 """
 
 def outputs(graph):
@@ -626,8 +627,20 @@ def main():
         result = subprocess.run([lake, 'env', 'lean', '--run', 'scripts/proof-progress.lean'], cwd=ROOT, capture_output=True, text=True, check=True)
         export = json.loads(result.stdout)
     if fingerprint() != digest: raise RuntimeError('proof inputs changed during generation; rerun for a consistent snapshot')
-    graph = build_graph(export, digest)
-    generated = outputs(graph)
+    # The page is generated first with the links of the recorded revision. If that equals the page,
+    # nothing it shows has changed, whatever the proof inputs did.
+    # A new target can need a file or anchor the recorded revision lacks; then the page is stale too.
+    try:
+        graph = build_graph(export, digest)
+        generated = outputs(graph)
+        fresh = all((ROOT / p).is_file() and (ROOT / p).read_text() == content for p, content in generated.items())
+    except ValueError as error:
+        if args.check: raise
+        fresh = False
+    if not args.check and not fresh:
+        head = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
+        graph = build_graph(export, digest, head)
+        generated = outputs(graph)
     if args.check:
         stale = [p for p, content in generated.items() if not (ROOT / p).is_file() or (ROOT / p).read_text() != content]
         if stale: raise RuntimeError('stale progress views: ' + ', '.join(stale))
