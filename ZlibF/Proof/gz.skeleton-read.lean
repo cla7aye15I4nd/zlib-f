@@ -77,9 +77,10 @@ theorem gz_skip_have_safe (i : Nat) (h : Heap) (s : GzState) (inv : GzInv h i s)
       after = putGz h i s' ∧ s'.skip.toInt + s'.x.pos.toInt = s.skip.toInt + s.x.pos.toInt :=
   ZlibF.Spec.Public.gz_skip_have_safe i h s inv hm
 
-/-- `gz_skip(state)`: skip decreases, or end of input; termination needs M7. -/
+/-- `gz_skip(state)`: skip decreases, or end of input; termination needs M7. Called only with `skip ≠ 0` (every
+caller tests it); with `skip = 0` the do-while still fetches and may exceed `posHave`. -/
 theorem gz_skip_safe (i : Nat) (h : Heap) (fs : Fs) (s : GzState)
-    (inv : GzInv h i s) (hfs : FileSystem fs) (hm : s.mode = GZ_READ) :
+    (inv : GzInv h i s) (hfs : FileSystem fs) (hm : s.mode = GZ_READ) (hskip : s.skip ≠ 0) :
     RunSafe (Zlib.Gzread.gz_skip (gzSt i)) fs h (ReadsFinite fs s.fd) fun r fs' after =>
       (r = 0 ∨ r = -1) ∧ FdsKept fs fs' ∧ GzPost h i s [] fs' after GzInv := by
   sorry
