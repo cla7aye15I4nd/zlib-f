@@ -20,14 +20,15 @@ The assembly of the gz safety skeleton (`gz.skeleton.lean` on the branch `skelet
 What is proved. `gz_sequence_safety_of` has exactly the conclusion `Goal.gz_sequence_safety`. Every leaf that `dev`
 proves is used directly: the open leaves (`gzopen_safe`, `gzopen64_safe`, `gzdopen_safe`), the close leaves
 (`gzclose_step`, `gzclose_w_step`, `GzRead.gzclose_r_step_safe`), the write leaves (`gzwrite.c.safety`), and the
-queries (`gzeof`, `gztell*`, `gzbuffer`, `gzclearerr`, `gzerror`, `gzseek*`, `gzoffset*`, `gzrewind`).
+queries (`gzeof`, `gztell*`, `gzbuffer`, `gzclearerr`, `gzerror`, `gzseek*`, `gzoffset*`, `gzrewind`). The inline path
+of the `gzgetc()` macro (`GzHistory.getcMacro`, audit A1) is `GzMacro.gzgetc_macro_safe` (`zlib.h.gzgetc-macro`).
 
 What is assumed. The open read leaves of the skeleton (`gz.skeleton-read.lean`), each with the skeleton's exact
 statement, as the fields of `GzReadLeaves`: `gzread_step`, `gzfread_step`, `gzgetc_step`, `gzungetc_step`,
 `gzgets_step`, `gzdirect_step`. `gzgetc_` is `gzgetc` by definition. The assembly uses no loop rule.
 
-What is open. The six read leaves. Once the read side proves them, `Goal.gz_sequence_safety` follows from
-`gz_sequence_safety_of`.
+The read leaves are all proved on `dev` with no premise; `public-gz-sequence-safety` applies `gz_sequence_safety_of`
+to them (`gz_sequence_safety_public`).
 -/
 
 namespace ZlibF.Spec.Public.GzSkeleton
