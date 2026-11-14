@@ -53,8 +53,9 @@ def HasBudget (fs : Fs) (fd : Int32) : Prop := 0 ≤ fd.toInt ∧ fs.readBudget 
 total the descriptor can still deliver. A premise of the termination half only, and only for the calls of
 `NeedsReadBound`; `docs/deviations.md`, "Gz reading termination". A finite budget is a real requirement: an endless
 source (an endless `FNAME`, or endless empty gzip members) makes one `gzread` call run forever in C. The figure `2^61`
-is the model's limit, not zlib's: a loop of the model has `2^64` trips of fuel, and each round of the reading loops
-takes input or ends, so a budget below `2^61` keeps them within it. -/
+is the model's limit, not zlib's: a loop of the model has `2^64` trips of fuel, and the reading loops are bounded by
+measures built from the input left, the read budget and the bytes still to deliver (`fetchRank`, and the measures of
+`gz_read` and `gz_skip`), which a budget below `2^61` keeps below `2^64`. -/
 def ReadsFinite (fs : Fs) (fd : Int32) : Prop :=
   HasBudget fs fd ∧ (fs.readBudget fd.toInt.toNat).getD 0 < 2 ^ 61
 
