@@ -147,6 +147,7 @@ theorem clear_recW {h : Heap} {s : GzState} (hs : h.gzstates i = some s)
   have := GzInv.put_scalars (s' := clearIn (recW s ni ai p k)) invC
     ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩ ⟨invC.common.want.1, invC.common.want.2, Or.inr rfl⟩
     pos (Nat.le_refl _) (fun hr => absurd (hw.symm.trans hr) (by decide)) (fun _ => w.reset)
+    (fun hr => absurd (hw.symm.trans hr) (by decide))
   rw [putGz_putGz] at this
   exact ⟨by rw [putGz_putGz]; exact this, owned_rec hs rfl rfl rfl rfl rfl rfl rfl rfl⟩
 

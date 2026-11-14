@@ -951,8 +951,8 @@ theorem write_t2 (err : GzErrorSpec) (errOwn : GzErrorOwn) {h0 : Heap} {s0 : GzS
     have hmsg : (Ptr.ref (BRef.str k) 0 : BPtr) = .null ∨ ∃ t, CString H (.ref (.str k) 0) t ∧
         ∀ b, ByteRoot (.ref (.str k) 0) b → ¬ GzOwned H i v b :=
       Or.inr ⟨t, ct, fun b hb => by simp [ByteRoot] at hb⟩
-    obtain ⟨after, s', run, inv', e', -, fr, lc⟩ := err inv Z_DATA_ERROR (.ref (.str k) 0) hmsg
-    have own := errOwn H i v Z_DATA_ERROR (.ref (.str k) 0) after inv hmsg run s' inv'.common.record
+    obtain ⟨after, s', run, inv', e', -, fr, lc⟩ := err inv Z_DATA_ERROR (.ref (.str k) 0) hmsg (by decide)
+    have own := errOwn H i v Z_DATA_ERROR (.ref (.str k) 0) after inv hmsg (by decide) run s' inv'.common.record
     have P := GetcUngetc.post_of_gz_error (fs := fs) inv inv' e' fr lc own hfs
     have run' : Zlib.Gzlib.gz_error (gzSt i) Z_DATA_ERROR (.ref (.str k) 0) H = .ok ((), after) := run
     refine ⟨0, fs, after, ?_, by simp, GetcUngetc.Eff.trans E inv P (fun _ => Iff.rfl)⟩

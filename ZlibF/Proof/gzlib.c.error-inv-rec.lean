@@ -76,7 +76,8 @@ the record after it is the old one with `err` and `msg` changed, and the post-co
 `GzInv.gz_error_full` holds in the world of `T`. -/
 theorem gz_error_rec {T : GzState → GzState} (hT : RecMap T) {H : Heap} {i : Nat} {s : GzState}
     (hs : H.gzstates i = some s) (inv : GzInv (putGz H i (T s)) i (T s)) (err : Int32) (msg : BPtr)
-    (hmsg : msg = .null ∨ ∃ t, CString H msg t ∧ ∀ b, ByteRoot msg b → ¬ GzOwned (putGz H i (T s)) i (T s) b) :
+    (hmsg : msg = .null ∨ ∃ t, CString H msg t ∧ ∀ b, ByteRoot msg b → ¬ GzOwned (putGz H i (T s)) i (T s) b)
+    (he : err ≠ Z_STREAM_END) :
     ∃ after s', C.run (Zlib.Gzlib.gz_error (gzSt i) err msg) H = .ok ((), after) ∧ after.gzstates i = some s' ∧
       s' = { s with err := s'.err, msg := s'.msg } ∧
       ErrPost (putGz H i (T s)) i (T s) err (putGz after i (T s')) (T s') := by
@@ -92,7 +93,7 @@ theorem gz_error_rec {T : GzState → GzState} (hT : RecMap T) {H : Heap} {i : N
       rw [hp] at hnull
       cases hnull
   have hrun0 := gz_error_prefix' hs hpre err msg
-  have c := cleared_of inv err
+  have c := cleared_of inv err he
   rw [hTm] at c
   -- the two worlds after the prefix
   have eS : ({ T s with eof := (T s).eof, past := (T s).past, msg := .null, err := err } : GzState) =
@@ -159,11 +160,12 @@ theorem gz_error_rec {T : GzState → GzState} (hT : RecMap T) {H : Heap} {i : N
 theorem gz_error_upToOutput {H : Heap} {i : Nat} {s : GzState} (hu : GzInvUpToOutput H i s) (err : Int32)
     (msg : BPtr)
     (hmsg : msg = .null ∨ ∃ t, CString H msg t ∧
-      ∀ b, ByteRoot msg b → ¬ GzOwned (putGz H i (clearOut s)) i (clearOut s) b) :
+      ∀ b, ByteRoot msg b → ¬ GzOwned (putGz H i (clearOut s)) i (clearOut s) b)
+    (he : err ≠ Z_STREAM_END) :
     ∃ after s', C.run (Zlib.Gzlib.gz_error (gzSt i) err msg) H = .ok ((), after) ∧ after.gzstates i = some s' ∧
       s' = { s with err := s'.err, msg := s'.msg } ∧
       ErrPost (putGz H i (clearOut s)) i (clearOut s) err (putGz after i (clearOut s')) (clearOut s') :=
-  gz_error_rec recMap_clearOut hu.1 hu.2 err msg hmsg
+  gz_error_rec recMap_clearOut hu.1 hu.2 err msg hmsg he
 
 #print axioms gz_error_rec
 #print axioms gz_error_upToOutput

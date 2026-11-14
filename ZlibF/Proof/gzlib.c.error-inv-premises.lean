@@ -18,20 +18,22 @@ set_option autoImplicit false
 
 /-- **Interface: `gz_error` keeps the invariant** (the skeleton statement `GzInv.gz_error`). -/
 theorem GzInv.gz_error {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) (err : Int32) (msg : BPtr)
-    (hmsg : msg = .null ∨ ∃ t, CString h msg t ∧ ∀ b, ByteRoot msg b → ¬ GzOwned h i s b) :
+    (hmsg : msg = .null ∨ ∃ t, CString h msg t ∧ ∀ b, ByteRoot msg b → ¬ GzOwned h i s b)
+    (he : err ≠ Z_STREAM_END) :
     ∃ after s', C.run (Zlib.Gzlib.gz_error (gzSt i) err msg) h = .ok ((), after) ∧ GzInv after i s' ∧
       s' = { s with err := s'.err, msg := s'.msg } ∧ (s'.err = err ∨ (s'.err = Z_MEM_ERROR ∧ s'.msg = .null)) ∧
       Frame h after (fun b => b = i ∨ blkOf s.msg = some b) ∧
       LiveChange h after (fun b => blkOf s'.msg = some b ∧ ¬ h.live b) (fun b => blkOf s.msg = some b) := by
-  obtain ⟨after, s', run, inv', eq, herr, fr, lc, -, -, -, -⟩ := inv.gz_error_full err msg hmsg
+  obtain ⟨after, s', run, inv', eq, herr, fr, lc, -, -, -, -⟩ := inv.gz_error_full err msg hmsg he
   exact ⟨after, s', run, inv', eq, herr, fr, lc⟩
 
 /-- **No grab**: a block the handle owns after `gz_error` and that was live before was owned before. -/
 theorem GzInv.gz_error_own {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) (err : Int32) (msg : BPtr)
-    (hmsg : msg = .null ∨ ∃ t, CString h msg t ∧ ∀ b, ByteRoot msg b → ¬ GzOwned h i s b) {after : Heap}
+    (hmsg : msg = .null ∨ ∃ t, CString h msg t ∧ ∀ b, ByteRoot msg b → ¬ GzOwned h i s b)
+    (he : err ≠ Z_STREAM_END) {after : Heap}
     (run : C.run (Zlib.Gzlib.gz_error (gzSt i) err msg) h = .ok ((), after)) :
     ∀ s', after.gzstates i = some s' → ∀ b, GzOwned after i s' b → h.live b → GzOwned h i s b := by
-  obtain ⟨a', s'', run', -, -, -, -, -, -, hrec, hown, -⟩ := inv.gz_error_full err msg hmsg
+  obtain ⟨a', s'', run', -, -, -, -, -, -, hrec, hown, -⟩ := inv.gz_error_full err msg hmsg he
   rw [run'] at run
   cases run
   intro s' hs' b ho hl
@@ -42,25 +44,25 @@ theorem GzInv.gz_error_own {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s
   · exact absurd hl e
 
 /-- The premise `GzErrorSpec` of `gzread.c.skip-gets` holds. -/
-theorem gzErrorSpec_holds : GzErrorSpec := fun inv err msg hmsg => inv.gz_error err msg hmsg
+theorem gzErrorSpec_holds : GzErrorSpec := fun inv err msg hmsg he => inv.gz_error err msg hmsg he
 
 /-- The premise `GzErrorOwn` of `gzread.c.skip-gets` holds. -/
-theorem gzErrorOwn_holds : GzErrorOwn := fun _ _ _ err msg _ inv hmsg run => inv.gz_error_own err msg hmsg run
+theorem gzErrorOwn_holds : GzErrorOwn := fun _ _ _ err msg _ inv hmsg he run => inv.gz_error_own err msg hmsg he run
 
 /-- The premise `GzErrorSpec` of `gzread.c.getc-ungetc` holds. -/
-theorem GetcUngetc.gzErrorSpec_holds : GetcUngetc.GzErrorSpec := fun inv err msg hmsg => inv.gz_error err msg hmsg
+theorem GetcUngetc.gzErrorSpec_holds : GetcUngetc.GzErrorSpec := fun inv err msg hmsg he => inv.gz_error err msg hmsg he
 
 /-- The premise `GzErrorOwn` of `gzread.c.getc-ungetc` holds. -/
 theorem GetcUngetc.gzErrorOwn_holds : GetcUngetc.GzErrorOwn :=
-  fun _ _ _ err msg _ inv hmsg run => inv.gz_error_own err msg hmsg run
+  fun _ _ _ err msg _ inv hmsg he run => inv.gz_error_own err msg hmsg he run
 
 /-- The premise `GzErrorSpec` of `gzwrite.c.init` holds. -/
 theorem gzwrite_gzErrorSpec_holds : Zlib.Gzwrite.SafeInit.GzErrorSpec :=
-  fun inv err msg hmsg => inv.gz_error err msg hmsg
+  fun inv err msg hmsg he => inv.gz_error err msg hmsg he
 
 /-- The premise `GzErrorOwn` of `gzwrite.c.init` holds. -/
 theorem gzwrite_gzErrorOwn_holds : Zlib.Gzwrite.SafeInit.GzErrorOwn :=
-  fun _ _ _ err msg _ inv hmsg run => inv.gz_error_own err msg hmsg run
+  fun _ _ _ err msg _ inv hmsg he run => inv.gz_error_own err msg hmsg he run
 
 #print axioms GzInv.gz_error_full
 #print axioms GzInv.gz_error

@@ -134,6 +134,12 @@ structure GzCommon (h : Heap) (i : Nat) (s : GzState) : Prop where
   the record block. -/
   recordFree : ¬ StreamOwned h (gzStrm i) i
 
+/-- The message of the embedded stream is `NULL` or a string literal of the sources (`inflateInit2_` and
+`inflateReset` clear it, `inflate` sets literals). `gz_decomp` hands it to `gz_error`. Only asked with buffers: a
+failed `inflateInit2` in `gz_look` sets `size = 0`. -/
+def MsgLit (s : GzState) : Prop :=
+  s.size ≠ 0 → s.strm.msg = .null ∨ ∃ j, j < strTable.size ∧ s.strm.msg = .ref (.str j) 0
+
 /-- The reader part (`s.mode = GZ_READ`). The note's clause "past ≠ 0 → skip = 0" is not included: a forward
 `gzseek` after a short read keeps `past` and sets `skip` (`Api.GzSeek`). -/
 structure GzReadInv (h : Heap) (i : Nat) (s : GzState) : Prop where
@@ -178,6 +184,14 @@ structure GzReadInv (h : Heap) (i : Nat) (s : GzState) : Prop where
   set only by a stalled `gz_load`, which runs with `eof = 0`; the junk path of `gz_decomp` sets `eof` with
   `avail_in = 0`; `gzclearerr` and `gz_reset` clear `eof` or `again`; `gz_look`'s COPY branch zeroes `avail_in`. -/
   againEof : s.again ≠ 0 → s.eof ≠ 0 → s.strm.avail_in = 0
+  /-- `Z_STREAM_END` is never recorded: `state->err` is written only at open (`Z_OK`) and by `gz_error`,
+  and no caller passes `Z_STREAM_END`. `gz_decomp` would return 0 on a failed `gz_avail` with this code. -/
+  errEnd : s.err ≠ Z_STREAM_END
+  /-- COPY has no pending input: `gz_look` zeroes `avail_in` when it sets COPY, `gzseek64` zeroes it in COPY, and in
+  COPY only `gz_load` into `out` reads. -/
+  copyIn : s.how = GZ_COPY → s.strm.avail_in = 0
+  /-- the embedded stream's message is `NULL` or a literal (`MsgLit`) -/
+  msgLit : MsgLit s
 
 /-- The writer part (`s.mode = GZ_WRITE`): batch C's W1–W10. W1 and W9 are in `GzCommon`; W10 needs no fact;
 W7 is the position clause of `GzCommon` (relies on the local patch for W7). -/

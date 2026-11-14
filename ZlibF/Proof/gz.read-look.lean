@@ -161,6 +161,7 @@ theorem GzInv.rebuild (inv : GzInv h i s) (hm : s.mode = GZ_READ) (hsz : s.size 
     (input : s'.strm.avail_in = 0 ∨
       ∃ a, s'.strm.next_in = padv s'.«in» a ∧ a + s'.strm.avail_in.toNat ≤ s'.size.toNat)
     (hae : s'.again ≠ 0 → s'.eof ≠ 0 → s'.strm.avail_in = 0)
+    (hcp : s'.how = GZ_COPY → s'.strm.avail_in = 0) (hml : MsgLit s')
     (fr : Frame h h' (fun b => b = i ∨ StreamOwned h (gzStrm i) b))
     (sown : ∀ b, StreamOwned h' (gzStrm i) b → StreamOwned h (gzStrm i) b ∧ h'.live b)
     (fresh : Fresh h') (uniq : Zlib.Gzlib.Spec.Uniq h') (globals : LibraryGlobals h')
@@ -253,7 +254,10 @@ theorem GzInv.rebuild (inv : GzInv h i s) (hm : s.mode = GZ_READ) (hsz : s.size 
       posHave := by rw [ex]; exact rd.posHave
       againSize := fun hz => absurd hz hsz'
       haveSkip := fun hh => absurd (by rw [ex]; exact hx0) hh
-      againEof := hae }
+      againEof := hae
+      errEnd := by rw [eerr]; exact rd.errEnd
+      copyIn := hcp
+      msgLit := hml }
 
 end rebuild
 
@@ -713,7 +717,8 @@ theorem lookGzip_run {H : Heap} {i : Nat} {t : GzState} (fs : Fs) (hu : GzInvUpT
       ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
       ⟨Or.inr (Or.inr rfl), fun e => absurd (show GZIP = GZ_COPY from e) (by decide), fun _ => rfl,
         Or.inr (Or.inl rfl), ?_⟩
-      ?_ ?_ frWV sownV freshV' uniqV' globalsV' fitV' codecV
+      ?_ ?_ (fun e => absurd (show GZIP = GZ_COPY from e) (by decide)) (fun _ => Or.inl z1msg)
+      frWV sownV freshV' uniqV' globalsV' fitV' codecV
     · show f t.junk = -1 ∨ f t.junk = 0 ∨ f t.junk = 1
       rcases hf t.junk with e | e
       · exact Or.inr (Or.inl e)
@@ -962,7 +967,10 @@ theorem GzInv.size0_rebuild (inv : GzInv h i s) (hm : s.mode = GZ_READ) (hsz : s
       posHave := by rw [ex]; exact rd.posHave
       againSize := fun _ => by rw [eagain]; exact rd.againSize hsz
       haveSkip := fun hh => absurd (by rw [ex]; exact hx0) hh
-      againEof := fun _ _ => hav }
+      againEof := fun _ _ => hav
+      errEnd := by rw [eerr]; exact rd.errEnd
+      copyIn := fun _ => hav
+      msgLit := fun hz => absurd hsz' hz }
 
 end size0
 
@@ -970,7 +978,8 @@ end size0
 
 /-- **`gz_error(state, err, literal)`** keeps the invariant up to the buffered output, with the post-condition. -/
 theorem err_post {H : Heap} {i : Nat} {s : GzState} (fs : Fs) (hfs : FileSystem fs) (hu : GzInvUpToOutput H i s)
-    (err : Int32) {msg : BPtr} (hmsg : ∃ t, CString H msg t) (hroot : ∀ b, ¬ ByteRoot msg b) :
+    (err : Int32) {msg : BPtr} (hmsg : ∃ t, CString H msg t) (hroot : ∀ b, ¬ ByteRoot msg b)
+    (he : err ≠ Z_STREAM_END) :
     ∃ after s', Zlib.Gzlib.gz_error (gzSt i) err msg H = .ok ((), after) ∧ after.gzstates i = some s' ∧
       s' = { s with err := s'.err, msg := s'.msg } ∧ (s'.err = err ∨ s'.err = Z_MEM_ERROR) ∧
       GzPost H i s [] fs after GzInvUpToOutput := by
@@ -978,7 +987,7 @@ theorem err_post {H : Heap} {i : Nat} {s : GzState} (fs : Fs) (hfs : FileSystem 
   have inv : GzInv (putGz H i (clearOut s)) i (clearOut s) := hu.2
   obtain ⟨t, ct⟩ := hmsg
   obtain ⟨after, s4, run4, hs4, shape4, post4⟩ := gz_error_upToOutput hu err msg
-    (Or.inr ⟨t, ct, fun b hb => (hroot b hb).elim⟩)
+    (Or.inr ⟨t, ct, fun b hb => (hroot b hb).elim⟩) he
   obtain ⟨inv4, -, herr4, fr4, lc4, -, -, ng4, keep4⟩ := post4
   have liveW : ∀ b, (putGz H i (clearOut s)).live b ↔ H.live b := fun b => putGz_live hs b
   have liveA : ∀ b, (putGz after i (clearOut s4)).live b ↔ after.live b := fun b => putGz_live hs4 b
@@ -1172,7 +1181,7 @@ theorem copyTail_run {G0 : Heap} {i : Nat} {u : GzState} (fs : Fs) (hu : GzInvUp
     refine GzInv.rebuild inv hmc hszc rfl rfl (by simp [V, putGz])
       ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
       ⟨Or.inr (Or.inl rfl), fun _ => ?_, fun e => absurd (show GZ_COPY = GZIP from e) (by decide), rd.direct, rd.junk⟩
-      (Or.inl rfl) (fun _ _ => rfl)
+      (Or.inl rfl) (fun _ _ => rfl) (fun _ => rfl) rd.msgLit
       ⟨by rw [eV]; rfl, by rw [eV]; rfl, by rw [eV]; rfl, by rw [eV]; exact Nat.le_refl _,
         by rw [eV]; exact Nat.le_refl _, fun b _ hc => frV b (fun e => hc (Or.inl e))⟩
       (fun b ho => ⟨(soVW b).1 ho, (liveV b).2 (c.live b (inv.streamOwned_owned ((soVW b).1 ho)))⟩)
@@ -1378,7 +1387,7 @@ theorem lookCopy_run {H : Heap} {i : Nat} {t : GzState} (fs : Fs) (hu : GzInvUpT
     obtain ⟨k, hk⟩ : ∃ k, strIndex "position overflow" = some k :=
       Option.isSome_iff_exists.mp (by decide +kernel)
     obtain ⟨after, s', grun, hs', shape, herr, post4⟩ := err_post fs hfs hu3 Z_DATA_ERROR
-      (look_posov_cstring H3 hk) (fun _ h => h)
+      (look_posov_cstring H3 hk) (fun _ h => h) (by decide)
     have hu4 : GzInvUpToOutput after i s' := by
       obtain ⟨-, t', inv', -⟩ := post4
       have e := Option.some.inj (inv'.1.symm.trans hs')
@@ -1470,16 +1479,16 @@ theorem look_padv_zero (p : BPtr) : padv p 0 = p := by
 
 /-- `gz_avail` inside `gz_look`, with its budget facts. -/
 theorem avail_step {H : Heap} {i : Nat} {t : GzState} (fs : Fs) (hu : GzInvUpToOutput H i t)
-    (hm : t.mode = GZ_READ) (hsz : t.size ≠ 0) (hfs : FileSystem fs) :
+    (hm : t.mode = GZ_READ) (hsz : t.size ≠ 0) (hfs : FileSystem fs) (hnc : t.how ≠ GZ_COPY) :
     ∃ r1 fs1 H1 t1, Zlib.Gzread.gz_avail (some (.tab i)) fs H = .ok ((r1, fs1), H1) ∧ (r1 = 0 ∨ r1 = -1) ∧
       FdsKept fs fs1 ∧ GzPost H i t [] fs1 H1 GzInvUpToOutput ∧ H1.gzstates i = some t1 ∧ AvailRec t t1 ∧
       (HasBudget fs t.fd → HasBudget fs1 t.fd ∧ inputLeft fs1 t1 ≤ inputLeft fs t) ∧
       (ReadsFinite fs t.fd → ReadsFinite fs1 t.fd) ∧ (t.err ≠ Z_STREAM_END → t1.err ≠ Z_STREAM_END) ∧
       AvailFs t t1 fs fs1 ∧ AvailFlags r1 t t1 := by
-  obtain ⟨-, hex, hpost⟩ := gz_avail_safe i H fs t hu hm hfs hsz
+  obtain ⟨-, hex, hpost⟩ := gz_avail_safe i H fs t hu hm hfs hsz hnc
   obtain ⟨r1, fs1, H1, run⟩ := hex trivial
   obtain ⟨hr, hk, post, t1, ht1, hrec, hafs, hafl, -⟩ := hpost _ _ _ run
-  obtain ⟨b1, b2, b3⟩ := gz_avail_budget i H fs t hu hm hfs hsz run t1 ht1
+  obtain ⟨b1, b2, b3⟩ := gz_avail_budget i H fs t hu hm hfs hsz hnc run t1 ht1
   exact ⟨r1, fs1, H1, t1, run, hr, hk, post, ht1, hrec, b1, b2, b3, hafs, hafl⟩
 
 /-- The magic-byte test reads four bytes of the input window and decides. -/
@@ -1578,7 +1587,7 @@ theorem lookAuto_run {H : Heap} {i : Nat} {t : GzState} (fs : Fs) (P : LookPre H
     (hd : t.direct ≠ -1) :
     ∃ r fs' after, lookAuto i fs H = .ok ((r, fs'), after) ∧ LookPost H i t fs r fs' after := by
   obtain ⟨r1, fs1, H1, t1, run1, hr1, hk1, post1, ht1, hrec1, bf1, bb1, be1, afs1, afl1⟩ :=
-    avail_step fs P.hu P.mode P.size hfs
+    avail_step fs P.hu P.mode P.size hfs (by rw [P.look]; decide)
   have bud1 : BudgetAcc t.fd fs fs1 0 := afs1.1.mono (Nat.zero_le _)
   obtain ⟨fm, ffd, fsk, fx, fsz, fout, fin, fhow, fdir, fjunk⟩ := AvailRec.fields hrec1
   have hu1 : GzInvUpToOutput H1 i t1 := by
@@ -1721,7 +1730,7 @@ theorem lookMain_run {H : Heap} {i : Nat} {t : GzState} (fs : Fs) (P : LookPre H
     exact absurd (by rw [eqf] at hz; exact hz) P.size
   rw [if_pos c2]
   obtain ⟨r1, fs1, H1, t1, run1, hr1, hk1, post1, ht1, hrec1, bf1, bb1, be1, afs1, afl1⟩ :=
-    avail_step fs P.hu P.mode P.size hfs
+    avail_step fs P.hu P.mode P.size hfs (by rw [P.look]; decide)
   have bud1 : BudgetAcc t.fd fs fs1 0 := afs1.1.mono (Nat.zero_le _)
   obtain ⟨fm, ffd, fsk, fx, fsz, fout, fin, fhow, fdir, fjunk⟩ := AvailRec.fields hrec1
   have hu1 : GzInvUpToOutput H1 i t1 := by
@@ -1869,7 +1878,7 @@ theorem fail_err {H Hq : Heap} {i : Nat} {s sq : GzState} (fs : Fs) (hfs : FileS
       exact liveq b
   obtain ⟨k, hk⟩ := oom_lit
   obtain ⟨after, s', run, hs', shape, herr, post1⟩ := err_post fs hfs huq Z_MEM_ERROR (oom_cstring Hq hk)
-    (fun _ h => h)
+    (fun _ h => h) (by decide)
   have run' : Zlib.Gzlib.gz_error (some (.tab i)) Z_MEM_ERROR (.ref (.str k) 0) Hq = .ok ((), after) := run
   refine ⟨after, ?_, ?_⟩
   · have r1 : (StateT.lift (strLitRef "out of memory") : G BPtr) fs Hq = .ok ((.ref (.str k) 0, fs), Hq) := by
@@ -2153,7 +2162,10 @@ theorem init_success {H H5 : Heap} {i : Nat} {s : GzState} (fs : Fs) (hfs : File
         posHave := rd.posHave
         againSize := fun hz => absurd hz hw0
         haveSkip := fun hh => absurd rfl hh
-        againEof := fun _ _ => rfl }
+        againEof := fun _ _ => rfl
+        errEnd := rd.errEnd
+        copyIn := fun e => absurd (hlook.symm.trans e) (by decide)
+        msgLit := fun _ => Or.inl rfl }
   have hu6 : GzInvUpToOutput H6 i s6 := ⟨hs6, invV⟩
   -- the post-condition
   have live6 : ∀ b, H6.live b ↔ H.live b ∨ (b = nb ∨ b = nb + 1 ∨ b = ks) := by

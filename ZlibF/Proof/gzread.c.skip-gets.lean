@@ -423,7 +423,7 @@ def GzFetchSpec : Prop :=
 /-- The skeleton statement `GzInv.gz_error` (branch `skeleton/gz`, `gz.skeleton-model.lean`). -/
 def GzErrorSpec : Prop :=
   ∀ {h : Heap} {i : Nat} {s : GzState}, GzInv h i s → ∀ (err : Int32) (msg : BPtr),
-    (msg = .null ∨ ∃ t, CString h msg t ∧ ∀ b, ByteRoot msg b → ¬ GzOwned h i s b) →
+    (msg = .null ∨ ∃ t, CString h msg t ∧ ∀ b, ByteRoot msg b → ¬ GzOwned h i s b) → err ≠ Z_STREAM_END →
     ∃ after s', C.run (Zlib.Gzlib.gz_error (gzSt i) err msg) h = .ok ((), after) ∧ GzInv after i s' ∧
       s' = { s with err := s'.err, msg := s'.msg } ∧ (s'.err = err ∨ (s'.err = Z_MEM_ERROR ∧ s'.msg = .null)) ∧
       Frame h after (fun b => b = i ∨ blkOf s.msg = some b) ∧
@@ -441,7 +441,7 @@ def GzSkipSpec : Prop :=
 frame it says that a new message block was not live before. -/
 def GzErrorOwn : Prop :=
   ∀ (h : Heap) (i : Nat) (s : GzState) (err : Int32) (msg : BPtr) (after : Heap), GzInv h i s →
-    (msg = .null ∨ ∃ t, CString h msg t ∧ ∀ b, ByteRoot msg b → ¬ GzOwned h i s b) →
+    (msg = .null ∨ ∃ t, CString h msg t ∧ ∀ b, ByteRoot msg b → ¬ GzOwned h i s b) → err ≠ Z_STREAM_END →
     C.run (Zlib.Gzlib.gz_error (gzSt i) err msg) h = .ok ((), after) → NoTakeover h after i s
 
 /-- **Request to the owner of `gz_fetch`: the progress fact `gz_skip`'s termination needs.** On a reader with nothing
@@ -496,7 +496,7 @@ theorem GzInv.put_past {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) (h
   have hl := s.x.pos.toInt_lt
   refine inv.put_consume ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩ 0 (padv_zero' _).symm (by simp)
     ⟨c.want.1, c.want.2, Or.inr rfl⟩ ⟨by show (0 : Int) ≤ (0 : Int64).toInt; decide,
-      by show s.x.pos.toInt + (0 : Int64).toInt ≤ _; simp; omega, c.pos.2.2⟩ ?_ ?_
+      by show s.x.pos.toInt + (0 : Int64).toInt ≤ _; simp; omega, c.pos.2.2⟩ ?_ ?_ (fun hm => (inv.reader hm).copyIn)
   · intro _
     exact ⟨r.how, r.copyDirect, r.gzipDirect, r.junk, r.flags.1, Or.inr rfl, r.flags.2.2,
       fun hz => (r.unalloc hz).2.2.1, r.againSize, r.posHave, fun _ => rfl, r.againEof⟩
@@ -579,10 +579,10 @@ theorem gz_skip_run (fetch : GzFetchSpec) (gzerr : GzErrorSpec) (gzerrOwn : GzEr
         · obtain ⟨p, hp, ⟨t, ht⟩, hroot⟩ := lit_eof hc
           have hmsg : p = .null ∨ ∃ t, CString hc p t ∧ ∀ b, ByteRoot p b → ¬ GzOwned hc i sc b :=
             Or.inr ⟨t, ht, fun b hb => absurd hb (hroot b)⟩
-          obtain ⟨after, s', hrun, inv', hs', -, fr, lc⟩ := gzerr invg Z_BUF_ERROR p hmsg
+          obtain ⟨after, s', hrun, inv', hs', -, fr, lc⟩ := gzerr invg Z_BUF_ERROR p hmsg (by decide)
           refine RunSafe.bind_lift hp (RunSafe.bind_lift hrun ?_)
           have acc2 := acc.step invc ((post_of_gz_error invg inv' hs' fr lc
-            (gzerrOwn hc i sc _ _ after invg hmsg hrun) acc.fsys).mono fun _ x => x.upToSkip) (fun _ => Iff.rfl) V
+            (gzerrOwn hc i sc _ _ after invg hmsg (by decide) hrun) acc.fsys).mono fun _ x => x.upToSkip) (fun _ => Iff.rfl) V
           have hsize' : s'.size = sc.size := by rw [hs']
           refine RunSafe.bind_lift (updS_run inv'.cur _) ?_
           refine RunSafe.pure' ⟨Or.inr (Or.inl rfl), ⟨acc2.put inv'.upToSkip

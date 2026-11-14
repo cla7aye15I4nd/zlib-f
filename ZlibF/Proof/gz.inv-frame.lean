@@ -273,7 +273,10 @@ theorem GzInv.frame_core (inv : GzInv h i s) (fr : Frame h after (fun b => ¬ Gz
       posHave := r.posHave
       againSize := r.againSize
       haveSkip := r.haveSkip
-      againEof := r.againEof }
+      againEof := r.againEof
+      errEnd := r.errEnd
+      copyIn := r.copyIn
+      msgLit := r.msgLit }
   · intro hm
     have w := inv.writer hm
     exact {

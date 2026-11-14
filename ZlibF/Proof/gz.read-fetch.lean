@@ -199,7 +199,10 @@ theorem GzInv.set_output {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) 
       posHave := r.posHave
       againSize := r.againSize
       haveSkip := r.haveSkip
-      againEof := r.againEof }
+      againEof := r.againEof
+      errEnd := r.errEnd
+      copyIn := r.copyIn
+      msgLit := r.msgLit }
   · intro hm
     exact absurd (hm0.symm.trans hm) (by decide)
 

@@ -420,7 +420,7 @@ theorem v2_ok (err : GzErrorSpec) (errOwn : GzErrorOwn) {h0 : Heap} {s0 : GzStat
     by_cases ha : (v3.again != 0) = true
     · obtain ⟨k, hk⟩ := strIndex_of_mem (s := "stalled write on gzprintf") (by decide +kernel)
       obtain ⟨after, run2, post2⟩ := lit_step err errOwn inv3 hfs1 Z_BUF_ERROR
-        (lit_cstring _ hk (by decide +kernel) (by decide +kernel) (by decide +kernel))
+        (lit_cstring _ hk (by decide +kernel) (by decide +kernel) (by decide +kernel)) (by decide)
       obtain ⟨-, s4, inv4, -⟩ := id post2
       have hS4 : ldS (gzSt i) after = .ok (s4, after) := Zlib.Gzlib.Proofs.ldS_run inv4.common.record
       refine ⟨s4.err, fs1, after, ?_, GetcUngetc.Eff.trans E3 inv3 post2 (fun _ => Iff.rfl)⟩
@@ -459,7 +459,7 @@ theorem pos_ok (err : GzErrorSpec) (errOwn : GzErrorOwn) {h0 : Heap} {s0 : GzSta
   by_cases hc : Int64.ofInt (9223372036854775807 - v.x.pos.toInt) < len.toInt64
   · -- the refusal of patch 0004
     obtain ⟨k, hk⟩ := strIndex_of_mem (s := "position overflow") (by decide +kernel)
-    obtain ⟨after, run2, post2⟩ := lit_step err errOwn inv hfs Z_DATA_ERROR (posov_cstring H hk)
+    obtain ⟨after, run2, post2⟩ := lit_step err errOwn inv hfs Z_DATA_ERROR (posov_cstring H hk) (by decide)
     obtain ⟨-, s4, inv4, -⟩ := id post2
     have hS4 : ldS (gzSt i) after = .ok (s4, after) := Zlib.Gzlib.Proofs.ldS_run inv4.common.record
     refine ⟨s4.err, fs, after, ?_, GetcUngetc.Eff.trans E inv post2 (fun _ => Iff.rfl)⟩

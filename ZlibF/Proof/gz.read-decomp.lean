@@ -530,7 +530,21 @@ theorem inflate_step (head : InflateHeadUsesInput) (stuck : InflateStuckNoOutput
           show z'.avail_in = 0
           apply UInt32.toNat_inj.mp
           show z'.avail_in.toNat = 0
-          omega }
+          omega
+        errEnd := rd.errEnd
+        copyIn := fun hc => absurd (rd.copyIn hc) hav
+        msgLit := fun hz => by
+          obtain ⟨z2, g2, m2⟩ := kc.msgs (gzStrm i) s.strm hgetH
+          have ez : z2 = z' := Option.some.inj (g2.symm.trans good'.live.hz)
+          subst ez
+          rcases m2 with e | e | e
+          · have hm := rd.msgLit hz
+            change s.strm.msg = .null ∨ ∃ j, j < strTable.size ∧ s.strm.msg = .ref (.str j) 0 at hm
+            change z2.msg = .null ∨ ∃ j, j < strTable.size ∧ z2.msg = .ref (.str j) 0
+            rw [e]
+            exact hm
+          · exact Or.inl e
+          · exact Or.inr e }
   -- ownership across the call
   have ownA : ∀ b, GzOwned (putGz after i (clearOut s')) i (clearOut s') b ↔ GzOwned after i s' b :=
     putGz_owned (s' := clearOut s') hrec' ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
@@ -863,7 +877,7 @@ theorem stuck_of_put {h : Heap} {i : Nat} {s s' : GzState} (hd : Stuck (putGz h 
 post-condition with no caller region. -/
 theorem post_gz_error {H : Heap} {i : Nat} {s : GzState} {fs : Fs} (hu : GzInvUpToOutput H i s)
     (hfs : FileSystem fs) (err : Int32) (msg : BPtr)
-    (hmsg : msg = .null ∨ ∃ t, CString H msg t ∧ ∀ b, ¬ ByteRoot msg b) :
+    (hmsg : msg = .null ∨ ∃ t, CString H msg t ∧ ∀ b, ¬ ByteRoot msg b) (he : err ≠ Z_STREAM_END) :
     ∃ after s', C.run (Zlib.Gzlib.gz_error (gzSt i) err msg) H = .ok ((), after) ∧ after.gzstates i = some s' ∧
       s' = { s with err := s'.err, msg := s'.msg } ∧ (s'.err = err ∨ s'.err = Z_MEM_ERROR) ∧
       CodecKept H after s ∧
@@ -873,7 +887,7 @@ theorem post_gz_error {H : Heap} {i : Nat} {s : GzState} {fs : Fs} (hu : GzInvUp
     rcases hmsg with hn | ⟨t, ct, hno⟩
     · exact Or.inl hn
     · exact Or.inr ⟨t, ct, fun b hb => absurd hb (hno b)⟩
-  obtain ⟨after, s', run, hs', shape, inv', -, errs, fr, lc, -, -, ng, keep⟩ := gz_error_upToOutput hu err msg hmsg'
+  obtain ⟨after, s', run, hs', shape, inv', -, errs, fr, lc, -, -, ng, keep⟩ := gz_error_upToOutput hu err msg hmsg' he
   have hs := hu.1
   have inv := hu.2
   have ownA : ∀ b, GzOwned (putGz after i (clearOut s')) i (clearOut s') b ↔ GzOwned after i s' b :=
@@ -1169,7 +1183,10 @@ theorem GzInv.zero_input {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) 
       posHave := r.posHave
       againSize := r.againSize
       haveSkip := r.haveSkip
-      againEof := fun _ _ => rfl }
+      againEof := fun _ _ => rfl
+      errEnd := r.errEnd
+      copyIn := fun _ => rfl
+      msgLit := r.msgLit }
   · intro hm
     exact absurd (hm0.symm.trans hm) (by decide)
 
@@ -1199,7 +1216,8 @@ theorem upto_put {h : Heap} {i : Nat} {s s2 : GzState} (hu : GzInvUpToOutput h i
       (s2.how = GZIP → s2.direct = 0) ∧ (s2.junk = -1 ∨ s2.junk = 0 ∨ s2.junk = 1) ∧
       (s2.eof = 0 ∨ s2.eof = 1) ∧ (s2.past = 0 ∨ s2.past = 1) ∧ (s2.again = 0 ∨ s2.again = 1) ∧
       (s.size = 0 → s2.how = LOOK) ∧ (s.size = 0 → s2.again = 0) ∧
-      (s2.again ≠ 0 → s2.eof ≠ 0 → s2.strm.avail_in = 0)) :
+      (s2.again ≠ 0 → s2.eof ≠ 0 → s2.strm.avail_in = 0))
+    (hcp : s2.how = GZ_COPY → s2.strm.avail_in = 0) :
     GzInvUpToOutput (putGz h i s2) i s2 := by
   obtain ⟨hs, inv⟩ := hu
   have c := inv.common
@@ -1215,7 +1233,7 @@ theorem upto_put {h : Heap} {i : Nat} {s s2 : GzState} (hu : GzInvUpToOutput h i
   simp only [clearOut] at p ph
   refine GzInv.put_scalars inv ⟨e1, e2, e3, e4, e5, e6, e7, e8, rfl, e9⟩
     ⟨by show 8 ≤ s2.want.toNat; rw [e10]; exact c.want.1, by show s2.want.toNat < 2 ^ 31; rw [e10]; exact c.want.2,
-      Or.inr e10⟩ ?_ (Nat.le_refl _) ?_ (fun hw => absurd (hm.symm.trans hw) (by decide))
+      Or.inr e10⟩ ?_ (Nat.le_refl _) ?_ (fun hw => absurd (hm.symm.trans hw) (by decide)) (fun _ => hcp)
   · show 0 ≤ s2.skip.toInt ∧ s2.x.pos.toInt + s2.skip.toInt ≤ 9223372036854775807 ∧ 0 ≤ s2.x.pos.toInt + (0 : UInt32).toNat
     rw [e11, e12]
     exact p
@@ -1278,17 +1296,18 @@ theorem Base.size (St : Stat i out h0 s0) {fs : Fs} {h : Heap} {s : GzState} (B 
     s.size ≠ 0 := by rw [B.keep.2.2.2.2.1]; exact St.hsz0
 
 /-- **`gz_avail`** as a transition. -/
-theorem avail_trans (St : Stat i out h0 s0) {fs : Fs} {h : Heap} {s : GzState} (B : Base i out h0 fs0 s0 fs h s) :
+theorem avail_trans (St : Stat i out h0 s0) {fs : Fs} {h : Heap} {s : GzState} (B : Base i out h0 fs0 s0 fs h s)
+    (hnc : s.how ≠ GZ_COPY) :
     ∃ r fs' h' s', Zlib.Gzread.gz_avail (gzSt i) fs h = .ok ((r, fs'), h') ∧ (r = 0 ∨ r = -1) ∧
       h'.gzstates i = some s' ∧ Base i out h0 fs0 s0 fs' h' s' ∧ AvailRec s s' ∧ AvailFlags r s s' ∧
       (∀ k, h'.istates k = h.istates k) ∧ (HasBudget fs0 s0.fd → inputLeft fs' s' ≤ inputLeft fs s) := by
   have hm := B.mode St
   have hsz := B.size St
   have hfs : FileSystem fs := B.post.1
-  obtain ⟨-, ex, post⟩ := gz_avail_safe i h fs s B.inv hm hfs hsz
+  obtain ⟨-, ex, post⟩ := gz_avail_safe i h fs s B.inv hm hfs hsz hnc
   obtain ⟨r, fs', h', run⟩ := ex trivial
   obtain ⟨hr, kept, p, s', hs', hrec, hafs, hflags, hist⟩ := post _ _ _ run
-  obtain ⟨bud1, bud2, bud3⟩ := gz_avail_budget i h fs s B.inv hm hfs hsz run s' hs'
+  obtain ⟨bud1, bud2, bud3⟩ := gz_avail_budget i h fs s B.inv hm hfs hsz hnc run s' hs'
   have e := hrec
   simp only [AvailRec] at e
   have hfd : s.fd = s0.fd := B.keep.2.1
@@ -1389,7 +1408,7 @@ theorem err_trans (St : Stat i out h0 s0) {fs : Fs} {h : Heap} {s : GzState} (B 
       s' = { s with err := s'.err, msg := s'.msg } ∧ (s'.err = err ∨ s'.err = Z_MEM_ERROR) ∧
       CodecKept h after s ∧ inputLeft fs s' = inputLeft fs s ∧
       Base i out h0 fs0 s0 fs after s' := by
-  obtain ⟨after, s', run, hs', shape, errs, ahd, post⟩ := post_gz_error B.inv B.post.1 err msg hmsg
+  obtain ⟨after, s', run, hs', shape, errs, ahd, post⟩ := post_gz_error B.inv B.post.1 err msg hmsg herr
   refine ⟨after, s', run, hs', shape, errs, ahd, by rw [shape]; rfl, ?_⟩
   obtain ⟨d, hd, hdl⟩ := B.pos
   refine Base.step B post hs' (fun _ => Iff.rfl) (Or.inl rfl)
@@ -1584,7 +1603,7 @@ theorem errs_run (St : Stat i out h0 s0) {fs : Fs} {h : Heap} {s : GzState} (B :
         upto_put hu2 hm ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
           ⟨Or.inl rfl, (fun e => absurd (show LOOK = GZ_COPY from e) (by decide)),
             (fun e => absurd (show LOOK = GZIP from e) (by decide)), rd.junk, Or.inr rfl, rd.flags.2.1, rd.flags.2.2,
-            fun hz => absurd hz hsz, fun hz => absurd hz hsz, fun _ _ => rfl⟩
+            fun hz => absurd hz hsz, fun hz => absurd hz hsz, fun _ _ => rfl⟩ (fun hc => absurd hc (by show ¬ (LOOK = GZ_COPY); decide))
       have B3 : Base i out h0 fs0 s0 fs (putGz (putGz h i s2) i s3) s3 :=
         put_trans St B2 hu3 ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩ ⟨rfl, rfl, rfl⟩ rfl rfl (Nat.le_refl _) rfl B2.ml
       have hs2 : (putGz h i s2).gzstates i = some s2 := by simp [putGz]
@@ -1723,6 +1742,7 @@ theorem run_run (head : InflateHeadUsesInput) (stuck : InflateStuckNoOutput) (St
       upto_put B2.inv hm ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
         ⟨rd.how, rd.copyDirect, rd.gzipDirect, Or.inr (Or.inl rfl), rd.flags.1, rd.flags.2.1, rd.flags.2.2,
           fun hz => absurd hz hsz, fun hz => absurd hz hsz, rd.againEof⟩
+        (fun hc => rd.copyIn hc)
     have B3 : Base i out h0 fs0 s0 fs (putGz h2 i s3) s3 :=
       put_trans St B2 hu3 ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩ ⟨rfl, rfl, rfl⟩ rfl rfl (Nat.le_refl _) rfl B2.ml
     have hu : (StateT.lift (updS (gzSt i) fun s => { s with junk := 0 }) : G Unit) fs h2 =
@@ -1793,7 +1813,7 @@ theorem body_run (head : InflateHeadUsesInput) (stuck : InflateStuckNoOutput) (S
   by_cases c0 : (s.strm.avail_in == 0) = true
   · rw [if_pos c0]
     have hav0 : s.strm.avail_in = 0 := by simpa using c0
-    obtain ⟨r, fs1, h1, s1, run, hr, hs1, B1, hrec, hflags, hist, hle⟩ := avail_trans St B
+    obtain ⟨r, fs1, h1, s1, run, hr, hs1, B1, hrec, hflags, hist, hle⟩ := avail_trans St B (by rw [hgz]; decide)
     have e := hrec
     simp only [AvailRec] at e
     simp only [g_bind_app, run]
@@ -2070,7 +2090,7 @@ theorem tail_run (St : Stat i out h0 s0) (g0 : s0.how = GZIP) (had : UInt32) (hh
       upto_put B2.inv hm ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
         ⟨Or.inl rfl, (fun e => absurd (show LOOK = GZ_COPY from e) (by decide)),
           (fun e => absurd (show LOOK = GZIP from e) (by decide)), Or.inr (Or.inl rfl), rd.flags.1, rd.flags.2.1,
-          rd.flags.2.2, fun hz => absurd hz hsz, fun hz => absurd hz hsz, rd.againEof⟩
+          rd.flags.2.2, fun hz => absurd hz hsz, fun hz => absurd hz hsz, rd.againEof⟩ (fun hc => absurd hc (by show ¬ (LOOK = GZ_COPY); decide))
     have B3 := put_trans St B2 hu3 ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩ ⟨rfl, rfl, rfl⟩ rfl rfl (Nat.le_refl _) rfl B2.ml
     have hu4 : (StateT.lift (updS (gzSt i) fun s => { s with junk := 0, how := LOOK }) : G Unit) fs
         (putGz (putGz h i s1) i s2) = .ok (((), fs), putGz (putGz (putGz h i s1) i s2) i s3) := lift_ok (updS_run hs2 _)

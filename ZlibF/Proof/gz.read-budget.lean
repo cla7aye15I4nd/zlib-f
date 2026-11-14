@@ -15,14 +15,14 @@ set_option autoImplicit false
 `Z_MEM_ERROR`). -/
 theorem gz_avail_budget (i : Nat) (h : Heap) (fs : Fs) (s : GzState)
     (hu : GzInvUpToOutput h i s) (hm : s.mode = GZ_READ) (hfs : FileSystem fs) (hsz : s.size ≠ 0)
-    {r : Int32} {fs' : Fs} {after : Heap}
+    (hnc : s.how ≠ GZ_COPY) {r : Int32} {fs' : Fs} {after : Heap}
     (run : Zlib.Gzread.gz_avail (gzSt i) fs h = .ok ((r, fs'), after)) :
     ∀ s', after.gzstates i = some s' →
       (HasBudget fs s.fd → HasBudget fs' s.fd ∧ inputLeft fs' s' ≤ inputLeft fs s) ∧
       (ReadsFinite fs s.fd → ReadsFinite fs' s.fd) ∧
       (s.err ≠ Z_STREAM_END → s'.err ≠ Z_STREAM_END) := by
   intro s' hs'
-  obtain ⟨-, -, hpost⟩ := gz_avail_safe i h fs s hu hm hfs hsz
+  obtain ⟨-, -, hpost⟩ := gz_avail_safe i h fs s hu hm hfs hsz hnc
   obtain ⟨-, -, -, t, ht, hrec, ⟨hbud, hle, herr⟩, -⟩ := hpost _ _ _ run
   have e : t = s' := Option.some.inj (ht.symm.trans hs')
   subst e

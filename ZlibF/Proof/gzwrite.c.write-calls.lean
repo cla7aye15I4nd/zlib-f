@@ -44,7 +44,7 @@ theorem clear_step {h : Heap} {s : GzState} {fs : Fs} (inv : GzInv h i s) (hfs :
     Zlib.Gzlib.gz_error (gzSt i) Z_OK .null h = .ok ((), okHeap h i s) ∧ GzInv (okHeap h i s) i (okRec s) ∧
       GzPost h i s [] fs (okHeap h i s) GzInv := by
   have run := GetcUngetc.again_run inv.upToSkip
-  obtain ⟨inv', hown', hlive', fr⟩ := inv.clear_message s.eof s.past Z_OK
+  obtain ⟨inv', hown', hlive', fr⟩ := inv.clear_message s.eof s.past Z_OK (by decide)
     (fun hm => ⟨(inv.reader hm).flags.1, (inv.reader hm).flags.2.1, (inv.reader hm).againEof⟩)
   refine ⟨run, inv', GetcUngetc.post_of_gz_error inv inv' rfl fr ?_ ?_ hfs⟩
   · intro b
@@ -110,15 +110,15 @@ theorem lit_cstring (H : Heap) {lit : String} {k : Nat} (hk : strIndex lit = som
 /-- **A refusal `gz_error(state, err, "<literal>")`**, from the facts of `gz_error`. -/
 theorem lit_step (err : GzErrorSpec) (errOwn : GzErrorOwn) {H : Heap} {v : GzState} {fs : Fs}
     (inv : GzInv H i v) (hfs : FileSystem fs) (e : Int32) {k : Nat}
-    (hc : ∃ t, CString H (.ref (.str k) 0) t) :
+    (hc : ∃ t, CString H (.ref (.str k) 0) t) (he : e ≠ Z_STREAM_END) :
     ∃ after, Zlib.Gzlib.gz_error (gzSt i) e (.ref (.str k) 0) H = .ok ((), after) ∧
       GzPost H i v [] fs after GzInv := by
   have hmsg : (Ptr.ref (BRef.str k) 0 : BPtr) = .null ∨ ∃ t, CString H (.ref (.str k) 0) t ∧
       ∀ b, ByteRoot (.ref (.str k) 0) b → ¬ GzOwned H i v b := by
     obtain ⟨t, ct⟩ := hc
     exact Or.inr ⟨t, ct, fun b hb => by simp [ByteRoot] at hb⟩
-  obtain ⟨after, s', run, inv', e', -, fr, lc⟩ := err inv e (.ref (.str k) 0) hmsg
-  have own := errOwn H i v e (.ref (.str k) 0) after inv hmsg run s' inv'.common.record
+  obtain ⟨after, s', run, inv', e', -, fr, lc⟩ := err inv e (.ref (.str k) 0) hmsg he
+  have own := errOwn H i v e (.ref (.str k) 0) after inv hmsg he run s' inv'.common.record
   exact ⟨after, run, GetcUngetc.post_of_gz_error inv inv' e' fr lc own hfs⟩
 
 /-! ## `gz_zero` and `gz_comp` on a writer with or without buffers -/
@@ -298,7 +298,7 @@ theorem gzwrite_step_of (err : GzErrorSpec) (errOwn : GzErrorOwn) (i : Nat) (buf
     by_cases hl : len.toInt32 < 0
     · obtain ⟨k, hk⟩ := strIndex_of_mem (s := "requested length does not fit in int") (by decide +kernel)
       obtain ⟨after, run2, post2⟩ := lit_step err errOwn inv1 hfs Z_DATA_ERROR
-        (lit_cstring _ hk (by decide +kernel) (by decide +kernel) (by decide +kernel))
+        (lit_cstring _ hk (by decide +kernel) (by decide +kernel) (by decide +kernel)) (by decide)
       refine ⟨0, fs, after, ?_, GetcUngetc.Eff.trans E1 inv1 post2 (fun _ => Iff.rfl)⟩
       simp only [liftM, monadLift, MonadLift.monadLift, MonadLiftT.monadLift, cbind_app, clift_app, cpure_app, hS,
         hm', Bool.false_eq_true, ↓reduceIte, run1, hl, Zlib.GzFs.strLit, strLitRef_of_index hk, run2]
@@ -372,7 +372,7 @@ theorem gzfwrite_step_of (err : GzErrorSpec) (errOwn : GzErrorOwn) (i : Nat) (bu
     by_cases hc : (size != 0 && nitems * size / size != nitems) = true
     · obtain ⟨k, hk⟩ := strIndex_of_mem (s := "request does not fit in a size_t") (by decide +kernel)
       obtain ⟨after, run2, post2⟩ := lit_step err errOwn inv1 hfs Z_STREAM_ERROR
-        (lit_cstring _ hk (by decide +kernel) (by decide +kernel) (by decide +kernel))
+        (lit_cstring _ hk (by decide +kernel) (by decide +kernel) (by decide +kernel)) (by decide)
       refine ⟨0, fs, after, ?_, GetcUngetc.Eff.trans E1 inv1 post2 (fun _ => Iff.rfl)⟩
       simp only [liftM, monadLift, MonadLift.monadLift, MonadLiftT.monadLift, cbind_app, clift_app, cpure_app, hS,
         hm', Bool.false_eq_true, ↓reduceIte, run1, hc, Zlib.GzFs.strLit, strLitRef_of_index hk, run2]
@@ -451,7 +451,7 @@ theorem gzputs_step_of (err : GzErrorSpec) (errOwn : GzErrorOwn) (i : Nat) (str 
         (UInt64.ofNat xs.length).toUInt32.toUInt64 != UInt64.ofNat xs.length) = true
     · obtain ⟨k, hk⟩ := strIndex_of_mem (s := "string length does not fit in int") (by decide +kernel)
       obtain ⟨after, run2, post2⟩ := lit_step err errOwn inv1 hfs Z_STREAM_ERROR
-        (lit_cstring _ hk (by decide +kernel) (by decide +kernel) (by decide +kernel))
+        (lit_cstring _ hk (by decide +kernel) (by decide +kernel) (by decide +kernel)) (by decide)
       refine ⟨-1, fs, after, ?_, GetcUngetc.Eff.trans E1 inv1 post2 (fun _ => Iff.rfl)⟩
       simp only [liftM, monadLift, MonadLift.monadLift, MonadLiftT.monadLift, cbind_app, clift_app, cpure_app, hS,
         hm', Bool.false_eq_true, ↓reduceIte, run1, hlen, hc, Zlib.GzFs.strLit, strLitRef_of_index hk, run2]

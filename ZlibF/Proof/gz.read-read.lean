@@ -228,7 +228,10 @@ theorem inv_put_x {H : Heap} {i : Nat} {t : GzState} (inv : GzInv H i t) (hm : t
       posHave := hp
       againSize := r.againSize
       haveSkip := hsk
-      againEof := r.againEof }
+      againEof := r.againEof
+      errEnd := r.errEnd
+      copyIn := r.copyIn
+      msgLit := r.msgLit }
   · intro hw
     exact absurd (hm.symm.trans hw) read_ne_write'
 
@@ -277,7 +280,7 @@ theorem upTo_pos {h : Heap} {i : Nat} {s : GzState} (hu : GzInvUpToOutput h i s)
     (fun _ => ⟨rd.how, rd.copyDirect, rd.gzipDirect, rd.junk, rd.flags.1, rd.flags.2.1, rd.flags.2.2,
       fun hz => (rd.unalloc hz).2.2.1, rd.againSize, by simp only [clearOut]; simp; omega,
       fun hh => absurd rfl hh, rd.againEof⟩)
-    (fun hw => absurd (hm'.symm.trans hw) read_ne_write')
+    (fun hw => absurd (hm'.symm.trans hw) read_ne_write') (fun _ => rd.copyIn)
 
 /-! ## Post-conditions over the record only -/
 
@@ -635,7 +638,7 @@ theorem inv_pos {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) (hm : s.m
     ⟨c.pos.1, by simp only []; omega, h0⟩ (Nat.le_refl _)
     (fun _ => ⟨rd.how, rd.copyDirect, rd.gzipDirect, rd.junk, rd.flags.1, rd.flags.2.1, rd.flags.2.2,
       fun hz => (rd.unalloc hz).2.2.1, rd.againSize, h1, fun _ => hsk, rd.againEof⟩)
-    (fun hw => absurd (hm.symm.trans hw) read_ne_write')
+    (fun hw => absurd (hm.symm.trans hw) read_ne_write') (fun _ => rd.copyIn)
 
 /-- **The caller's region now**: a writable byte view the handle does not own, with its block live. -/
 theorem region_now {i : Nat} {h0 : Heap} {fs0 : Fs} {s0 : GzState} {buf0 : BPtr} {len0 : UInt64}
@@ -993,13 +996,13 @@ theorem lit_eof' : ∃ k, strIndex "unexpected end of file" = some k ∧ ∀ H :
 post-condition, and `GzInv` after. -/
 theorem err_lit_step {H : Heap} {i : Nat} {s : GzState} {fs : Fs} (hu : GzInvUpToOutput H i s) (hfs : FileSystem fs)
     (hm : s.mode = GZ_READ) (hv : s.x.«have» = 0) (hsk : s.skip = 0) (err : Int32) {k : Nat}
-    (hcs : ∃ t, CString H (.ref (.str k) 0) t) :
+    (hcs : ∃ t, CString H (.ref (.str k) 0) t) (he : err ≠ Z_STREAM_END) :
     ∃ after s', Zlib.Gzlib.gz_error (gzSt i) err (.ref (.str k) 0) H = .ok ((), after) ∧
       after.gzstates i = some s' ∧ s' = { s with err := s'.err, msg := s'.msg } ∧
       (s'.err = err ∨ s'.err = Z_MEM_ERROR) ∧ GzPost H i s [] fs after Rec ∧ GzInv after i s' := by
   obtain ⟨t, ct⟩ := hcs
   obtain ⟨after, s', run, hs', shape, errs, -, post⟩ := post_gz_error hu hfs err (.ref (.str k) 0)
-    (Or.inr ⟨t, ct, fun b hb => by simp [ByteRoot] at hb⟩)
+    (Or.inr ⟨t, ct, fun b hb => by simp [ByteRoot] at hb⟩) he
   have hu' : GzInvUpToOutput after i s' := by
     obtain ⟨-, t', it, -⟩ := post
     have e := Option.some.inj (it.1.symm.trans hs')
@@ -1036,7 +1039,7 @@ theorem posov_run {i : Nat} {h0 : Heap} {fs0 : Fs} {s0 : GzState} {buf0 : BPtr} 
   obtain ⟨k, hk, hcs⟩ := lit_posov
   refine RunSafe.bind_lift (strLitRef_of_index hk) ?_
   obtain ⟨after, s', run, hs', shape, errs, post, inv'⟩ := err_lit_step hu1 hfs kp.mode rfl kp.skip Z_DATA_ERROR
-    (hcs _)
+    (hcs _) (by decide)
   refine RunSafe.bind_lift run ?_
   refine RunSafe.pure' ?_
   have P0 := post_put_step (fs := fs) (s' := { s with x := { s.x with «have» := 0, next := s.x.next } }) hs
@@ -1063,7 +1066,7 @@ theorem eof_run {i : Nat} {h0 : Heap} {fs0 : Fs} {s0 : GzState} {buf0 : BPtr} {l
   · obtain ⟨k, hk, hcs⟩ := lit_eof'
     refine RunSafe.bind_lift (strLitRef_of_index hk) ?_
     obtain ⟨after, s', run, hs', shape, errs, post, inv'⟩ := err_lit_step hu hfs kp.mode hv kp.skip Z_BUF_ERROR
-      (hcs _)
+      (hcs _) (by decide)
     refine RunSafe.bind_lift run ?_
     refine RunSafe.pure' ?_
     have kp' : Keep s0 s' := by
@@ -1529,7 +1532,7 @@ theorem tail_final {i : Nat} {h0 : Heap} {fs0 : Fs} {s0 : GzState} {buf0 : BPtr}
       (Nat.le_refl _)
       (fun _ => ⟨rd.how, rd.copyDirect, rd.gzipDirect, rd.junk, rd.flags.1, Or.inr rfl, rd.flags.2.2,
         fun hz => (rd.unalloc hz).2.2.1, rd.againSize, rd.posHave, rd.haveSkip, rd.againEof⟩)
-      (fun hw => absurd (kp.mode.symm.trans hw) read_ne_write')
+      (fun hw => absurd (kp.mode.symm.trans hw) read_ne_write') (fun _ => rd.copyIn)
   have P := post_compose' acc.post (fun t ht => ht) hs
     (post_put_step (fs := fs) (s' := { s with past := 1 }) hs c.live hfs ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩ rfl)
     (Zlib.Inflate.Proofs.RegionsWithin.nil _) views0

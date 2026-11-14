@@ -524,7 +524,7 @@ theorem msg_owned {h : Heap} {i : Nat} {s : GzState} (invC : GzInv (putGz h i (c
 /-- The common part of the two interface lemmas: the run, the new record, the transferred facts. -/
 theorem gz_error_upTo_core (err : GzErrorSpec) (errOwn : GzErrorOwn) {h : Heap} {i : Nat} {s : GzState}
     (hs : h.gzstates i = some s) (invC : GzInv (putGz h i (clearIn s)) i (clearIn s)) (e : Int32) (msg : BPtr)
-    (hmsg : msg = .null ∨ ∃ t, CString h msg t ∧ ∀ b, ByteRoot msg b → ¬ GzOwned h i s b) :
+    (hmsg : msg = .null ∨ ∃ t, CString h msg t ∧ ∀ b, ByteRoot msg b → ¬ GzOwned h i s b) (he : e ≠ Z_STREAM_END) :
     ∃ after s', C.run (Zlib.Gzlib.gz_error (gzSt i) e msg) h = .ok ((), after) ∧
       after.gzstates i = some s' ∧ GzInv (putGz after i (clearIn s')) i (clearIn s') ∧
       s' = { s with err := s'.err, msg := s'.msg } ∧ (s'.err = e ∨ (s'.err = Z_MEM_ERROR ∧ s'.msg = .null)) ∧
@@ -537,9 +537,9 @@ theorem gz_error_upTo_core (err : GzErrorSpec) (errOwn : GzErrorOwn) {h : Heap} 
     rcases hmsg with hn | ⟨t, ct, no⟩
     · exact Or.inl hn
     · exact Or.inr ⟨t, (cstring_putGz _ _ _ _ _).2 ct, fun b hb => by rw [owned_clearIn hs]; exact no b hb⟩
-  obtain ⟨A, s0, run, invA, eq0, errs, frameA, liveA⟩ := err invC e msg hmsg'
+  obtain ⟨A, s0, run, invA, eq0, errs, frameA, liveA⟩ := err invC e msg hmsg' he
   have hA : A.gzstates i = some s0 := invA.common.record
-  have ownA := errOwn _ _ _ _ _ _ invC hmsg' run s0 hA
+  have ownA := errOwn _ _ _ _ _ _ invC hmsg' he run s0 hA
   have bor : A.libcErrorBorrow = (putGz h i (clearIn s)).libcErrorBorrow :=
     C.LibcBorrow.gz_error_borrow_stable (gzSt i) e msg _ () A run
   generalize s0.err = e0 at eq0 errs
@@ -599,14 +599,14 @@ does not own (a literal, a borrowed `strerror` view, a caller string). The calle
 are live and not owned, and `gz_error` changes only the record and the old owned message. -/
 theorem gz_error_upToInput (err : GzErrorSpec) (errOwn : GzErrorOwn) {h : Heap} {i : Nat} {s : GzState}
     {src : Region} (inv : GzInvUpToInput h i s src) (e : Int32) (msg : BPtr)
-    (hmsg : msg = .null ∨ ∃ t, CString h msg t ∧ ∀ b, ByteRoot msg b → ¬ GzOwned h i s b) :
+    (hmsg : msg = .null ∨ ∃ t, CString h msg t ∧ ∀ b, ByteRoot msg b → ¬ GzOwned h i s b) (he : e ≠ Z_STREAM_END) :
     ∃ after s', C.run (Zlib.Gzlib.gz_error (gzSt i) e msg) h = .ok ((), after) ∧ GzInvUpToInput after i s' src ∧
       s' = { s with err := s'.err, msg := s'.msg } ∧ Frame h after (fun b => b = i ∨ blkOf s.msg = some b) ∧
       LiveChange h after (fun b => blkOf s'.msg = some b ∧ ¬ h.live b) (fun b => blkOf s.msg = some b) ∧
       (∀ b, GzOwned after i s' b → h.live b → GzOwned h i s b) := by
   obtain ⟨hs, invC, hmode, hin, hreg⟩ := inv
   obtain ⟨after, s', run, hrec, invA, eq', -, frame, live, own, get⟩ :=
-    gz_error_upTo_core err errOwn hs invC e msg hmsg
+    gz_error_upTo_core err errOwn hs invC e msg hmsg he
   have hmode' : s'.mode = s.mode := by rw [eq']
   have hz : s'.strm = s.strm := by rw [eq']
   have hinb : s'.«in» = s.«in» := by rw [eq']
@@ -623,7 +623,7 @@ new message block, which differs from the region's blocks only when they are liv
 `hlive` (a readable range has live blocks). -/
 theorem gz_error_upToInputWeak (err : GzErrorSpec) (errOwn : GzErrorOwn) {h : Heap} {i : Nat} {s : GzState}
     {src : Region} (inv : GzInvUpToInputWeak h i s src) (e : Int32) (msg : BPtr)
-    (hmsg : msg = .null ∨ ∃ t, CString h msg t ∧ ∀ b, ByteRoot msg b → ¬ GzOwned h i s b)
+    (hmsg : msg = .null ∨ ∃ t, CString h msg t ∧ ∀ b, ByteRoot msg b → ¬ GzOwned h i s b) (he : e ≠ Z_STREAM_END)
     (hlive : src.pointer = s.«in» ∧ src.length ≤ 2 * s.size.toNat ∨ ∀ b, ByteRoot src.pointer b → h.live b) :
     ∃ after s', C.run (Zlib.Gzlib.gz_error (gzSt i) e msg) h = .ok ((), after) ∧
       GzInvUpToInputWeak after i s' src ∧
@@ -632,7 +632,7 @@ theorem gz_error_upToInputWeak (err : GzErrorSpec) (errOwn : GzErrorOwn) {h : He
       (∀ b, GzOwned after i s' b → h.live b → GzOwned h i s b) := by
   obtain ⟨hs, invC, hmode, hin, hreg⟩ := inv
   obtain ⟨after, s', run, hrec, invA, eq', -, frame, live, own, -⟩ :=
-    gz_error_upTo_core err errOwn hs invC e msg hmsg
+    gz_error_upTo_core err errOwn hs invC e msg hmsg he
   have hmode' : s'.mode = s.mode := by rw [eq']
   have hz : s'.strm = s.strm := by rw [eq']
   have hinb : s'.«in» = s.«in» := by rw [eq']

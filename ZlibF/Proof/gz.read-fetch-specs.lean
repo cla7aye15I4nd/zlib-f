@@ -70,12 +70,6 @@ noncomputable def fetchRank (fs : Fs) (h : Heap) (s : GzState) : Nat :=
   4 * inputLeft fs s + (if 0 ≤ s.fd.toInt then (fs.readBudget s.fd.toInt.toNat).getD 0 else 0) +
     (if s.how = GZIP ∧ ¬ InflateAtHead h s then 2 else 0) + (if s.how = GZ_COPY then 0 else 2)
 
-/-- The message of the embedded stream is `NULL` or a string literal of the sources (`inflateInit2_` and
-`inflateReset` clear it, `inflate` sets literals). `gz_decomp` hands it to `gz_error`. **Open**: to become a clause of
-the reader invariant. -/
-def MsgLit (s : GzState) : Prop :=
-  s.size ≠ 0 → s.strm.msg = .null ∨ ∃ j, j < strTable.size ∧ s.strm.msg = .ref (.str j) 0
-
 /-- The record fields a fetching helper keeps. -/
 def FetchKeeps (s s' : GzState) : Prop :=
   s'.mode = s.mode ∧ s'.fd = s.fd ∧ s'.skip = s.skip ∧ s'.x.pos = s.x.pos ∧

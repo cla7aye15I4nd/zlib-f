@@ -290,7 +290,7 @@ theorem gz_load_error_tail (i : Nat) (buf : BPtr) (len : UInt32) (h : Heap) (fs 
       (ZlibF.PlatformMemory.ByteObjectsFit.of_storage_eq hu2.2.common.fit rfl rfl rfl)).1
   have hcs := Zlib.GzFs.Proofs.zstrerror_cstring hz3
   obtain ⟨after, s4, run4, hs4, shape4, post4⟩ := gz_error_upToOutput hu3 Z_ERRNO _
-    (Or.inr ⟨_, hcs, fun b hb => by cases hb⟩)
+    (Or.inr ⟨_, hcs, fun b hb => by cases hb⟩) (by decide)
   have hist4 : ∀ k, after.istates k = h.istates k := fun k => by
     have := errPost_istates hu3.2 post4 k
     exact this.trans (histH k)

@@ -98,7 +98,10 @@ theorem GzInv.drop_input {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) 
       posHave := r.posHave
       againSize := r.againSize
       haveSkip := r.haveSkip
-      againEof := fun _ _ => rfl }
+      againEof := fun _ _ => rfl
+      errEnd := r.errEnd
+      copyIn := fun _ => rfl
+      msgLit := r.msgLit }
   · intro hm
     have w := inv.writer hm
     exact {
@@ -144,7 +147,7 @@ theorem GzInv.gz_reset {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) :
       LiveChange h after (fun _ => False) (fun b => blkOf s.msg = some b) := by
   have hs := inv.common.record
   -- step 1: the message
-  obtain ⟨inv1, own1, live1, frame1⟩ := inv.clear_message s.eof s.past Z_OK
+  obtain ⟨inv1, own1, live1, frame1⟩ := inv.clear_message s.eof s.past Z_OK (by decide)
     (fun hm => ⟨(inv.reader hm).flags.1, (inv.reader hm).flags.2.1, (inv.reader hm).againEof⟩)
   -- step 2: the scalars of `resetRec`
   have h0 : (0 : Int64).toInt = 0 := rfl
@@ -166,7 +169,7 @@ theorem GzInv.gz_reset {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) :
             Or.inl rfl, Or.inl rfl, Or.inl rfl, fun _ => rfl, fun _ => rfl,
             by show (0 : Int64).toInt + ((0 : UInt32).toNat : Int) ≤ 9223372036854775807; decide, fun _ => rfl,
             fun h0 _ => absurd rfl h0⟩)
-          (fun hw => absurd (hmo.symm.trans hw) (by decide))
+          (fun hw => absurd (hmo.symm.trans hw) (by decide)) (fun _ => (fun hc => absurd hc (by show ¬ (LOOK = GZ_COPY); decide)))
       · unfold Zlib.Gzlib.Spec.resetRec
         rw [hmo']
         rfl
@@ -180,7 +183,7 @@ theorem GzInv.gz_reset {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) :
             by show (0 : Int) ≤ (0 : Int64).toInt + ((0 : UInt32).toNat : Int); decide⟩
           (by show (0 : UInt32).toNat ≤ _; exact Nat.zero_le _)
           (fun hr => absurd hr hmo)
-          (fun _ => Or.inl rfl)
+          (fun _ => Or.inl rfl) (fun hr => absurd hr hmo)
       · unfold Zlib.Gzlib.Spec.resetRec
         rw [hmo']
         rfl

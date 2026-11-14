@@ -301,7 +301,10 @@ theorem GzInv.put_message {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s)
       posHave := r.posHave
       againSize := r.againSize
       haveSkip := r.haveSkip
-      againEof := r.againEof }
+      againEof := r.againEof
+      errEnd := r.errEnd
+      copyIn := r.copyIn
+      msgLit := r.msgLit }
   · intro hm
     have w := inv.writer hm
     exact {
@@ -653,10 +656,10 @@ structure Cleared (h : Heap) (i : Nat) (s : GzState) (err : Int32) (h1 : Heap) (
   /-- the caller's message keeps its bytes -/
   keep : ∀ msg t, CString h msg t → (∀ b, ByteRoot msg b → ¬ GzOwned h i s b) → CString h1 msg t
 
-theorem cleared_of {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) (err : Int32) :
+theorem cleared_of {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) (err : Int32) (he : err ≠ Z_STREAM_END) :
     Cleared h i s err (putGz (freeStr h s.msg) i { s with eof := s.eof, past := s.past, msg := .null, err := err })
       { s with eof := s.eof, past := s.past, msg := .null, err := err } := by
-  obtain ⟨inv1, own1, live1, frame1⟩ := inv.clear_message s.eof s.past err
+  obtain ⟨inv1, own1, live1, frame1⟩ := inv.clear_message s.eof s.past err he
     (fun hm => ⟨(inv.reader hm).flags.1, (inv.reader hm).flags.2.1, (inv.reader hm).againEof⟩)
   refine ⟨inv1, own1, live1, frame1, rfl, rfl, fun _ _ => rfl, freeStr_nextBlk h s.msg,
     inv.common.fresh _ (Nat.le_refl _), ?_⟩
@@ -691,7 +694,7 @@ open GzErrorRun in
 theorem post_refused {h h1 : Heap} {i : Nat} {s s1 : GzState} {err : Int32} (c : Cleared h i s err h1 s1) :
     ErrPost h i s err (Zlib.Gzlib.MessageRefusal.refusedMessageHeap h1 i s1)
       { s1 with err := Z_MEM_ERROR, msg := .null } := by
-  obtain ⟨inv2, own2, live2, frame2⟩ := c.inv1.clear_message s1.eof s1.past Z_MEM_ERROR
+  obtain ⟨inv2, own2, live2, frame2⟩ := c.inv1.clear_message s1.eof s1.past Z_MEM_ERROR (by decide)
     (fun hm => ⟨(c.inv1.reader hm).flags.1, (c.inv1.reader hm).flags.2.1, (c.inv1.reader hm).againEof⟩)
   have hX : freeStr h1 s1.msg = h1 := by rw [c.msg1]; rfl
   rw [hX] at inv2 own2 live2 frame2
@@ -864,9 +867,10 @@ theorem post_copied {h h1 : Heap} {i : Nat} {s s1 : GzState} {err : Int32} {msg 
 open GzErrorRun in
 /-- **`gz_error` keeps `GzInv`**, with the skeleton's post-condition, the record of the result and no grab. -/
 theorem GzInv.gz_error_full {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) (err : Int32) (msg : BPtr)
-    (hmsg : msg = .null ∨ ∃ t, CString h msg t ∧ ∀ b, ByteRoot msg b → ¬ GzOwned h i s b) :
+    (hmsg : msg = .null ∨ ∃ t, CString h msg t ∧ ∀ b, ByteRoot msg b → ¬ GzOwned h i s b)
+    (he : err ≠ Z_STREAM_END) :
     ∃ after s', C.run (Zlib.Gzlib.gz_error (gzSt i) err msg) h = .ok ((), after) ∧ ErrPost h i s err after s' := by
-  have c := cleared_of inv err
+  have c := cleared_of inv err he
   have hrun0 := gz_error_prefix inv err msg
   generalize ({ s with eof := s.eof, past := s.past, msg := .null, err := err } : GzState) = s1 at c hrun0
   generalize putGz (freeStr h s.msg) i s1 = h1 at c hrun0
