@@ -1188,6 +1188,7 @@ import ZlibF.Proof.«infback.c.safety-dispatch»
 import ZlibF.Proof.«infback.c.safety-call»
 import ZlibF.Proof.«infback.c.safety-reach»
 import ZlibF.Proof.«inffast.c.consume»
+import ZlibF.Proof.«infback.c.safety-fast»
 import ZlibF.Proof.«inflate.c.completes-reachable»
 import ZlibF.Proof.«inflate.c.len-end-drops»
 
