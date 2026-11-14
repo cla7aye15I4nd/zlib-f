@@ -1711,6 +1711,7 @@ import ZlibF.Proof.«inflate.c.stuck-no-output»
 import ZlibF.Proof.«gz.read-leaf-common»
 import ZlibF.Proof.«gz.read-getc-step»
 import ZlibF.Proof.«gz.read-direct-step»
+import ZlibF.Proof.«gz.read-gets-step»
 import ZlibF.Proof.«gzwrite.c.upto-input»
 import ZlibF.Proof.«gzwrite.c.comp»
 import ZlibF.Proof.«gzwrite.c.zero»
