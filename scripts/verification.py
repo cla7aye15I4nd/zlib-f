@@ -53,30 +53,119 @@ def undocumented_names(header: str) -> set[str]:
 
 
 def required_public_goals(manifest: dict) -> list[str]:
-    """The function contract goals that are required: compiled by the target and part of the zlib API.
+    """The required targets: the safety goal of every function compiled by the target and part of
+    the zlib API, the listed safety goals and the non-vacuity goals
+    (docs/design/safety-functional-split.md).
 
     zlib.h declares some exported functions as undocumented and not part of the zlib API. They stay
     in the inventory, and their registered theorems stay audited, but their goals are not required.
+    A functional goal is not required: a registered proof of it is audited in full, an unproved one
+    is reported and fails nothing.
     """
     hidden = set(manifest.get("undocumented", {}).get("functions", []))
-    return [a["goal"] for a in manifest["apis"] if a["scope"] == "lp64-linux" and a["function"] not in hidden]
+    required = [a["safety_goal"] for a in manifest["apis"]
+                if a["scope"] == "lp64-linux" and a["function"] not in hidden]
+    required += manifest.get("safety_goals", []) + manifest.get("nonvacuity_goals", [])
+    return list(dict.fromkeys(required))
+
+
+def functional_goals(manifest: dict) -> list[str]:
+    """The functional goals: each function's full contract and the sequence goals. Not required."""
+    goals = [a["functional_goal"] for a in manifest["apis"] if a["scope"] == "lp64-linux"]
+    return list(dict.fromkeys(goals + manifest.get("sequence_goals", [])))
+
+
+def open_safety(manifest: dict) -> list[str]:
+    return [entry["goal"] for entry in manifest.get("open_safety", [])]
+
+
+def check_open_safety(manifest: dict) -> None:
+    """`open_safety` names required goals that have no registered theorem yet, each with an owner."""
+    entries = manifest.get("open_safety")
+    if not isinstance(entries, list):
+        raise Rejected("open_safety must be a list")
+    required = set(required_public_goals(manifest))
+    names = []
+    for entry in entries:
+        if not isinstance(entry, dict) or set(entry) != {"goal", "owner"} or \
+                not isinstance(entry["owner"], str) or not entry["owner"].strip():
+            raise Rejected(f"open_safety entries need a goal and an owner: {entry}")
+        if entry["goal"] not in required:
+            raise Rejected(f"open_safety names a goal that is not required: {entry['goal']}")
+        names.append(entry["goal"])
+    if len(names) != len(set(names)):
+        raise Rejected("duplicate open_safety entry")
+
+
+def base_revision() -> str:
+    """The base branch the open list is compared with: ZLIBF_BASE_REF, else the pull request's
+    base branch, else origin/main. When that is this very commit (a run on main), its first parent."""
+    ref = os.environ.get("ZLIBF_BASE_REF") or \
+        ("origin/" + os.environ["GITHUB_BASE_REF"] if os.environ.get("GITHUB_BASE_REF") else "origin/main")
+    try:
+        base = subprocess.check_output(["git", "rev-parse", "--verify", ref + "^{commit}"],
+                                       cwd=ROOT, text=True, stderr=subprocess.DEVNULL).strip()
+        head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+        if base == head:
+            base = subprocess.check_output(["git", "rev-parse", "--verify", "HEAD^"],
+                                           cwd=ROOT, text=True, stderr=subprocess.DEVNULL).strip()
+    except subprocess.CalledProcessError:
+        raise Rejected(f"base branch {ref} is not available: fetch it, or set ZLIBF_BASE_REF")
+    return base
+
+
+def check_open_safety_shrinks(manifest: dict) -> None:
+    """The open list only shrinks: a goal that the base branch requires and does not list as open
+    may not become open. A goal new to the required set may enter the open list."""
+    base = base_revision()
+    try:
+        text = subprocess.check_output(["git", "show", f"{base}:{MANIFEST.as_posix()}"],
+                                       cwd=ROOT, text=True, stderr=subprocess.DEVNULL)
+    except subprocess.CalledProcessError:
+        raise Rejected(f"the base branch {base} has no {MANIFEST}")
+    previous = json.loads(text)
+    if "open_safety" not in previous:
+        # The base predates the open list; it closes no goal, so there is nothing to compare.
+        print(f"open_safety: base {base[:12]} predates the open list")
+        return
+    closed = set(required_public_goals(previous)) - set(open_safety(previous))
+    reopened = sorted(closed & set(open_safety(manifest)))
+    if reopened:
+        raise Rejected("open_safety grew: required goals closed on the base branch are open again: " +
+                       ", ".join(reopened))
+    print(f"open_safety: {len(open_safety(manifest))} open, base {base[:12]} had "
+          f"{len(open_safety(previous))}")
+
+
+def check_required_proved(report: Path, manifest: dict) -> None:
+    """Every required goal that is not listed as open has a registered theorem of exactly its type."""
+    proved = set(re.findall(r"^goal (\S+) PROVED by ", report.read_text(), re.M))
+    missing = [g for g in required_public_goals(manifest)
+               if g not in proved and g not in set(open_safety(manifest))]
+    if missing:
+        raise Rejected("required goals without a registered theorem and not listed in open_safety: " +
+                       ", ".join(missing))
+    listed_proved = sorted(set(open_safety(manifest)) & proved)
+    if listed_proved:
+        raise Rejected("open_safety lists proved goals; remove them: " + ", ".join(listed_proved))
 
 
 def mutation_apis(manifest: dict) -> dict:
     """The public functions by the goal their mutants are replayed against.
 
-    Each function is keyed by its contract goal from the public inventory. Where the
-    functional goal is not planned, its safety goal (the contract goal with the suffix
-    `_safe` or `_safety`, registered in tests/audit/goals.txt) keys the same function, so
-    mutants of that function are checked against the proof of its safety goal.
+    Each function is keyed by its functional goal from the public inventory, and also by its
+    safety goal where that goal belongs to this function alone (not a sequence goal shared by
+    several functions), so mutants of that function are checked against the proof of either.
     """
-    apis = {a["goal"]: a for a in manifest["apis"] if a["scope"] == "lp64-linux"}
-    registry = ROOT / "tests/audit/goals.txt"
-    registered = set(read_names(registry)) if registry.is_file() else set()
-    for goal, api in list(apis.items()):
-        for suffix in ("_safe", "_safety"):
-            if goal + suffix in registered:
-                apis.setdefault(goal + suffix, api)
+    lp64 = [a for a in manifest["apis"] if a["scope"] == "lp64-linux"]
+    apis = {a["functional_goal"]: a for a in lp64}
+    shared = {}
+    for a in lp64:
+        if a.get("safety_goal"):
+            shared.setdefault(a["safety_goal"], []).append(a)
+    for goal, owners in shared.items():
+        if len(owners) == 1:
+            apis.setdefault(goal, owners[0])
     return apis
 
 
@@ -132,7 +221,7 @@ def public_mutants(manifest: dict) -> dict:
 
 def check_public_mutant_coverage(report: Path, manifest: dict) -> None:
     targets = public_mutants(manifest)
-    public = {a["goal"] for a in manifest["apis"] if a["scope"] == "lp64-linux"}
+    public = {a["functional_goal"] for a in manifest["apis"] if a["scope"] == "lp64-linux"}
     proved = set(re.findall(r"^goal (\S+) PROVED by ", report.read_text(), re.M))
     missing = (proved & public) - set(targets)
     if missing:
@@ -441,9 +530,21 @@ def coverage() -> dict:
         namespace = re.search(r"^namespace\s+(\S+)", src, re.M)
         if not namespace or api["implementation"] != namespace[1] + "." + api["function"]:
             raise Rejected(f"wrong translated entry binding: {api['function']}")
-        if api["goal"] != "ZlibF.Spec.Public.Goal." + api["function"]:
+        if api["functional_goal"] != "ZlibF.Spec.Public.Goal." + api["function"]:
             raise Rejected(f"wrong public contract target: {api['function']}")
-        goals.append(api["goal"])
+        goals.append(api["functional_goal"])
+        hidden = api["function"] in listed
+        safety = api.get("safety_goal")
+        if hidden:
+            if safety is not None:
+                raise Rejected(f"undocumented function with a required safety goal: {api['function']}")
+        elif not isinstance(safety, str):
+            raise Rejected(f"missing safety goal: {api['function']}")
+        elif safety == api["functional_goal"]:
+            if not api.get("safety_note"):
+                raise Rejected(f"a full contract used as safety goal needs a safety_note: {api['function']}")
+        elif safety not in manifest.get("safety_goals", []):
+            raise Rejected(f"safety goal is not a listed safety target: {api['function']}: {safety}")
     groups = {
         "sequence_goals": ["inflate_sequence", "deflate_sequence", "inflate_back_sequence", "gz_sequence"],
         "nonvacuity_goals": ["inflate_initialisation_domain", "deflate_initialisation_domain",
@@ -471,14 +572,17 @@ def coverage() -> dict:
         goals.extend(manifest[group])
     if len(goals) != len(set(goals)):
         raise Rejected("public contracts must have distinct targets")
+    check_open_safety(manifest)
     public_mutants(manifest)
     check_imports()
     run([sys.executable, "scripts/gen_public_calls.py", "--check"])
     print(f"coverage: {len(exports)} public declarations, "
           f"{len(goals) - len(manifest['sequence_goals']) - len(manifest['nonvacuity_goals']) - len(manifest['safety_goals'])} default-build entries "
-          f"({len(required_public_goals(manifest))} required, the rest undocumented in zlib.h), "
+          f"({len([a for a in apis if a['scope'] == 'lp64-linux' and a['function'] not in listed])} documented, "
+          f"the rest undocumented in zlib.h), "
           f"{len(manifest['sequence_goals'])} sequence targets, {len(manifest['nonvacuity_goals'])} non-vacuity targets, "
-          f"{len(manifest['safety_goals'])} safety targets")
+          f"{len(manifest['safety_goals'])} safety targets; "
+          f"{len(required_public_goals(manifest))} required goals, {len(open_safety(manifest))} open")
     return manifest
 
 
@@ -492,9 +596,8 @@ def audit(report: Path, *, strict: bool = False, public: bool = False) -> int:
     names = read_names(ROOT / "tests/audit/goals.txt")
     if public:
         manifest = coverage()
-        required = required_public_goals(manifest)
-        required += manifest["sequence_goals"] + manifest["nonvacuity_goals"] + manifest["safety_goals"]
-        names += [name for name in required if name not in names]
+        listed = required_public_goals(manifest) + functional_goals(manifest)
+        names += [name for name in listed if name not in names]
     with tempfile.TemporaryDirectory(prefix="verification-goals-") as directory:
         targets = Path(directory) / "goals.txt"
         targets.write_text("\n".join(names) + "\n")
@@ -540,13 +643,21 @@ def main() -> int:
         run(["lake", "env", "leanchecker", "--fresh", "ZlibF"])
         with tempfile.TemporaryDirectory(prefix="verification-report-") as directory:
             report = args.report or Path(directory) / "audit.txt"
-            rc = audit(report, strict=args.mode == "final", public=args.mode in ("specs", "final"))
+            # The auditor's strict mode would reject every unproved goal, functional ones included.
+            # Only the required goals are required: check_required_proved below.
+            rc = audit(report, public=args.mode in ("specs", "final"))
             if rc:
                 for line in report.read_text().splitlines():
                     if line.startswith(("goal ", "PROBLEM:")):
                         print(line)
                 raise Rejected("audit rejected the requested verification stage")
             check_public_mutant_coverage(report, manifest)
+            if args.mode in ("specs", "final"):
+                check_required_proved(report, manifest)
+                check_open_safety_shrinks(manifest)
+            if args.mode == "final" and open_safety(manifest):
+                raise Rejected("final acceptance requires an empty open_safety: " +
+                               ", ".join(open_safety(manifest)))
         if args.mode == "final":
             dirty = subprocess.check_output(["git", "status", "--porcelain", "--untracked-files=normal"],
                                             cwd=ROOT, text=True)

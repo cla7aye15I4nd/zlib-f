@@ -136,6 +136,21 @@ their safety goals are required and listed as open until proved.
 - **Mutants**: keyed by the functional goal when it is proved, else by the safety goal. This
   replaces the `_safe`/`_safety` suffix guess in `mutation_apis`.
 
+As implemented (step 3):
+
+- An undocumented function, and `gzopen_w` (not in the target build), has `safety_goal: null`.
+- The gzip functions name `Goal.gz_sequence_safety`, and `inflateBackInit_`, `inflateBack` and
+  `inflateBackEnd` name `Goal.inflate_back_sequence_safety`, until step 4 states one goal per
+  function. A shared safety goal does not key mutants.
+- `compressBound` and `compressBound_z` name their full contracts, with a `safety_note`: their
+  translations are pure functions with no heap and no fault, so a separate safety goal would hold
+  by definition.
+- `open_safety` is compared with the base branch: `ZLIBF_BASE_REF`, else the pull request's base,
+  else `origin/main`; on `main` itself, the first parent. A goal that the base requires and does
+  not list as open may not become open. A goal new to the required set may enter the list.
+- `open_safety` may not list a proved goal. `final` also requires it to be empty. The auditor's
+  strict mode is no longer used: it would reject every unproved functional goal.
+
 ## Progress view
 
 The function table gets two status columns, Safety and Functional. The top of

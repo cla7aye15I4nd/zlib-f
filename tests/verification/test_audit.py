@@ -40,9 +40,68 @@ class AuditTests(unittest.TestCase):
         self.assertEqual(verification.public_names(header), {"documented", "hidden"})
         self.assertEqual(verification.undocumented_names(header), {"hidden"})
         manifest = {"undocumented": {"functions": ["hidden"]},
-                    "apis": [{"function": "documented", "goal": "Goal.documented", "scope": "lp64-linux"},
-                             {"function": "hidden", "goal": "Goal.hidden", "scope": "lp64-linux"}]}
-        self.assertEqual(verification.required_public_goals(manifest), ["Goal.documented"])
+                    "apis": [{"function": "documented", "functional_goal": "Goal.documented",
+                              "safety_goal": "Goal.documented_safety", "scope": "lp64-linux"},
+                             {"function": "hidden", "functional_goal": "Goal.hidden", "safety_goal": None,
+                              "scope": "lp64-linux"}],
+                    "safety_goals": ["Goal.documented_safety", "Goal.sequence_safety"],
+                    "nonvacuity_goals": ["Goal.domain"], "sequence_goals": ["Goal.sequence"]}
+        # The safety goals are required; the functional goals and the sequence goals are not.
+        self.assertEqual(verification.required_public_goals(manifest),
+                         ["Goal.documented_safety", "Goal.sequence_safety", "Goal.domain"])
+        self.assertEqual(verification.functional_goals(manifest),
+                         ["Goal.documented", "Goal.hidden", "Goal.sequence"])
+
+    def open_manifest(self, *open_goals):
+        return {"apis": [{"function": "first", "functional_goal": "Goal.first",
+                          "safety_goal": "Goal.first_safety", "scope": "lp64-linux"}],
+                "safety_goals": ["Goal.first_safety", "Goal.second_safety"], "nonvacuity_goals": [],
+                "open_safety": [{"goal": g, "owner": "someone"} for g in open_goals]}
+
+    def test_open_safety_names_required_goals_with_owners(self):
+        verification.check_open_safety(self.open_manifest("Goal.second_safety"))
+        with self.assertRaises(verification.Rejected):
+            verification.check_open_safety(self.open_manifest("Goal.first"))
+        with self.assertRaises(verification.Rejected):
+            verification.check_open_safety(self.open_manifest("Goal.second_safety", "Goal.second_safety"))
+        manifest = self.open_manifest()
+        manifest["open_safety"] = [{"goal": "Goal.second_safety", "owner": " "}]
+        with self.assertRaises(verification.Rejected):
+            verification.check_open_safety(manifest)
+
+    def test_required_goals_are_proved_unless_open(self):
+        report = self.root / "report.txt"
+        report.write_text("goal Goal.first_safety PROVED by Fixture.first\ngoal Goal.second_safety OPEN\n"
+                          "goal Goal.first OPEN\n")
+        verification.check_required_proved(report, self.open_manifest("Goal.second_safety"))
+        with self.assertRaises(verification.Rejected):
+            verification.check_required_proved(report, self.open_manifest())
+        with self.assertRaises(verification.Rejected):
+            verification.check_required_proved(report, self.open_manifest("Goal.first_safety", "Goal.second_safety"))
+
+    def test_open_safety_only_shrinks_against_the_base_branch(self):
+        repo = self.root / "repo"
+        (repo / "tests/audit").mkdir(parents=True)
+        def git(*args):
+            subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *args], cwd=repo, check=True,
+                           stdout=subprocess.DEVNULL)
+        git("init", "-q")
+        (repo / "tests/audit/public-api.json").write_text(json.dumps(self.open_manifest("Goal.second_safety")))
+        git("add", "-A"); git("commit", "-qm", "base"); git("tag", "base")
+        (repo / "README").write_text("x\n")
+        git("add", "README"); git("commit", "-qm", "head")
+        with patch.object(verification, "ROOT", repo), patch.dict(os.environ, {"ZLIBF_BASE_REF": "base"}):
+            verification.check_open_safety_shrinks(self.open_manifest("Goal.second_safety"))
+            verification.check_open_safety_shrinks(self.open_manifest())
+            grown = self.open_manifest("Goal.second_safety")
+            grown["safety_goals"].append("Goal.third_safety")
+            grown["open_safety"].append({"goal": "Goal.third_safety", "owner": "someone"})
+            verification.check_open_safety_shrinks(grown)
+            with self.assertRaisesRegex(verification.Rejected, "first_safety"):
+                verification.check_open_safety_shrinks(self.open_manifest("Goal.first_safety", "Goal.second_safety"))
+        with patch.object(verification, "ROOT", repo), patch.dict(os.environ, {"ZLIBF_BASE_REF": "missing"}):
+            with self.assertRaises(verification.Rejected):
+                verification.check_open_safety_shrinks(self.open_manifest())
 
     def test_public_proofs_require_mutants_in_the_actual_function(self):
         source = "ZlibF/Zlib/fixture.c.lean"
@@ -58,8 +117,8 @@ class AuditTests(unittest.TestCase):
         boundary.write_text('api-only\t' + source + '\tdef first : Nat := 0\tdef first : Nat := 4\tFixture\n')
         mapping = self.root / "tests/audit/public-mutants.json"
         mapping.parent.mkdir(parents=True)
-        manifest = {"apis": [{"goal": "Goal.first", "function": "first", "source": source,
-                              "scope": "lp64-linux"}]}
+        manifest = {"apis": [{"functional_goal": "Goal.first", "safety_goal": "Goal.first_safe",
+                              "function": "first", "source": source, "scope": "lp64-linux"}]}
         report = self.root / "report.txt"
         def write_targets(targets):
             mapping.write_text(json.dumps({"version": 1, "targets": targets}))
@@ -104,12 +163,9 @@ class AuditTests(unittest.TestCase):
             table.write_text(original.replace(source, "ZlibF/Spec/Fixture.lean", 1))
             with self.assertRaises(verification.Rejected):
                 verification.check_public_mutant_coverage(report, manifest)
-            # a safety goal keys the same function only when it is a registered goal
+            # the function's own safety goal keys the same function; another name does not
             table.write_text(original)
             write_targets({"Goal.first_safe": [reference]})
-            with self.assertRaises(verification.Rejected):
-                verification.public_mutants(manifest)
-            (self.root / "tests/audit/goals.txt").write_text("Goal.first\nGoal.first_safe\n")
             self.assertIn("Goal.first_safe", verification.public_mutants(manifest))
             write_targets({"Goal.first_safe": [dict(reference, name="second-change")]})
             with self.assertRaises(verification.Rejected):

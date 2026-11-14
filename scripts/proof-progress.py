@@ -224,14 +224,15 @@ def build_graph(export, digest, revision=None):
     if set(readiness) - set(goals):
         raise ValueError('readiness refers to unregistered targets: ' + ', '.join(sorted(set(readiness) - set(goals))))
     manifest = json.loads((ROOT / 'tests/audit/public-api.json').read_text())
-    public = {a['goal'] for a in manifest['apis'] if a.get('goal')}
+    public = {a['functional_goal'] for a in manifest['apis'] if a.get('functional_goal')}
+    public.update(a['safety_goal'] for a in manifest['apis'] if a.get('safety_goal'))
     public.update(manifest.get('sequence_goals', []))
     public.update(manifest.get('nonvacuity_goals', []))
     public.update(manifest.get('safety_goals', []))
     if public - set(goals): raise ValueError('public manifest targets missing from goal registry')
     if {g for g in goals if g.startswith('ZlibF.Spec.Public.Goal.')} - public:
         raise ValueError('public goal missing from public manifest')
-    entries = {a['goal']: a for a in manifest['apis'] if a.get('goal') in goals}
+    entries = {a['functional_goal']: a for a in manifest['apis'] if a.get('functional_goal') in goals}
     impls = {a['implementation']: g for g, a in entries.items()}
     declarations = {d['name']: d for d in export['declarations']}
     tracked = set(subprocess.check_output(['git', 'ls-files', '-z'], cwd=ROOT, text=True).split('\0'))

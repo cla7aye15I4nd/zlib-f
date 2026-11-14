@@ -27,7 +27,7 @@ class ProgressTests(unittest.TestCase):
         self.goals = ['ZlibF.Spec.Public.Goal.' + x for x in 'abcde']
         (self.root / 'tests/audit/goals.txt').write_text('\n'.join(self.goals) + '\n')
         (self.root / 'tests/audit/public-api.json').write_text(json.dumps({'apis': [
-            {'goal': g, 'implementation': 'F.' + g[-1], 'manual': 'docs/api.md'} for g in self.goals]}))
+            {'functional_goal': g, 'implementation': 'F.' + g[-1], 'manual': 'docs/api.md'} for g in self.goals]}))
         (self.root / 'ZlibF/Spec/Goals.lean').write_text('\n'.join('def Goal.' + x + ' : Prop := True' for x in 'abcde'))
         (self.root / 'ZlibF/Proof/candidate.lean').write_text('theorem candidate : Goal.d := by trivial\n')
         (self.root / 'ZlibF/Proof/exact.lean').write_text('theorem a : Goal.a := by trivial\n')

@@ -1,4 +1,4 @@
-<!-- source-sha256: 9fd4415a1353a17053ed8b86d45a0502b51cf364221c1fd01af4f7150c644ce6 -->
+<!-- source-sha256: fe7ec6834f0b475fa6ca562ff89987b279266d412c97a36ca7c6129ee0cea622 -->
 # 安全规范与功能规范
 
 状态：设计已于 2026-11-13 批准，按“工作顺序”中的步骤实施。本页说明怎样拆分 `ZlibF/Spec/`，使当前目标（每个公开函数的安全性）能从一个目录读出。这里的任何内容都不改变已证定理的含义。
@@ -79,6 +79,14 @@ flowchart TD
 - **必需**：每个不属于未文档化函数的 `lp64-linux` 函数的安全目标，以及 `safety_goals` 和 `nonvacuity_goals` 中的条目。在全部证明之前，审计检查：不在 `open_safety` 中的每个目标都有一个类型恰好相同、只用允许公理的已登记定理，并且 `open_safety` 只缩短。dev 不会因此变红。从 `open_safety` 为空的那个提交起，缺少定理就使审计失败。
 - **功能**：每个 `functional_goal` 和 `sequence_goals`。已登记的证明完整审计（公理、确切类型、重放、有键时的变异）。未证明的只报告，不使检查失败。
 - **变异**：功能目标已证明时以它为键，否则以安全目标为键。这取代 `mutation_apis` 中对 `_safe`／`_safety` 后缀的猜测。
+
+实际实现（第 3 步）：
+
+- 未文档化的函数，以及不属于目标构建的 `gzopen_w`，其 `safety_goal` 为 `null`。
+- 在第 4 步为每个函数陈述目标之前，gzip 函数指向 `Goal.gz_sequence_safety`，`inflateBackInit_`、`inflateBack` 和 `inflateBackEnd` 指向 `Goal.inflate_back_sequence_safety`。共享的安全目标不作为变异的键。
+- `compressBound` 和 `compressBound_z` 指向它们的完整契约，并带 `safety_note`：它们的翻译是不访问堆、不会出错的纯函数，单独的安全目标会按定义成立。
+- `open_safety` 与基线分支比较：先取 `ZLIBF_BASE_REF`，否则取拉取请求的基线分支，否则取 `origin/main`；在 `main` 上则取第一个父提交。基线要求且未列为待完成的目标不得重新列为待完成。新加入必需集合的目标可以进入该列表。
+- `open_safety` 不得列出已证明的目标。`final` 还要求它为空。不再使用审计工具的严格模式：它会拒绝每个未证明的功能目标。
 
 ## 进度视图
 
