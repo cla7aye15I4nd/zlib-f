@@ -1,4 +1,4 @@
-<!-- source-sha256: d1136e47014bb232a5906e599b34a3dd32824ca6d2e62287f7ad9c9bae0ef6dc -->
+<!-- source-sha256: aa70a2857af59d6502d45429280f33c2d22acc38bd833ed70dfc4c93ad9508ee -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -15,7 +15,7 @@
 | 2 | `deflate` 对任何输入和任意缓冲区切分都安全，也包括它的调用序列。 | `deflateInit2_`、`deflate`、`deflate_sequence_safety` |
 | 3 | 第 1、2 项在完整缓冲区上的组合。 | `compress*`、`uncompress*` 的安全 |
 | 4 | 回调解码器对任何输入和任何调用者协议都安全，也包括它的调用序列（所有者 2026-11-12 的要求）。 | `inflate_back_sequence_safety` |
-| 5 | gzip 文件接口在一个句柄的每条调用历史上、对每个文件系统世界都安全（所有者 2026-11-12 的决定）。只证安全，不证功能正确性。 | `gzopen`、`gzopen64`、`gzclose`、`gzclose_r`、`gzclose_w`、`gzread`、`gzfread`、`gzgetc`、`gzgetc_`、`gzungetc`、`gzgets`、`gzdirect`、`gzwrite`、`gzfwrite`、`gzputc`、`gzputs`、`gzprintf`、`gzvprintf`、`gzflush`、`gzsetparams`、`gzseek`、`gzseek64`、`gztell`、`gztell64`，经由 `gz_sequence_safety` |
+| 5 | gzip 文件接口在一个句柄的每条调用历史上、对每个文件系统世界都安全（所有者 2026-11-12 的决定）。只证安全，不证功能正确性。 | `gzopen`、`gzopen64`、`gzdopen`、`gzbuffer`、`gzclose`、`gzclose_r`、`gzclose_w`、`gzread`、`gzfread`、`gzgetc`、`gzgetc_`、`gzungetc`、`gzgets`、`gzdirect`、`gzwrite`、`gzfwrite`、`gzputc`、`gzputs`、`gzprintf`、`gzvprintf`、`gzflush`、`gzsetparams`、`gzseek`、`gzseek64`、`gztell`、`gztell64`、`gzoffset`、`gzoffset64`、`gzrewind`、`gzeof`、`gzerror`、`gzclearerr`，经由 `gz_sequence_safety`。终止：每个调用在每个世界中都终止，但 `gzread`、`gzfread`、`gzgetc`、`gzgetc_`、`gzgets` 与 `gzungetc` 需要小于 `2^61` 的读取额度（`ReadsFinite`），即使 C 会立即返回也是如此 |
 
 上述结论在证明中需要的目标，作为依赖仍在计划内。sequence 目标所涉及的其他流调用属于这种情况，例如 `inflateSync`、`inflateCopy`、`deflateCopy`、`deflateParams`、`deflatePrime` 和 `deflateSetDictionary`。`gzvprintf` 在 zlib.h 中未文档化，但 `gzprintf` 经过它，所以它随第 5 项结论一起在计划内。
 
