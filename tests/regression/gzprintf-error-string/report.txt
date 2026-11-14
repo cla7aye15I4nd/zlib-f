@@ -1,0 +1,64 @@
+# run.sh, arm64 macOS, Apple clang, AddressSanitizer; process id replaced
+=================================================================
+==PID==ERROR: AddressSanitizer: heap-use-after-free on address 0x604000000390 at pc 0x000102dc6ed0 bp 0x00016d8715f0 sp 0x00016d870d80
+READ of size 2 at 0x604000000390 thread T0
+    #0 0x000102dc6ecc in printf_common(void*, char const*, char*)+0x804 (libclang_rt.asan_osx_dynamic.dylib:arm64e+0x1eecc)
+    #1 0x000102dc7214 in vsnprintf+0x64 (libclang_rt.asan_osx_dynamic.dylib:arm64e+0x1f214)
+    #2 0x0001025a9e50 in gzvprintf gzwrite.c:491
+    #3 0x0001025aa920 in gzprintf gzwrite.c:530
+    #4 0x00010258ca60 in main errstr.c:24
+    #5 0x0001a0360d78 in start+0x19f8 (dyld:arm64e+0x31d78)
+
+0x604000000390 is located 0 bytes inside of 41-byte region [0x604000000390,0x6040000003b9)
+freed by thread T0 here:
+    #0 0x000102de9368 in free+0x7c (libclang_rt.asan_osx_dynamic.dylib:arm64e+0x41368)
+    #1 0x0001025a7fc8 in gz_error gzlib.c:568
+    #2 0x0001025a9b1c in gzvprintf gzwrite.c:448
+    #3 0x0001025aa920 in gzprintf gzwrite.c:530
+    #4 0x00010258ca60 in main errstr.c:24
+    #5 0x0001a0360d78 in start+0x19f8 (dyld:arm64e+0x31d78)
+
+previously allocated by thread T0 here:
+    #0 0x000102de9274 in malloc+0x78 (libclang_rt.asan_osx_dynamic.dylib:arm64e+0x41274)
+    #1 0x0001025a8050 in gz_error gzlib.c:582
+    #2 0x0001025ab17c in gz_comp gzwrite.c
+    #3 0x0001025a8e2c in gz_write gzwrite.c:258
+    #4 0x0001025a8a58 in gzwrite gzwrite.c:297
+    #5 0x00010258ca10 in main errstr.c:20
+    #6 0x0001a0360d78 in start+0x19f8 (dyld:arm64e+0x31d78)
+
+SUMMARY: AddressSanitizer: heap-use-after-free gzwrite.c:491 in gzvprintf
+Shadow bytes around the buggy address:
+  0x604000000100: fa fa 00 00 00 00 00 00 fa fa 00 00 00 00 00 00
+  0x604000000180: fa fa 00 00 00 00 00 05 fa fa 00 00 00 00 00 00
+  0x604000000200: fa fa 00 00 00 00 00 05 fa fa 00 00 00 00 00 00
+  0x604000000280: fa fa 00 00 00 00 00 07 fa fa 00 00 00 00 00 00
+  0x604000000300: fa fa 00 00 00 00 00 00 fa fa 00 00 00 00 00 00
+=>0x604000000380: fa fa[fd]fd fd fd fd fd fa fa fa fa fa fa fa fa
+  0x604000000400: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x604000000480: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x604000000500: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x604000000580: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+  0x604000000600: fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa fa
+Shadow byte legend (one shadow byte represents 8 application bytes):
+  Addressable:           00
+  Partially addressable: 01 02 03 04 05 06 07 
+  Heap left redzone:       fa
+  Freed heap region:       fd
+  Stack left redzone:      f1
+  Stack mid redzone:       f2
+  Stack right redzone:     f3
+  Stack after return:      f5
+  Stack use after scope:   f8
+  Global redzone:          f9
+  Global init order:       f6
+  Poisoned by user:        f7
+  Container overflow:      fc
+  Array cookie:            ac
+  Intra object redzone:    bb
+  ASan internal:           fe
+  Left alloca redzone:     ca
+  Right alloca redzone:    cb
+==PID==ABORTING
+gzwrite -> 0, err -1, msg "<fd:4>: Resource temporarily unavailable"
+ok: heap-use-after-free of the handle's message

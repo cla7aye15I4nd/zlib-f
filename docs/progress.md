@@ -2620,6 +2620,17 @@ Behaviour of the library, not a safety finding; worth an upstream note only if a
 known that returns 0. Scope: `gzwrite`, `gzfwrite`, `gzputc`, `gzputs`, `gzprintf`, `gzflush`,
 `gzsetparams`, `gzclose_w`.
 
+**A string returned by `gzerror` is freed by the next call that reaches `gz_error`.**
+Unconfirmed finding, a documentation gap, not a code bug. zlib.h says only that later calls of
+`gzerror` may invalidate the returned string. In fact `gzerror` returns `state->msg`, and every
+call that reaches `gz_error` frees it: `gzprintf`, `gzvprintf`, `gzputs`, `gzwrite`, `gzread` and
+others reset the error with `gz_error(state, Z_OK, NULL)` before they use their arguments. A caller
+that passes that string back to the same handle gets a use after free:
+`gzprintf(f, "%s", gzerror(f, &e))` after a stalled write reads freed memory in `vsnprintf`
+([reproduction](../tests/regression/gzprintf-error-string/README.md), ASan). No patch. The proved
+domain keeps caller strings and buffers apart from the handle's blocks (`GzRange`, and the
+separation clause of `GzArguments` for `gzprintf`/`gzvprintf`, [deviations](deviations.md)).
+
 ### Historical reports to recheck
 
 Recheck gzip extra-length arithmetic, partial-read recovery, negative-position
