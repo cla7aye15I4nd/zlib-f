@@ -8,6 +8,7 @@ import ZlibF.Proof.«gz.inv-frame»
 import ZlibF.Proof.«gz.inv-queries»
 import ZlibF.Proof.«gz.read-close»
 import ZlibF.Proof.«gzwrite.c.safety»
+import ZlibF.Proof.«zlib.h.gzgetc-macro»
 import ZlibF.Spec.Public.GzSafety
 
 /-!
@@ -131,6 +132,12 @@ theorem history_inv (L : GzReadLeaves) {h : Heap} {fs : Fs} {i : Nat} (hist : Gz
     rw [hs0] at inv0
     obtain ⟨_, hfs', s', inv', _⟩ := ((operation_safe L hop) h fs s inv0 hfs hargs).2.2 value fs' after e
     exact ⟨hfs', s', inv'⟩
+  | @getcMacro h after fs fs' i s value _ hs hh e ih =>
+    obtain ⟨hfs, s0, inv0⟩ := ih
+    have hs0 := inv0.state_eq hs
+    rw [hs0] at inv0
+    obtain ⟨_, hfs', s', inv', _⟩ := (GzMacro.gzgetc_macro_safe inv0 hfs hh).2 value fs' after e
+    exact ⟨hfs', s', inv'⟩
   | @caller h after fs i s _ hs hf hfit ih =>
     obtain ⟨hfs, s0, inv0⟩ := ih
     have hs0 := inv0.state_eq hs
@@ -142,12 +149,17 @@ theorem history_inv (L : GzReadLeaves) {h : Heap} {fs : Fs} {i : Nat} (hist : Gz
 /-- **Safety of every gz file history, from the open read leaves.** The conclusion is exactly
 `Goal.gz_sequence_safety`; the only premises are the six open read leaves of the skeleton (`GzReadLeaves`). -/
 theorem gz_sequence_safety_of (L : GzReadLeaves) : Goal.gz_sequence_safety := by
-  refine ⟨fun h fs i hist => history_inv L hist, ?_, ?_, ?_, gzopen_safe, gzopen64_safe, gzdopen_safe⟩
+  refine ⟨fun h fs i hist => history_inv L hist, ?_, ?_, ?_, ?_, gzopen_safe, gzopen64_safe, gzdopen_safe⟩
   · intro h fs i s call hist hs hop hargs
     obtain ⟨hfs, s0, inv0⟩ := history_inv L hist
     have hs0 := inv0.state_eq hs
     rw [hs0] at inv0
     exact (operation_safe L hop) h fs s inv0 hfs hargs
+  · intro h fs i s hist hs hh
+    obtain ⟨hfs, s0, inv0⟩ := history_inv L hist
+    have hs0 := inv0.state_eq hs
+    rw [hs0] at inv0
+    exact GzMacro.gzgetc_macro_safe inv0 hfs hh
   · intro h fs i s errnum hist hs hargs value fs' after e
     obtain ⟨_, s0, inv0⟩ := history_inv L hist
     have hs0 := inv0.state_eq hs
