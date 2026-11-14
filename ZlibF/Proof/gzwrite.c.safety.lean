@@ -8,6 +8,7 @@ import ZlibF.Proof.«gzwrite.c.write-calls»
 import ZlibF.Proof.«gzwrite.c.flush-params»
 import ZlibF.Proof.«gzwrite.c.close»
 import ZlibF.Proof.«gzwrite.c.printf»
+import ZlibF.Spec.Public.GzSafety
 
 /-!
 # gz write side: the skeleton write lemmas without the `gz_error` premises
@@ -17,8 +18,8 @@ The write-side theorems of `gzwrite.c.*` take the premises `GzErrorSpec` and `Gz
 from `GzInv.gz_error`). This file applies them, and states each write lemma of the skeleton (`gz.skeleton-write` on
 the skeleton branch) with the skeleton's name, hypotheses and conclusion, over the definitions of `gz.inv-model`.
 
-`gzclose_w_step` is stated in the written-out form of `gzclose_w_step_of`: `GzCloseSafe` is not a definition on
-this branch.
+`gzclose_w_step` is stated with `GzCloseSafe` (`ZlibF/Spec/Public/GzSafety.lean`); `gzclose_w_step_of` is its
+written-out form, with `GzRead.Close.Released`, which is `GzReleased` by definition (`gzReleased_eq_close_released`).
 -/
 
 namespace ZlibF.Spec.Public.GzSkeleton
@@ -125,15 +126,12 @@ theorem gzsetparams_step (i : Nat) (level strategy : Int32) :
     GzCallSafe i (.gzsetparams (some (.in_gzstate_x i)) level strategy) :=
   gzsetparams_step_of gzwrite_gzErrorSpec_holds gzwrite_gzErrorOwn_holds i level strategy
 
-/-- **`gzclose_w`** (skeleton statement `gzclose_w_step`). `GzCloseSafe` is not a definition on this branch, so the
-statement is written out as in `gzclose_w_step_of`, with `GzRead.Close.Released` (the copy of the skeleton's
-`GzReleased`): on any handle in `GzInv`, for every OS world, the call returns, and either refuses a reader with no
-effect, or releases the writer. -/
-theorem gzclose_w_step (i : Nat) :
-    ∀ h fs s, GzInv h i s → FileSystem fs →
-      ∃ value fs' after, (Call.gzclose_w (some (.in_gzstate_x i))).execute fs h = .ok ((value, fs'), after) ∧
-        ((s.mode ≠ GZ_WRITE ∧ after = h ∧ fs' = fs) ∨
-          (¬ s.mode ≠ GZ_WRITE ∧ GzRead.Close.Released h after fs fs' i s)) :=
+/-- `GzRead.Close.Released`, the copy of `GzReleased` in `gz.read-close`, is `GzReleased`. -/
+theorem gzReleased_eq_close_released : GzReleased = GzRead.Close.Released := rfl
+
+/-- **`gzclose_w`** (skeleton statement `gzclose_w_step`): on any handle in `GzInv`, for every OS world, the call
+returns, and either refuses a reader with no effect, or releases the writer. -/
+theorem gzclose_w_step (i : Nat) : GzCloseSafe i (.gzclose_w (some (.in_gzstate_x i))) :=
   gzclose_w_step_of gzwrite_gzErrorSpec_holds gzwrite_gzErrorOwn_holds i
 
 end ZlibF.Spec.Public.GzSkeleton
