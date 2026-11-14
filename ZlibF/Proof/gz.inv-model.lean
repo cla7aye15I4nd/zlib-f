@@ -226,10 +226,13 @@ def GzInv (h : Heap) (i : Nat) (s : GzState) : Prop :=
 
 /-! ## The shape of a safe call -/
 
-/-- The caller regions a call may write. -/
+/-- The caller regions a call may write. A zero-length read names no region: `BufferFrame` keeps the view of every
+named region, and with `len = 0` the buffer may be any pointer, also one into a block the call frees
+(regression `tests/verification/regressions/gz-read-empty-region.lean`). -/
 def GzWriteRegions : Call → List Region
-  | .gzread _ p n => if n.toNat < 2 ^ 31 then [⟨p, n.toNat⟩] else []
-  | .gzfread p size n _ => if size.toNat * n.toNat < 2 ^ 64 then [⟨p, size.toNat * n.toNat⟩] else []
+  | .gzread _ p n => if 0 < n.toNat ∧ n.toNat < 2 ^ 31 then [⟨p, n.toNat⟩] else []
+  | .gzfread p size n _ =>
+      if 0 < size.toNat * n.toNat ∧ size.toNat * n.toNat < 2 ^ 64 then [⟨p, size.toNat * n.toNat⟩] else []
   | .gzgets _ p n => if 1 ≤ n.toInt then [⟨p, n.toInt.toNat⟩] else []
   | .gzerror _ p => [⟨p, 4⟩]
   | _ => []
