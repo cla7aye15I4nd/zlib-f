@@ -1,6 +1,7 @@
 import ZlibF.Proof.«gz.read-leaf-common»
 import ZlibF.Proof.«gz.read-read»
 import ZlibF.Proof.«gz.read-assembly»
+import ZlibF.Proof.«gzread.c.skip-terminates»
 
 /-!
 # gz read side: `gzgetc` and `gzungetc`, aligned with the skeleton statements
@@ -18,7 +19,7 @@ definition of batch 3 is false.
   `tSkip_run` is reused. `gzungetc_step_of_term` has one open premise, `GzSkipTerminates`: the termination of `gz_skip`
   from the invariant up to the pending skip. `gzungetc` calls `gz_skip` after `gz_look`, whose COPY branch may leave
   output buffered with a skip pending; batch 3's `gz_skip_safe_fetch` starts from `GzInv` and does not cover that
-  record.
+  record. `gzungetc_step` discharges it with `gzSkipTerminates_holds` (`gzread.c.skip-terminates`): no premise is left.
 -/
 
 namespace ZlibF.Spec.Public.GzRead
@@ -191,5 +192,10 @@ up to the pending skip (`GzSkipTerminates`). -/
 theorem gzungetc_step_of_term (term : GzSkipTerminates) (i : Nat) (c : Int32) :
     GzCallSafe i (.gzungetc c (some (.in_gzstate_x i))) :=
   gzungetc_step_of inflateStuckNoOutput_holds term i c
+
+/-- **`gzungetc_step`**, the skeleton statement, with no premise: `GzSkipTerminates` is `gzSkipTerminates_holds`
+(`gzread.c.skip-terminates`) applied to the `gz_fetch` statement that `gzgetc_step` uses. -/
+theorem gzungetc_step (i : Nat) (c : Int32) : GzCallSafe i (.gzungetc c (some (.in_gzstate_x i))) :=
+  gzungetc_step_of_term (gzSkipTerminates_holds (gz_fetch_safe_stuck inflateStuckNoOutput_holds)) i c
 
 end ZlibF.Spec.Public.GzRead

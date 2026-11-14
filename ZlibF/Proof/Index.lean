@@ -1734,7 +1734,9 @@ import ZlibF.Proof.«gz.inv-open»
 import ZlibF.Proof.«gz.inv-open-path»
 import ZlibF.Proof.«gz.inv-open-fd»
 import ZlibF.Proof.«gz.inv-open-fresh»
+import ZlibF.Proof.«zlib.h.gzgetc-macro»
 import ZlibF.Proof.«gz.sequence-safety»
+import ZlibF.Proof.«public-gz-sequence-safety»
 import ZlibF.Proof.«public-gz-sequence-nonvacuity»
 
 /-!
