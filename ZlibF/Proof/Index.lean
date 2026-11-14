@@ -1682,6 +1682,7 @@ import ZlibF.Proof.«gz.inv-model»
 import ZlibF.Proof.«gz.inv-put-scalars»
 import ZlibF.Proof.«gzread.c.skip-have»
 import ZlibF.Proof.«gzread.c.skip-gets»
+import ZlibF.Proof.«gzread.c.skip-fetch»
 import ZlibF.Proof.«gzread.c.getc-ungetc»
 import ZlibF.Proof.«gz.inv-queries»
 import ZlibF.Proof.«gz.inv-frame»
