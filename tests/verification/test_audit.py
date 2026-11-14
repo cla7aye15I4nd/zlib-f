@@ -71,11 +71,8 @@ class AuditTests(unittest.TestCase):
 
     def test_required_goals_are_proved_unless_open(self):
         report = self.root / "report.txt"
-        report.write_text("goal Goal.first_safety PROVED by Fixture.first
-goal Goal.second_safety OPEN
-"
-                          "goal Goal.first OPEN
-")
+        report.write_text("goal Goal.first_safety PROVED by Fixture.first\ngoal Goal.second_safety OPEN\n"
+                          "goal Goal.first OPEN\n")
         verification.check_required_proved(report, self.open_manifest("Goal.second_safety"))
         with self.assertRaises(verification.Rejected):
             verification.check_required_proved(report, self.open_manifest())
