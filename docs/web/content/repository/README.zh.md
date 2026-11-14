@@ -1,4 +1,4 @@
-<!-- source-sha256: bd2ef2562b9158edea090431214fb15424843f74fa4227a0ae707837947ddfc4 -->
+<!-- source-sha256: 6a583610f7276ffd0a1cc7568239a93b58186a0fc2c846303da34d11dac84ab2 -->
 # zlib-f
 
 用 Lean 4 形式化验证 zlib：对 C 源码作忠实翻译，再证明其安全性、终止性和资源所有权。自 2026-11-11 起功能正确性不在计划内，但计划内的安全证明所依赖的功能性事实除外；已经证明的部分保留。
@@ -46,6 +46,12 @@ scripts/check-sorry.sh
 ## 源码问题：deflateResetKeep 之后的 deflateCopy
 
 直接调用 `deflateResetKeep` 并调用一次 `deflate(Z_BLOCK)` 之后，有两个链头等待插入；`deflateCopy` 不复制它们的 `prev` 槽，副本上的一次 `Z_RLE` 或 `Z_HUFFMAN_ONLY` 刷新以 `insert = 0` 结束，所以它们不会被重新插入。之后一次默认策略的 `deflate` 会沿一个未初始化的 `prev` 槽前进，`longest_match` 读到窗口之外。[保留的复现](docs/findings/deflate-copy-pending-prev/README.md)在 x86_64 Linux 上诊断固定的、未修改的 C：AddressSanitizer 报告窗口之外的读取，valgrind 报告使用了未初始化的槽。对诊断出的序列，置信度高。它在 zlib 1.4 和固定的 `develop` 上复现，不在 1.3.1 或 1.3.2 上复现（部分复制随 1.3.2 引入，丢弃前瞻随 1.4 引入）。范围：它需要 `deflateResetKeep`，zlib.h 把该函数声明为未文档化、不属于 zlib API，所以这不是已文档化 API 的缺陷；已证明的 deflate 流定义域排除了它（[偏差](docs/deviations.md)）。已写好一份[报告草稿](docs/findings/deflate-copy-pending-prev-report.md)，没有向上游发送任何内容。
+
+## 源码问题：gz 位置溢出
+
+`gzread` 和 `gzwrite` 把搬运的字节数加到有符号 64 位位置 `x.pos` 上，不做上界检查。在位置能到达 2^63 − 1 的透明文件上，这个加法会溢出，是未定义行为。读取：在 `lseek` 成功却不移动的设备上（Linux 上的 `/dev/zero`），`gzseek(INT64_MAX, SEEK_SET)` 被接受，随后的 `gzread` 在 `gz_read`、`gzgetc` 和 `gzgetc()` 宏中溢出（[复现](docs/findings/gzread-pos-overflow/README.md)）。写入：透明写入者在 `/dev/null` 上定位到接近 2^63 之后，`gzwrite` 和 `gzputc` 溢出（[复现](docs/findings/gzwrite-pos-overflow/README.md)）。在 x86_64 Linux 上用固定版本的 C，UndefinedBehaviorSanitizer 报告了两者。对诊断出的序列，置信度高。范围：`lseek` 成功却不移动的设备，或接近 2^63 的透明位置。验证对象包含一个本地修复，[补丁 0004](patches/README.md)，经所有者批准，尚未提交上游：位置保持在 `z_off64_t` 之内，会溢出的调用以 `Z_DATA_ERROR` 失败。
+
+该修复中的一个缺口：`gz_look` 的透明 COPY 分支缓冲至多 `size` 个字节，不受剩余空间的限制。所以在一个带尾部数据的 gzip 成员、`gzclearerr` 和一次接近 2^63 − 1 的读取之后，读取者返回时 `x.pos + x.have` 超过 `GZ_OFF_MAX`，随后 `gzgetc()` 宏使 `x.pos` 溢出（[发现](docs/findings/gz-position-copy-overflow.md)）。已在模型中确认，也已通过阅读 C 确认；实际中无法复现（约 2^63 个解码字节）；没有 sanitizer 确认。对按所写的打过补丁的源码，置信度高。范围：带补丁 0004、在这段历史之后位置距 `GZ_OFF_MAX` 不到 `size` 个字节的读取者。补丁 0004 现在也限制了这个分支。
 
 ## 源码修复
 

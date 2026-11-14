@@ -1,4 +1,4 @@
-<!-- source-sha256: 1498d6e58c65611f36fa380fdba07b57a0e52f4b633f742a4eb1ef90067978bf -->
+<!-- source-sha256: 705a7a6c86e096761ea4a6d8843bb6b4f932cf403128fd869a535b382865dd3e -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -2139,54 +2139,52 @@ deflate 安全性目标尚未完成的工作（2026-11-12）。调用之间的�
 
 #### gz
 
-gzip 文件接口的安全（第 5 项结论，所有者 2026-11-12 的决定）：在一个句柄的每条调用历史上，没有未定义行为、没有内存错误、不泄漏内存块或描述符，并且一定终止。骨架在分支 `skeleton/gz` 的提交 `7d896179` 上，文件为 `ZlibF/Proof/gz.skeleton-model.lean`、`gz.skeleton.lean`、`gz.skeleton-read.lean` 和 `gz.skeleton-write.lean`。它能通过类型检查：`Goal.gz_sequence_safety` 在其中由下列未完成引理证明。该目标涵盖每一种打开（`gzopen`、`gzopen64`、`gzdopen`）、`GzOperation` 的每个公开调用、每次关闭、句柄之外的调用者修改，以及两次调用之间文件系统世界的变化。`GzInv`（`GzCommon`、`GzReadInv`、`GzWriteInv`）是打开句柄的表示不变式；就安全而言，`GzHistory` 取代 `GzReachable`。
+gzip 文件接口的安全（第 5 项结论，所有者 2026-11-12 的决定）：在一个句柄的每条调用历史上，没有未定义行为、没有内存错误、不泄漏内存块或描述符，并且一定终止。目标 `Goal.gz_sequence_safety` 及其定义（`GzHistory`、`GzCloseSafe`、`GzOpenSafe`、`GzDopenSafe`）在 `dev` 的 `ZlibF/Spec/Public/GzSafety.lean` 中（`61fc2678`），建立在 `gz.inv-model` 的 `GzInv` 与 `GzCallSafe` 之上。组装已在 `dev` 上：`gz_sequence_safety_of`（`gz.sequence-safety`）的结论是 `Goal.gz_sequence_safety`，只有一个前提 `GzReadLeaves`：六个读取叶子 `gzread_step`、`gzfread_step`、`gzgetc_step`、`gzungetc_step`、`gzgets_step`、`gzdirect_step`，每个都取骨架中的原样陈述。六个都已在 `dev` 上无前提地检查，所以 `Goal.gz_sequence_safety` 已检查：`gz_sequence_safety_public`（`public-gz-sequence-safety`）。它尚未登记在 `tests/audit/theorems.txt` 中，因此尚未验收。审读 A1 把 `zlib.h` 的 `gzgetc()` 宏的内联路径加入了 `GzHistory`（`getcMacro`）和目标（一个合取项）；`GzMacro.gzgetc_macro_safe` 证明了它。其余每个叶子都直接使用 `dev` 上的定理；没有使用循环规则。骨架在分支 `skeleton/gz` 的提交 `17770416` 上（合并 `dev` 之后），文件为 `gz.skeleton-model.lean`（只有两条循环规则）、`gz.skeleton-read.lean`（未完成的读取叶子）和 `gz.skeleton.lean`（把 `gz_sequence_safety_of` 应用于读取叶子）。它能通过类型检查：`Goal.gz_sequence_safety` 在其中由下列未完成引理证明。`dev` 以完全相同的陈述证明了的骨架叶子，从骨架中删除（或由 `dev` 定理关闭），并列为已检查。该目标涵盖每一种打开（`gzopen`、`gzopen64`、`gzdopen`）、`GzOperation` 的每个公开调用、每次关闭、句柄之外的调用者修改，以及两次调用之间文件系统世界的变化，对操作系统调用预言的每个取值都成立。
 
-会改变骨架的待定输入：
+只要 `dev` 的定理与骨架陈述不同，读取叶子就是未完成的。“差异”一栏写出不同之处，以便读取侧对齐陈述（带证据地更正骨架陈述），或添加一个适配引理。
 
-- 操作系统调用的预言机（M1–M5、M7：`read`、`write`、`lseek`、`close`、`open` 可以返回其契约允许的任何结果）是对 `Fs` 的一项拟议修改，设计正在审查中。在它落地之前，目标只覆盖确定性的普通文件世界，`ReadsFinite`（读取类调用终止部分的 M7 前提）为 `True`。
-- 本地补丁 0004 及以后（发现 F-1 和 W7：`gz_read` 与 `gz_write` 中 `x.pos` 溢出；R-3：`gz_reset` 不写 `x.next`；R-4：`x.next` 留在调用者的缓冲区中）在分支 `worker/gz-patches` 上，与 0002（R-1）和 0003（R-2）并列。注明“依赖补丁”的引理对当前翻译不成立；它们在补丁落地、骨架变基之后证明。
+`GzInv` 相对于骨架文本的陈述更正。两者都削弱了一个子句，因为骨架原来的子句不成立；每项都有一个已检查的回归。目标的无故障子句和帧子句不变。
+- `GzCommon.next` 只在有缓冲输出时（`x.have ≠ 0`）约束 `x.next`（`7c32d275`；回归 `tests/verification/regressions/gz-next-caller.c`，带补丁 0005）。
+- `GzReadInv.copyDirect` 在 `how = COPY` 下允许 `direct = 0 ∨ direct = 1`（`a351cd66`；回归 `tests/verification/regressions/gz-copy-direct.c`）。
 
 | 引理 | 含义 | 状态 | 小时 | 负责人 |
 | --- | --- | --- | ---: | --- |
-| `GzOracle.fsReadO_contract` .. `fsOpenO_fresh`、`regular_instance_*`（10 个）、预言机修改以及 16 个 gz 证明的移植 | M1–M5 和 M7 对每个预言机取值都成立；现在的 `Fs` 是默认实例。 | 未完成（设计审查中） | 18–24 | batch 1 |
-| `GzInv.caller` | 句柄之外的调用者修改保持 `GzInv`（编解码器的 rebuffer）。 | 未完成 | 3 | batch 1 |
-| `GzInv.gz_error` | `gz_error` 保持 `GzInv`；旧消息被释放，产生新消息或 `Z_MEM_ERROR`。已检查（`gzlib.c.error-inv`、`gzlib.c.error-inv-premises`）：`GzInv.gz_error_full` 覆盖每条路径（包括预言机拒绝和 `2^63` 字节处的拒绝；对消息长度没有 `INT_MAX` 限制），并有不抢占事实 `GzInv.gz_error_own`；`gzwrite.c.init`、`gzread.c.getc-ungetc` 和 `gzread.c.skip-gets` 的前提 `GzErrorSpec` 与 `GzErrorOwn` 在那里得到证明。 | 已检查 | 0 | deflate 负责人 |
-| `GzInv.gz_reset` | `gz_reset` 保持 `GzInv`，并清空输出、位置和 skip（R-3 补丁）。 | 未完成 | 2 | batch 1 |
-| `GzInv.put_scalars` | 保持各条款的标量字段写入保持 `GzInv`。 | 未完成 | 4 | batch 1 |
-| 其他接口引理（窗口、编解码器步骤） | 按负责人的需要。 | 未完成 | 2 | batch 1 |
-| `gzopen_safe` | `gzopen` 返回；NULL 不留下任何东西；句柄满足 `GzInv`，且只有它的描述符是新的。 | 未完成 | 6 | batch 1 |
-| `gzdopen_safe` | 同上，不打开也不关闭任何描述符。 | 未完成 | 2 | batch 1 |
-| `gzclose_dispatch_inv` | `gzclose` 按模式即 `gzclose_r` 或 `gzclose_w`。 | 未完成 | 1 | batch 1 |
-| `gzseek64_step` | 在 `GzInv` 上定位是安全的（补丁 0002，以及 R-3、R-4、F-1 补丁）。已在 `2380e023` 检查（`gz.inv-seek`），连同 `gzseek_step`，对预言机的每个世界成立；回归 `gz-seek-pos-have` 表明需要 `GzReadInv.posHave`。 | 已检查 | 0 | batch 1 |
-| `gztell64_step`、`gztell_step` | 查询位置是安全的；什么都不变。 | 未完成 | 2 | batch 1 |
-| `gzbuffer_step`、`gzerror_step`、`gzclearerr_step`、`gzoffset64_step`、`gzoffset_step`、`gzrewind_step` | 已登记的查询在 `GzInv` 上重新陈述。 | 未完成 | 6 | batch 1 |
-| 在补丁 0002–0004+ 上变基，审查陈述 | | 未完成 | 4 | batch 1 |
-| `history_inv`、`operation_safe`、`close_safe`、`gz_sequence_safety`、`gzclose_step`、`gzseek_step`、`gzeof_step`、`gzopen64_safe` | 组装。 | 已检查（骨架） | 0 | batch 1 |
-| `gz_load_safe` | `read` 循环（M1）：`-1` 或 `0`，`have ≤ len`，只写缓冲区。已检查为 `gz_load_safe`（`gz.read-load-error`）：`fsRead_contract`（M1，对预言机的每个取值）、`gz_load_paths`（`gz.read-store`：循环和返回 `0` 的收尾路径）以及 `gz_load_error_tail`（经由 `gz_error_upToOutput`（`gzlib.c.error-inv-rec`）的 `gz_error(Z_ERRNO, strerror)` 报告）。发现的前提：`size ≠ 0`（读取停滞会置 `again`），缓冲区是数据缓冲块或不属于句柄，以及 `eof ≠ 0 → avail_in = 0`（停滞保留 `eof`；`GzReadInv.againEof`）。 | 已检查 | 0 | 读取侧（deflate 负责人） |
-| `gz_avail_safe` | 重新填充 `in`；保持输入窗口。已检查（`gz.read-avail`）：压缩复制（`copy_loop`、`copy_run`；对每个调用者都是死代码，但仍然证明）、在待处理输入之后的 `gz_load_safe`，以及新的窗口（`GzInv.set_input`）；记录只在标志、错误、消息和窗口上改变（`AvailRec`）。前提：读取句柄（`s.mode = GZ_READ`）。为此 `gz_load_safe` 现在也陈述调用后的记录。 | 已检查 | 0 | 读取侧（deflate owner） |
-| `gz_look_safe` | 延迟分配的缓冲区与 `inflateInit2`，失败时的账目，COPY 复制。已检查（`gz.read-look`）：`gz_look_safe : GzLookSpec` 覆盖每条路径（`in`/`out` 的分配和 `inflateInit2_` 及其每种失败、重置分支、`gz_avail`、魔数检查、gzip 分支、透明 COPY）。后置条件 `GzInvOut`（COPY 的输出可越过 `GZ_OFF_MAX`）；前提 `how = LOOK`。 | 已检查 | 0 | 读取侧（deflate owner） |
-| `gz_decomp_safe` | inflate 历史中的 inflate 步骤；`x.next` 在输出窗口内。已作为 `gz_decomp_safe_of (stuck : InflateStuckNoOutput) : GzDecompSpec`（`gz.read-decomp`）检查（HEAD 事实已证明：`inflateHeadUsesInputR_holds`，`inflate.c.head-uses-input`；前提 `InflateStuckNoOutput` 由 batch 3 证明：`inflateStuckNoOutput_holds`）：在嵌入流上调用 `gz_avail` 和 `inflate` 的循环（`inflate_public`；记录只在其流上改变，流消息保持为 NULL 或字面量，由 inflate 整次运行框架的新 `Keeps` 条款 `gz` 与 `msgs` 给出），在 `ReadsFinite` 下终止，错误分支经由 `gz_error`。未完成的前提 `InflateHeadUsesInput`：从模式 `HEAD`、`bits = 0`、`last = 0` 且有输入时的一次 `inflate` 调用会消耗输入（需要一个说明输入计数从不回升的框架）。未完成的前提 `InflateStuckNoOutput`：从模式 `BAD` 或 `MEM` 的一次调用返回错误，不产生输出，也不消耗输入。 | 已检查（基于两个前提） | 3 | 读取侧（deflate owner） |
-| `gz_fetch_safe` | 分派函数；在 M7 下终止。陈述 `GzFetchSafe`（`gz.read-fetch-specs`）：后置条件 `GzInvOut`（输出可越过 `GZ_OFF_MAX`，直到调用者丢弃它），在 `ReadsFinite`（预算小于 `2^61`）下终止，前提 `err ≠ Z_STREAM_END` 与 `how = COPY → avail_in = 0`（将成为不变量条款）。已作为 `gz_fetch_safe_of`（`gz.read-fetch`）从 `GzLookSpec` 和 `GzDecompSpec` 检查；二者证明后即闭合。其后置条件带有 `gz_read` 与 `gz_skip` 的燃料上界所需的进展条款（`fetchRank`：一次取数填满缓冲区，除非失败、输入结束、到达 `GZ_OFF_MAX`，或秩下降 2；严重错误保持；`Stuck` 的流不产生输出）。 | 已检查（基于被调用者前提） | 1 | 读取侧（deflate owner） |
-| `gz_skip_have_safe` | 消耗缓冲中的 skip 字节（`gzread.c.skip-have`，09fe8c0f；以及 `GzInv.put_consume`）。 | 已检查 | 0 | 读取侧（batch 3） |
-| `gz_skip_safe` | skip 循环；在 M7 下终止。已检查为 `gz_skip_safe_of`（6c974c42），前提是 `gz_fetch_safe`、两个请求的 `gz_fetch` 事实（进展、保持 size）和 `gz_error` 的不占用事实；这些证明后即完成。 | 已检查（基于被调用者前提） | 1 | 读取侧（batch 3） |
-| `gz_read_safe` | 三条路径，调用者区域，重置 `x.next`（R-4），`x.pos`（F-1）。已作为 `gz_read_safe_of (skip : GzSkipRead) (fetch : GzFetchSafe) (decomp : GzDecompSpec) : GzReadSafe`（`gz.read-read`）检查。`GzReadSafe` 是骨架陈述加上前提 `err ≠ Z_STREAM_END`、`how = COPY → avail_in = 0` 与 `MsgLit s`（`GzReadInv` 的条款），并在后置条件中保持。终止：度量 `min(len, GZ_OFF_MAX - pos)/8 + fetchRank + 阶段项` 在 `ReadsFinite` 下小于 `2^64`。`GzSkipRead` 即 `gzSkipRead_holds`（`gzread.c.skip-fetch`）。无前提地闭合为 `gz_read_safe : GzReadSafe`（`gz.read-assembly`）。 | 已检查 | 0 | 读取侧（deflate owner） |
-| `gzread_step`、`gzfread_step` | 包装函数。已作为 `gzread_step_of_read`（`gz.read-gzread`）与 `gzfread_step_of_read`（`gzread.c.fread`）从 `GzReadSafe` 检查，并无前提地闭合为 `gzread_step` 与 `gzfread_step`（`gz.read-assembly`）：即骨架叶子。 | 已检查 | 0 | 读取侧（deflate owner） |
-| `gzgetc_step` | 读取一个字节的 `gz_read` 包装函数（`gzgetc__step` 已在骨架中检查）。按现在的 `GzInv` 不成立（有缓冲字节时的 skip 请求）；不变式由 batch 1 决定。 | 未完成 | 2 | 读取侧（batch 3） |
-| `gzungetc_step` | 在 `out` 内回退。已检查为 `gzungetc_step_of`（b7e5cc07），前提是加了两项请求的 `gz_look_safe`、`gz_skip_safe_of'` 和 `gz_error`。 | 已检查（基于被调用者前提） | 1 | 读取侧（batch 3） |
-| `gzgets_step` | 有界的 `memchr`、复制、NUL。 | 未完成 | 6 | 读取侧（batch 3） |
-| `gzdirect_step` | 一次 `gz_look` 和 `gz_skip_have`（R-3、R-4）。 | 未完成 | 3 | 读取侧（batch 3） |
-| `gzclose_r_step` | `inflateEnd`、释放、释放描述符。已作为 `gzclose_r_step_safe`（`gz.read-close`）检查：对每个世界不出错；结果为 `Z_OK`、`Z_BUF_ERROR` 或 `Z_ERRNO`；句柄拥有的每个块都被释放且其余不变（`Frame`、精确的 `LiveChange`）；即使 `close` 返回 -1 描述符也被关闭，其他描述符不变。`GzCloseSafe`/`GzReleased` 暂时在本地写出（`Close.Released`），直到骨架模型进入 dev。 | 已检查 | 0 | 读取侧（deflate owner） |
-| `gz_init_safe` | W2 到 W3、W5、W6；失败时的账目。 | 未完成 | 6 | batch C |
-| `gz_comp_safe` | 写循环（M2）、deflate 循环（`deflate_quiet`）、重置。 | 未完成 | 16 | batch C |
-| `gz_zero_safe`、`gz_write_safe`、`gz_vacate_safe` | 保持 W4；`x.pos`（W7 补丁）。 | 未完成 | 18 | batch C |
-| `gzwrite_step`、`gzfwrite_step`、`gzputc_step`、`gzputs_step` | 包装函数。 | 未完成 | 8 | batch C |
-| `gzvprintf_step` | `vsnprintf`（M6）、哨兵、停滞路径（`gzprintf_step` 已在骨架中检查）。 | 未完成 | 9 | batch C |
-| `gzflush_step`、`gzsetparams_step` | `gz_zero` 和 `gz_comp`；`deflateParams` 步骤。 | 未完成 | 7 | batch C |
-| `gzclose_w_step` | 结束、`deflateEnd`、释放、释放描述符（也包括 O-1）。 | 未完成 | 8 | batch C |
-| `deflate_quiet` | 没有输入的 `deflate`：从至少 8 字节空间开始并填满输出的调用降低 `Φ`；结束时仍有空间的调用留下 `Quiet`；从 `Quiet` 出发不产生输出；重新设置缓冲区保持两者。已在 dev 上证明为 `Zlib.Deflate.Universal.Quiet.deflate_quiet_holds`（`dde03ce6`），即骨架的 `DeflateQuiet` 展开写出，没有假设；`skeleton/gz` 包含该提交后，`deflate_quiet := deflate_quiet_holds`。组成部分：`quiet_silent`、`stateOf_rebuffer`、`phiD_lt`、`strat_quiet`、`marker_quiet`、`header_quiet`、`trailer_quiet`、`tail_quiet`、`call_quiet_of`（文件 `deflate.c.quiet-*`）。 | 已检查 | 0 | batch 3 |
-| 合并 `deflate.c.quiet-*` 中重述的副本 | 清理工作，不在关键路径上：把重述的阶段与循环证明作为原引理的更强结论并回 batch 2 和 batch B 的文件。 | 未完成 | 4 | 以后 |
-| **剩余总计** | batch 1 61–67；读取侧 73（deflate owner 60，batch 3 13）；写入侧 72 | | **206–212** | |
-
+| `GzInv.caller`、`GzInv.gz_error`、`GzInv.gz_reset`、`GzInv.put_scalars` | `GzInv` 的接口引理。 | 已检查：`gz.inv-frame`、`gzlib.c.error-inv-premises`、`gz.inv-reset`、`gz.inv-put-scalars` | 0 | batch 1、deflate 负责人 |
+| `gwhile_partial`、`gdoWhile_partial` | 部分正确性的循环规则（`gz.skeleton-model`）；目前没有证明使用它们。 | 未完成 | 2 | 未分配 |
+| `gzopen_safe` | `gzopen` 返回；NULL 不留下任何东西；句柄满足 `GzInv`，且只有它的描述符是新的。 | 已检查：`gzopen_safe`（`gz.inv-open-fresh`，`5252a412`） | 0 | batch C |
+| `gzopen64_safe` | `gzopen64` 即 `gzopen`。 | 已检查：`gzopen64_safe`（`gz.inv-open-fresh`，`5252a412`） | 0 | batch C |
+| `gzdopen_safe` | 同 `gzopen_safe`，不打开也不关闭任何描述符。 | 已检查：`gzdopen_safe`（`gz.inv-open`，`8c2bba51`） | 0 | batch C |
+| `gzclose_dispatch_inv` | `gzclose` 按模式即 `gzclose_r` 或 `gzclose_w`。 | 已检查：`gzclose_dispatch_inv`（`gz.inv-queries`） | 0 | batch 1 |
+| `gzclose_step` | 由分派和两个关闭步骤得出 `gzclose`。 | 已检查：`gzclose_step`（`gz.inv-close`，`fdb8c613`） | 0 | batch C |
+| `gzseek64_step`、`gzseek_step` | 在 `GzInv` 上定位是安全的。 | 已检查：`gzseek64_step`、`gzseek_step`（`gz.inv-seek`） | 0 | batch 1 |
+| `gztell64_step`、`gztell_step`、`gzeof_step`、`gzbuffer_step` | 位置查询、eof 和缓冲区设置；以及 `post_unchanged`、`safe_of_unchanged`。 | 已检查：同名（`gz.inv-queries`） | 0 | batch 1 |
+| `gzerror_step` | `gzerror` 把错误码存入调用者的单元。 | 已检查：`gzerror_step`（`gz.inv-frame`） | 0 | batch 1 |
+| `gzerror_string` | 调用之后，`gzerror` 返回的指针是一个 C 字符串（审读 C1 加入的目标合取项）。 | 已检查：`gzerror_string`（`gz.inv-frame`） | 0 | batch C |
+| `gzclearerr_step` | 经由 `gz_error` 的 `gzclearerr`。 | 已检查：`gzclearerr_step`（`gz.inv-clearerr`） | 0 | batch 1 |
+| `gzoffset64_step`、`gzoffset_step` | 一次 `lseek`（M3）；其他都不变。 | 已检查：同名（`gz.inv-offset-rewind`，`646b1ab6`） | 0 | batch C |
+| `gzrewind_step` | `lseek`（M3）与 `gz_reset`。 | 已检查：`gzrewind_step`（`gz.inv-offset-rewind`，`646b1ab6`） | 0 | batch C |
+| `history_inv`、`operation_safe`、`close_safe`、`gz_sequence_safety` | 组装，在 `dev` 的 `GzInv` 与 `GzSafety` 下重新检查。 | 已检查：`gz_sequence_safety_of`（`gz.sequence-safety`），前提 `GzReadLeaves`，六个字段都已证明（`gz_read_leaves`）；`Goal.gz_sequence_safety` 已无前提地检查为 `gz_sequence_safety_public`（`public-gz-sequence-safety`）；未登记在 `theorems.txt` 中 | 0 | batch C |
+| `gz_init_safe`、`gz_comp_safe`、`gz_zero_safe`、`gz_write_safe`、`gz_vacate_safe` | 写入侧的辅助函数。 | 已检查：同名（`gzwrite.c.safety`） | 0 | batch C |
+| `gzwrite_step`、`gzfwrite_step`、`gzputc_step`、`gzputs_step`、`gzvprintf_step`、`gzprintf_step`、`gzflush_step`、`gzsetparams_step` | 写入侧的公开调用。 | 已检查：同名（`gzwrite.c.safety`） | 0 | batch C |
+| `gzclose_w_step` | 收尾、`deflateEnd`、释放、交还描述符。 | 已检查：`gzclose_w_step`（`gzwrite.c.safety`，以 `GzCloseSafe` 陈述） | 0 | batch C |
+| `deflate_quiet` | 没有输入的 `deflate` 会停下（`DeflateQuiet`）。`dev` 上的写入证明直接使用它；骨架中不再有对应叶子。 | 已检查：`Zlib.Deflate.Universal.Quiet.deflate_quiet_holds` | 0 | batch 3 |
+| `gzclose_r_step` | `inflateEnd`、释放、交还描述符。 | 已检查：`GzRead.gzclose_r_step_safe`（`gz.read-close`），陈述完整写出；`GzRead.Close.Released` 按 `rfl` 即 `GzReleased` | 0 | 读取侧（deflate 负责人） |
+| `gz_skip_have_safe` | skip 消耗缓冲的字节。 | 已检查：`gz_skip_have_safe`（`gzread.c.skip-have`） | 0 | 读取侧（deflate 负责人） |
+| `gz_load_safe` | `read` 循环（M1）。差异：`GzRead.gz_load_safe`（`gz.read-load-error`）多出假设 `hm`（`mode = GZ_READ`）、`hsz`（`size ≠ 0`）、`hroot`（缓冲区是数据缓冲块或不属于句柄）和 `heofin`（`eof ≠ 0 → avail_in = 0`），结论更强。 | 未完成（对齐） | 1 | 读取侧（deflate 负责人） |
+| `gz_avail_safe` | 重新填充 `in`。差异：`GzRead.gz_avail_safe`（`gz.read-avail`）多出假设 `hm`（`mode = GZ_READ`），结论更强。 | 未完成（对齐） | 0.5 | 读取侧（deflate 负责人） |
+| `gz_look_safe` | 延迟分配的缓冲区、`inflateInit2`、COPY。差异：`GzRead.gz_look_safe : GzLookSpec` 取 `GzInvUpToOutput`（比 `GzInv` 弱）和前提 `how = LOOK` 与 `MsgLit s`；后置条件建立在 `GzInvOut` 而不是 `GzInv` 上。 | 未完成（对齐） | 2 | 读取侧（deflate 负责人） |
+| `gz_decomp_safe` | inflate 步骤。差异：`gz_decomp_safe_of` 需要一个前提 `InflateStuckNoOutput`（从 `BAD` 或 `MEM` 的一次调用返回错误，不产生输出，也不消耗输入），已由 batch 3 证明（`inflateStuckNoOutput_holds`，`inflate.c.stuck-no-output`）；HEAD 事实已证明（`inflateHeadUsesInputR_holds`，`inflate.c.head-uses-input`）；`GzDecompSpec` 加上前提 `MsgLit s` 和 `out.length ≠ 0`，替换了分离前提（`out` 不属于句柄，或 `out = s.out`），并在 `ReadsFinite` 下终止，而不是无条件终止。 | 未完成（对齐，一个前提） | 3 | 读取侧（deflate 负责人） |
+| `gz_fetch_safe` | 分派函数。差异：`gz_fetch_safe_of` 需要 `GzLookSpec` 和 `GzDecompSpec`；`GzFetchSafe` 取 `GzInvUpToOutput` 和前提 `err ≠ Z_STREAM_END`、`how = COPY → avail_in = 0`、`MsgLit s`；后置条件建立在 `GzInvOut` 上；在 `ReadsFinite` 下终止。其后置条件带有 `gz_read` 与 `gz_skip` 的燃料上界所需的进展条款（`fetchRank`：一次取数填满缓冲区，除非失败、输入结束、到达 `GZ_OFF_MAX`，或秩下降 2；严重错误保持；`Stuck` 的流不产生输出）。 | 未完成（对齐，被调用者前提） | 2 | 读取侧（deflate 负责人） |
+| `gz_skip_safe` | skip 循环。差异：`gz_skip_safe_of` 需要 `GzFetchSpec`、`GzFetchProgress`（以及已证明的 `GzErrorSpec`、`GzErrorOwn`）；它取 `GzInvUpToSkip`（比 `GzInv` 弱）。 | 未完成（被调用者前提） | 1 | 读取侧（deflate 负责人） |
+| `gz_read_safe` | 三条路径、调用者范围、`x.pos`（F-1）。已检查为 `gz_read_safe_of (skip : GzSkipRead) (fetch : GzFetchSafe) (decomp : GzDecompSpec) : GzReadSafe`（`gz.read-read`）。`GzReadSafe` 是骨架陈述加上前提 `err ≠ Z_STREAM_END`、`how = COPY → avail_in = 0` 和 `MsgLit s`（`GzReadInv` 的条款），这些在后置条件中保持。终止：度量 `min(len, GZ_OFF_MAX - pos)/8 + fetchRank + 阶段项` 在 `ReadsFinite` 下保持小于 `2^64`。`GzSkipRead` 即 `gzSkipRead_holds`（`gzread.c.skip-fetch`）。已无前提地关闭为 `gz_read_safe : GzReadSafe`（`gz.read-assembly`）。 | 已检查 | 0 | 读取侧（deflate 负责人） |
+| `gzread_step`、`gzfread_step` | `gz_read` 的包装函数。已作为 `gzread_step_of_read`（`gz.read-gzread`）与 `gzfread_step_of_read`（`gzread.c.fread`）从 `GzReadSafe` 检查，并无前提地关闭为 `gzread_step` 和 `gzfread_step`（`gz.read-assembly`）：即骨架叶子。 | 已检查 | 0 | 读取侧（deflate 负责人） |
+| `gzgetc_step`（`gzgetc__step` 由它得出） | 一个字节。 | 已检查：`GzRead.gzgetc_step`（`gz.read-getc-step`），无前提 | 0 | batch C |
+| `gzungetc_step` | 在 `out` 内回退。 | 已检查：`GzRead.gzungetc_step`（`gz.read-getc-step`），无前提：`GzSkipTerminates` 即 `gzSkipTerminates_holds`（`gzread.c.skip-terminates`） | 0 | batch C |
+| `gzgets_step` | 有界的 `memchr`、复制、NUL。 | 已检查：`GzRead.gzgets_step`（`gz.read-gets-step`），无前提 | 0 | batch C |
+| `gzdirect_step` | 一次 `gz_look` 和 `gz_skip_have`。 | 已检查：`GzRead.gzdirect_step`（`gz.read-direct-step`），无前提 | 0 | batch C |
+| `gzgetc_macro_safe` | `zlib.h` 的 `gzgetc()` 宏的内联路径（`Zlib.ZlibH.gzgetc`，`x.have ≠ 0`）返回并保持 `GzInv`：即历史步骤 `GzHistory.getcMacro` 和审读 A1 加入的目标合取项。 | 已检查：`GzMacro.gzgetc_macro_safe`（`zlib.h.gzgetc-macro`），用于 `history_inv` 与 `gz_sequence_safety_of` | 0 | batch C |
+| 合并 `deflate.c.quiet-*` 中重新陈述的副本 | 清理，不在关键路径上。 | 未完成 | 4 | 以后 |
+| **剩余总计** | batch C 0；读取侧 9.5（内部辅助陈述与骨架文本的对齐；目标已不再需要它们）；未分配 2；以后 4 | | **15.5** | |
 
 ### zlib.h 函数的无故障覆盖
 
@@ -2273,10 +2271,10 @@ zlib.h 文档化的每个函数占一行。每行给出表明该调用不会出�
 #### Gzip 文件接口
 
 `Goal.gz_sequence_safety`（`ZlibF/Spec/Public/GzSafety.lean`）是 gzip 接口的安全目标。它已登记在 `goals.txt`
-和 `safety_goals` 中，在 dev 上仍为 open。`gz_sequence_safety_of (L : GzReadLeaves)`（`gz.sequence-safety.lean`）从六个读取叶子证明它。
+和 `safety_goals` 中，并已在 dev 上无前提地检查（`gz_sequence_safety_public`，`public-gz-sequence-safety.lean`），尚未列入 `theorems.txt`。`gz_sequence_safety_of (L : GzReadLeaves)`（`gz.sequence-safety.lean`）从六个读取叶子证明它，六个都已证明。
 其他调用都直接证明：打开、关闭、写入和查询。`gzread_step` 与 `gzfread_step` 随读取侧的 `gz.read-assembly` 关闭。
 `gzgetc_step`、`gzungetc_step`、`gzgets_step` 与 `gzdirect_step` 属于 batch C。目标的定义域是单个句柄的每条历史（`GzHistory`）在每个 OS 世界中（`GzWorldStep`）。
-一次对抗性审读（2026-11-14）未发现错误的子句，发现三个缺口：`gzgetc` 宏的内联路径、`NULL` 句柄，以及一条未列出的 fd 规则（见下表）。fd 规则已从目标中删除（B1）。
+一次对抗性审读（2026-11-14）未发现错误的子句，发现三个缺口：`gzgetc` 宏的内联路径、`NULL` 句柄，以及一条未列出的 fd 规则（见下表）。三个都已关闭：宏步骤在目标中（A1），`NULL` 句柄有 `Goal.gz_refusal`（A2），fd 规则已从目标中删除（B1）。
 
 | 函数 | 途径 | 定理 | 已登记？ | 定义域缺口或说明 |
 | --- | --- | --- | --- | --- |
@@ -2285,8 +2283,9 @@ zlib.h 文档化的每个函数占一行。每行给出表明该调用不会出�
 | gzbuffer、gzeof、gzerror、gzclearerr、gztell、gztell64、gzoffset、gzoffset64、gzrewind、gzseek、gzseek64 | 序列叶子 | `gzbuffer_step`、`gzeof_step`、`gzerror_step`、`gzclearerr_step`、`gztell*_step`、`gzoffset*_step`、`gzrewind_step`、`gzseek*_step`（`gz.inv-*`） | 否（checked） | gzbuffer、gzeof、gzerror、gzclearerr、gzoffset 与 gzrewind 的自身功能目标另行登记。 |
 | gzwrite、gzfwrite、gzputc、gzputs、gzprintf、gzvprintf、gzflush、gzsetparams | 序列叶子 | `gzwrite.c.safety`（`gzwrite_step` …） | 否（checked） | `gzprintf`/`gzvprintf`：`GzArguments` 在每次调用时都要求可表示的格式，读取者也不例外（审读 B3）。 |
 | gzclose、gzclose_w、gzclose_r | 关闭叶子 | `gzclose_step`、`gzclose_w_step`、`gzclose_r_step_safe` | 否（checked） | |
-| gzread、gzfread | 读取叶子 | `gzread_step_of_read`、`gzfread_step_of_read`（来自 `GzReadSafe`），在 `gz.read-assembly` 中关闭 | 否 | 在 `gz.read-assembly` 上 dev 之前为 open。 |
-| gzgetc、gzgetc_、gzungetc、gzgets、gzdirect | 读取叶子 | open（batch C） | 否 | **缺口（审读 A1）：**`gzgetc` 宏的内联路径不是一个历史步骤。 |
+| gzread、gzfread | 读取叶子 | `GzRead.gzread_step`、`GzRead.gzfread_step`（`gz.read-assembly`） | 否（checked） | |
+| gzgetc、gzgetc_、gzungetc、gzgets、gzdirect | 读取叶子 | `GzRead.gzgetc_step`、`GzRead.gzungetc_step`（`gz.read-getc-step`）、`GzRead.gzgets_step`、`GzRead.gzdirect_step` | 否（checked） | |
+| zlib.h 的 `gzgetc()` 宏 | 历史步骤 + 目标合取项 | `GzMacro.gzgetc_macro_safe`（`zlib.h.gzgetc-macro`） | 否（checked） | 已关闭（审读 A1）：内联路径（`x.have ≠ 0`）是 `GzHistory.getcMacro`；`x.have = 0` 时宏调用函数，即带 `Call.gzgetc` 的 `step`。差分测试：`tests/gen/gz.py` 的操作 `getcm`。 |
 | `NULL` 句柄上的所有 gz 函数 | 自身安全目标 | `ZlibF.Spec.Public.GzRefusalProof.gz_refusal`（`Goal.gz_refusal`，`public-gz-refusal.lean`） | 否（checked） | 已关闭（审读 A2）：29 个函数中的每一个都返回其文档化的值，堆和世界不变。C 测试 `tests/goals/gz-refusal`：204 次调用，无违例。`gzgetc` 宏用于 `NULL` 在 C 中是未定义行为；目标陈述的是函数。 |
 | 同一 fd 上的第二个句柄 | 世界步骤 | `GzHistory.world` | 否 | 已覆盖（审读 B1，已更正）：`GzWorldStep` 是任意良构的世界，另一方可以关闭或重用句柄的 fd（[回归](../tests/verification/regressions/gz-world-closes-fd.lean)）。 |
 
@@ -2301,7 +2300,7 @@ zlib.h 文档化的每个函数占一行。每行给出表明该调用不会出�
 5. **NULL 或不一致流的 refusal**：已关闭。`Goal.inflate_refusal` 与 `Goal.deflate_refusal`（checked）覆盖 `inflate`、`deflate`、`inflateEnd`、`inflateReset`、`inflateReset2`、`inflateGetDictionary`、`inflateSetDictionary`、`inflateCopy`、`deflateSetDictionary`、`deflateParams`、`deflateGetDictionary` 与 `deflateCopy`。这些目标与 `deflateGetDictionary_reject` 已登记。
 6. **deflateParams、deflateSetDictionary、deflatePrime、deflateBound、deflateBound_z、inflateSync**：没有自身目标定理。可达流上的无故障只经由 SeqI 或 SeqD 得到。这对计划内的安全性已足够，但逐调用的自身目标仍为 open。
 7. **adler32、adler32_z**：定义域比 zlib.h 更窄（NULL 只在 `len = 0` 时允许）。`len = 1` 是真实的 C 错误（偏差行）。`len ≥ 2` 的 NULL 安全但未证明。
-8. **gz 函数**：`Goal.gz_sequence_safety` 已登记，仍为 open；六个读取叶子关闭后（gzread 与 gzfread 随 `gz.read-assembly`；gzgetc、gzungetc、gzgets 与 gzdirect 随 batch C），它由 `gz_sequence_safety_of` 得出。2026-11-14 的对抗性审读发现的两个缺口不在任何计划中的定理内：`gzgetc` 宏路径与同一 fd 上的第二个句柄（交由 batch C）。`NULL` 句柄由 `Goal.gz_refusal` 覆盖。
+8. **gz 函数**：`Goal.gz_sequence_safety` 已登记在 `goals.txt` 中，并已无前提地检查（`gz_sequence_safety_public`）；其定理尚未列入 `theorems.txt`。`gzgetc` 宏路径（审读 A1）和同一 fd 上的第二个句柄（审读 B1）都在目标之内。`NULL` 句柄由 `Goal.gz_refusal` 覆盖。
 9. 相关，但不是函数：`Goal.deflate_initialisation_domain`（非空性）没有定理。
 
 ### 按顺序的下一步工作
@@ -2465,7 +2464,7 @@ zlib.h 文档化的每个函数占一行。每行给出表明该调用不会出�
 
 原因。每次预言调用都使调用计数 `nos` 前进，因此偏移契约旧的世界子句对每个句柄都为假（由 `fsLseek` 的定义）。预言的 `lseek` 返回与描述符无关的值，因此结果值子句只在之后每次调用都是普通调用时成立：`RegularOs fs`（`Spec/Public/GzState.lean`）。经检查的反例：[回归](../tests/verification/regressions/gz-offset-regular-world.lean)。在一个 `FileSystem` 接受、其 `lseek` 返回 77 而不移动的世界中，`gzdopen(3, "r")` 记录起点 77；随后 `gzoffset64` 与 `gzoffset` 返回 77 而描述符位于 0，`gzrewind` 返回 0 而描述符仍位于 0。三条旧陈述为假，去掉 `RegularOs` 的修正后偏移契约也为假。这是模型变更，不是 zlib 问题。
 
-这三个目标现在是普通文件实例上的功能契约。它们在每个世界（每个预言）上的安全属于分支 `skeleton/gz` 上的 `Goal.gz_sequence_safety`。其调用分派（`gz.skeleton.lean` 中的 `operation_safe`）经由 `gzoffset64_step`、`gzoffset_step` 和 `gzrewind_step` 把 `gzoffset64`、`gzoffset` 与 `gzrewind` 作为下一次调用。每个都是对每个 `fs` 的 `GzCallSafe`，无 `RegularOs`，也无读取额度：不出错，有结果，打开的描述符保持，`GzInv` 保持，只改变句柄自己的块。这三个步骤引理在骨架上尚未完成，`gzrewind_step` 还依赖 R-3 的本地补丁。在它们被检查之前，这些调用在非普通世界上的安全尚未证明。它们不能直接复用已登记的证明，因为那些证明现在假设 `RegularOs`。
+这三个目标现在是普通文件实例上的功能契约。它们在每个世界（每个预言）上的安全属于 `Goal.gz_sequence_safety`（`GzSafety.lean`），已在分支 `skeleton/gz` 上证明。其调用分派（`gz.skeleton.lean` 中的 `operation_safe`）经由 `gzoffset64_step`、`gzoffset_step` 和 `gzrewind_step` 把 `gzoffset64`、`gzoffset` 与 `gzrewind` 作为下一次调用。每个都是对每个 `fs` 的 `GzCallSafe`，无 `RegularOs`，也无读取额度：不出错，有结果，打开的描述符保持，`GzInv` 保持，只改变句柄自己的块。这三个步骤引理在骨架上尚未完成，`gzrewind_step` 还依赖 R-3 的本地补丁。在它们被检查之前，这些调用在非普通世界上的安全尚未证明。它们不能直接复用已登记的证明，因为那些证明现在假设 `RegularOs`。
 
 ### 翻译审查
 
@@ -2478,6 +2477,9 @@ zlib.h 文档化的每个函数占一行。每行给出表明该调用不会出�
 ### 观察记录
 
 **`write` 返回 0 时 `gz_comp` 会空转。** 在 `gz_comp` 的两个写循环中（`gzwrite.c`：透明写循环 `while (strm->avail_in)` 和写出循环 `while (strm->next_out > state->x.next)`），对非空缓冲区返回 0 的 `write` 不推进任何东西，也不算错误，所以循环重复同一调用。如果系统一直返回 0，C 永远不返回。这是对代码的阅读；没有运行过永远返回 0 的 `write`。目前不知道 Linux 会对普通文件、管道或套接字的非零计数返回 0（其他文件类型尚未核实），所以 gz 安全证明假设它不会发生（可信基础，“gz 操作系统事实”）。gz 安全研究的故障注入测试平台检查了另一面：当 `write` 对 10% 的非空调用返回 0 时（40 条历史，ASan 和 UBSan），每条历史都结束，没有报告也没有泄漏，因为每个循环最终都会得到正数结果。这是库的行为，不是安全发现；只有在已知某个平台会返回 0 时才值得向上游说明。范围：`gzwrite`、`gzfwrite`、`gzputc`、`gzputs`、`gzprintf`、`gzflush`、`gzsetparams`、`gzclose_w`。
+
+**`gzerror` 返回的字符串会被下一次到达 `gz_error` 的调用释放。**
+未确认的发现，是文档缺口，不是代码缺陷。zlib.h 只说以后对 `gzerror` 的调用可能使返回的字符串失效。实际上 `gzerror` 返回 `state->msg`，而每个到达 `gz_error` 的调用都会释放它：`gzprintf`、`gzvprintf`、`gzputs`、`gzwrite`、`gzread` 等在使用参数之前先用 `gz_error(state, Z_OK, NULL)` 重置错误。把这个字符串交回同一句柄的调用者会遇到释放后使用：写入停滞之后的 `gzprintf(f, "%s", gzerror(f, &e))` 在 `vsnprintf` 中读取已释放的内存（[复现](../tests/regression/gzprintf-error-string/README.md)，ASan）。没有补丁。已证明的定义域让调用者的字符串和缓冲区与句柄的块分开（`GzRange`，以及 `gzprintf`/`gzvprintf` 的 `GzArguments` 中的分离子句，[偏差](deviations.zh.md)）。
 
 ### 边界情况复核
 

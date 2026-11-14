@@ -1,4 +1,4 @@
-<!-- source-sha256: ab3e02b5f5f0cbdd4ebb9a492438cf299bfaf70efa96e564c3b2ed9a3f959a62 -->
+<!-- source-sha256: caa191871dee0dbe5202e4b92cde835ec0b53cae89f7d0f184d12f4db2f878f4 -->
 # 补丁
 
 验证对象是固定版本的 `zlib/` 子模块，加上本目录中按文件名顺序应用的所有 `*.patch` 文件。
@@ -13,19 +13,19 @@
 
 避免在开头调用 `gzungetc`（它把 `state->x.pos` 设为 -1）之后，`gzseek64` 中的有符号溢出：`SEEK_CUR` 的范围检查在 `pos` 为负时计算 `GZ_OFF_MAX - pos`，而接近 `GZ_OFF_MAX` 的 `SEEK_SET` 目标在 `pos - state->x.pos` 中溢出。UndefinedBehaviorSanitizer 在未打补丁的 C 上报告这两处。这是 [gzip 证明说明](../docs/proof/gzip.md) 中的 R-1，阻碍 `gzseek64` 和 `gzseek` 的安全证明。
 
-补丁是[上游 PR #1361](https://github.com/madler/zlib/pull/1361) 在分支头 `ce2248ee9750` 时 `gzlib.c` 的部分。该 PR 中 `test/example.c` 的部分不属于验证对象。该 PR 尚未合入。
+补丁是[上游 PR #1361](https://github.com/madler/zlib/pull/1361) 在分支头 `ce2248ee9750` 时 `gzlib.c` 的部分。该 PR 中 `test/example.c` 的部分不属于验证对象。该 PR 尚未合入。保留的[复现](../tests/regression/gzseek-pushback-overflow/README.md)在 sanitizer 下构建未打补丁的 C，并表明打补丁后报告消失。
 
 ## 0003-gzread-partial-copy-read-error.patch
 
 在透明（`COPY`）模式下，于 `gz_load` 之前设置 `state->x.next = state->out`。如果 `read` 先提供一些字节后失败，`gz_load` 把部分计数留在 `x.have` 并返回 -1，而 `gz_fetch` 在给 `x.next` 赋值之前就返回了。随后读取函数通过过时的 `x.next` 消费这些字节：当先前的输出缓冲区已用完时，这是越界读。这是 [gzip 证明说明](../docs/proof/gzip.md) 中的 R-2，阻碍读取一侧的安全证明。
 
-补丁与[上游 PR #1363](https://github.com/madler/zlib/pull/1363) 在分支头 `37627fd3bb47` 时的改动完全一致。该 PR 尚未合入。
+补丁与[上游 PR #1363](https://github.com/madler/zlib/pull/1363) 在分支头 `37627fd3bb47` 时的改动完全一致。该 PR 尚未合入。保留的[复现](../tests/regression/gzread-transparent-stale-next/README.md)在 sanitizer 下构建未打补丁的 C，并表明打补丁后报告消失。
 
 ## 0004-gz-position-overflow.patch
 
 本地补丁，尚未提交上游；所有者于 2026-11-12 批准。
 
-使未压缩位置 `state->x.pos` 始终能用 `z_off64_t` 表示。读取：`gz_fetch` 只向输出缓冲区填入位置可表示的字节（至少一个，以便仍能发现输入结束），`gz_read` 和 `gzgets` 不交付超过 `GZ_OFF_MAX` 的字节；超出部分的数据给出 `Z_DATA_ERROR` "position overflow"。写入：`gz_write`、`gzputc` 的快速路径和 `gzprintf` 拒绝会使位置超过 `GZ_OFF_MAX` 的写入，给出同样的错误。发现：[gzread-pos-overflow](../docs/findings/gzread-pos-overflow/README.md)（F-1）和 [gzwrite-pos-overflow](../docs/findings/gzwrite-pos-overflow/README.md)（W7）。证据：在 x86_64 Linux 上用 `/dev/zero` 和真实的 `/dev/null`，UndefinedBehaviorSanitizer 对两者都报告有符号溢出；复现在 `tests/regression/` 下。这阻碍 gz 读写函数的安全证明。PR 草稿在读取一侧的发现中。
+使未压缩位置 `state->x.pos` 始终能用 `z_off64_t` 表示。读取：`gz_fetch` 只向输出缓冲区填入位置可表示的字节（至少一个，以便仍能发现输入结束），`gz_read` 和 `gzgets` 不交付超过 `GZ_OFF_MAX` 的字节；超出部分的数据给出 `Z_DATA_ERROR` "position overflow"。`gz_look` 的透明 COPY 分支也只缓冲剩余的空间，输入超出时记录同样的错误，因此每个读取调用返回时都有 `x.pos + x.have <= GZ_OFF_MAX`，这是 `gzgetc()` 宏所需要的（[gz-position-copy-overflow](../docs/findings/gz-position-copy-overflow.md)；这一扩展经所有者于 2026-11-13 批准，和补丁的其余部分一样是本地的，尚待提交上游）。写入：`gz_write`、`gzputc` 的快速路径和 `gzprintf` 拒绝会使位置超过 `GZ_OFF_MAX` 的写入，给出同样的错误。发现：[gzread-pos-overflow](../docs/findings/gzread-pos-overflow/README.md)（F-1）和 [gzwrite-pos-overflow](../docs/findings/gzwrite-pos-overflow/README.md)（W7）。证据：在 x86_64 Linux 上用 `/dev/zero` 和真实的 `/dev/null`，UndefinedBehaviorSanitizer 对两者都报告有符号溢出；复现在 `tests/regression/` 下。这阻碍 gz 读写函数的安全证明。PR 草稿在读取一侧的发现中。
 
 ## 0005-gz-next-zero-advance.patch
 
