@@ -1,6 +1,7 @@
 import ZlibF.Proof.«deflate.c.universal-params-base»
 import ZlibF.Zlib.«deflate.c»
 import ZlibF.Spec.Public.Initialisation
+import ZlibF.Spec.Functional.Api.Basic
 
 /-!
 # deflate.c: what every run of a `deflate` callee keeps

@@ -10,6 +10,8 @@ import ZlibF.Math.«code-length-prefix»
 import ZlibF.Spec.Format.Wrapper
 import ZlibF.Spec.Api.Basic
 import ZlibF.Spec.Public.Sequences
+import ZlibF.Spec.Functional.Api.Goals
+import ZlibF.Spec.Functional.Api.InflateAccepted
 
 /-!
 # inflate.c: the format meaning of a decoder state (interface)

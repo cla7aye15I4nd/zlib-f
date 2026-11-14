@@ -1,5 +1,6 @@
 import ZlibF.Proof.«deflate.c.engine.encoding-data-history»
 import ZlibF.Proof.«deflate.c.engine.encoding-ordinary-history»
+import ZlibF.Spec.Functional.Sequences
 namespace Zlib.Deflate.Engine.Proofs
 open C Zlib.Deflate Zlib.Deflate.Spec Zlib.Deflate.Proofs ZlibF.Spec.Public
 set_option autoImplicit false

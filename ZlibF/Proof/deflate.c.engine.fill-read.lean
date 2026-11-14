@@ -1,5 +1,6 @@
 import ZlibF.Proof.«deflate.c.engine.fill-prime»
 import ZlibF.Proof.«deflate.c.engine.read-zlib»
+import ZlibF.Spec.Functional.Checksums
 
 /-! # First fill_window input read and hash priming -/
 

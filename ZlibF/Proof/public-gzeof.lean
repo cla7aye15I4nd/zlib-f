@@ -1,5 +1,6 @@
 import ZlibF.Spec.Public.GzControl
 import ZlibF.Proof.«gzlib.c.base»
+import ZlibF.Spec.Functional.Api.Compress
 
 namespace ZlibF.Spec.Public.Proofs
 open C Zlib.GzFs Zlib.Gzguts Zlib.Gzlib Zlib.Gzlib.Spec Zlib.Gzlib.Proofs

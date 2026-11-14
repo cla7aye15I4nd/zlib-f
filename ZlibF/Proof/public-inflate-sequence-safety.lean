@@ -1,4 +1,5 @@
 import ZlibF.Proof.«inflate.c.sequence-safety»
+import ZlibF.Spec.Safety.Sequences
 
 namespace Zlib.Inflate.Proofs
 open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec.Public

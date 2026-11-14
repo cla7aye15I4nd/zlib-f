@@ -1,5 +1,7 @@
 import ZlibF.Spec.Public.Lifecycle
 import ZlibF.Proof.«deflate.c.public-getdict»
+import ZlibF.Spec.Functional.Lifecycle
+import ZlibF.Spec.Functional.Api.Basic
 
 open C Zlib.Deflate Zlib.Deflate.Spec Zlib.Deflate.Proofs Zlib.Deflate.Engine.Proofs ZlibF.Spec.Public
 

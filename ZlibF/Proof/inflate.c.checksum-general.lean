@@ -1,6 +1,7 @@
 import ZlibF.Proof.«public-adler-update»
 import ZlibF.Proof.«inflate.c.base»
 import ZlibF.Proof.«crc32.c.views»
+import ZlibF.Spec.Functional.Checksums
 
 namespace Zlib.Inflate.Proofs
 open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec.Public

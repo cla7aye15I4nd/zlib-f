@@ -1,11 +1,5 @@
-import ZlibF.Spec.Api.Basic
-import ZlibF.Spec.Api.Header
-import ZlibF.Spec.Api.Inflate
-import ZlibF.Spec.Api.Deflate
-import ZlibF.Spec.Api.Compress
-import ZlibF.Spec.Api.Gz
-import ZlibF.Spec.Api.Run
-import ZlibF.Spec.Api.Iface
-import ZlibF.Spec.Api.Goals
-import ZlibF.Spec.Api.Examples
-import ZlibF.Spec.Api.Concrete
+import ZlibF.Spec.Functional.Api
+
+/-! Compatibility module: `ZlibF/Spec/Api.lean` moved to `ZlibF/Spec/Functional/Api.lean` (`docs/design/safety-functional-split.md`).
+It is kept for one release so that branches that import the old name still build; import the new
+module instead. -/

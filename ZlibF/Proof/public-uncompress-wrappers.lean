@@ -1,4 +1,5 @@
 import ZlibF.Proof.«public-uncompress-cells»
+import ZlibF.Spec.Functional.Utilities
 
 /-!
 # uncompr.c: the wrappers `uncompress_z`, `uncompress2` and `uncompress`

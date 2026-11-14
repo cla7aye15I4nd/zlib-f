@@ -1,5 +1,6 @@
 import ZlibF.Proof.gzfs
 import ZlibF.Spec.Public.History
+import ZlibF.Spec.Functional.Api.Basic
 
 /-! Fixed error-message formatting. All heap reads are connected to the real
 cstring and formatBytes execution; no allocator or caller-frame claim is made. -/

@@ -1,6 +1,7 @@
 import ZlibF.Spec.Public.Utilities
 import ZlibF.Zlib.«uncompr.c»
 import ZlibF.Proof.«inflate.c.byte-views»
+import ZlibF.Spec.Functional.Api.Compress
 
 /-!
 # uncompr.c: the 8-byte length cells

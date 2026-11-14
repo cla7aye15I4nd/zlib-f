@@ -1,5 +1,7 @@
 import ZlibF.Proof.«inflate.c.header-progress-public-accounting»
 import ZlibF.Spec.Public.Sequences
+import ZlibF.Spec.Functional.Api.Goals
+import ZlibF.Spec.Functional.Api.InflateAccepted
 
 namespace Zlib.Inflate.Proofs
 open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec ZlibF.Spec.Public

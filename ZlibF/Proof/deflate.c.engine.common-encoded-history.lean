@@ -3,6 +3,8 @@ import ZlibF.Proof.«deflate.c.engine.common-encoded-request»
 import ZlibF.Proof.«deflate.c.engine.encoding-observations»
 import ZlibF.Proof.«public-deflate-end»
 import ZlibF.Spec.Public.DeflateCore
+import ZlibF.Spec.Functional.Api.Goals
+import ZlibF.Spec.Functional.Api.InflateAccepted
 
 /-! # Actual initialized common-level NO_FLUSH/FINISH histories -/
 

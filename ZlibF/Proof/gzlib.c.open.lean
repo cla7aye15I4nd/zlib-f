@@ -1,5 +1,6 @@
 import ZlibF.Proof.«public-gz-offset»
 import ZlibF.Spec.Public.GzOpen
+import ZlibF.Spec.Functional.Api.Compress
 
 /-!
 # gzlib.c: open refusal and initial allocation failure

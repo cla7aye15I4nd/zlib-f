@@ -4,6 +4,7 @@ import ZlibF.Proof.«inflate.c.origin-fields-memory-contract»
 import ZlibF.Proof.«inflate.c.dictionary-install-origin»
 import ZlibF.Proof.«inflate.c.default-readonly-controls»
 import ZlibF.Proof.«inflate.c.copy-both-origin»
+import ZlibF.Spec.Functional.Api.Compress
 
 namespace Zlib.Inflate.Proofs
 open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec.Public

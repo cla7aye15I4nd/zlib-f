@@ -2,6 +2,7 @@ import ZlibF.Proof.«public-deflate-init»
 import ZlibF.Proof.«deflate.c.engine.macros»
 import ZlibF.Proof.«deflate.c.engine.chains»
 import ZlibF.Spec.Public.History
+import ZlibF.Spec.Functional.Api.Basic
 
 /-! # Default initialization reaches the actual engine boundary
 

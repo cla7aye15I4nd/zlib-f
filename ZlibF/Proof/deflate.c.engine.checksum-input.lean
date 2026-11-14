@@ -1,6 +1,7 @@
 import ZlibF.Proof.«deflate.c.engine.fill-checksum»
 import ZlibF.Proof.«deflate.c.engine.fill-history»
 import ZlibF.Math.DeflateSymbolTrace
+import ZlibF.Spec.Functional.Checksums
 
 /-! # The checksum input ledger agrees with the logical compression input -/
 

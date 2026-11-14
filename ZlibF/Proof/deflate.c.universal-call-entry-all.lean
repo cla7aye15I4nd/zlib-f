@@ -1,6 +1,7 @@
 import ZlibF.Proof.«deflate.c.universal-call-entry»
 import ZlibF.Proof.«zutil.c»
 import ZlibF.Spec.Public.Queries
+import ZlibF.Spec.Functional.Api.Compress
 
 /-!
 # deflate.c: the entry phase of `deflate` for every status

@@ -1,6 +1,7 @@
 import ZlibF.Spec.Public.GzControl
 import ZlibF.Proof.«gzlib.c.simple»
 import ZlibF.Proof.«gzfs.oracle»
+import ZlibF.Spec.Functional.Api.Compress
 
 namespace ZlibF.Spec.Public.OffsetProof
 open C Zlib.GzFs Zlib.Gzguts Zlib.Gzlib Zlib.Gzlib.Spec Zlib.Gzlib.Proofs

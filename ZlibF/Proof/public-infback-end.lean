@@ -1,5 +1,6 @@
 import ZlibF.Spec.Public.Back
 import ZlibF.Proof.«infback.c.end»
+import ZlibF.Spec.Functional.Api.Compress
 
 namespace ZlibF.Spec.Public.InflateBackEndProof
 open C Zlib.Inflate Zlib.Inflate.Spec Zlib.Inflate.Proofs Zlib.Infback Zlib.Infback.Spec Zlib.Infback.Proofs

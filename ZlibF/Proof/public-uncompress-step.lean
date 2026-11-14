@@ -3,6 +3,7 @@ import ZlibF.Proof.«public-uncompress-format»
 import ZlibF.Proof.«public-uncompress-loop-rule»
 import ZlibF.Proof.«public-uncompress-ranges»
 import ZlibF.Proof.«inflate.c.reachable»
+import ZlibF.Spec.Functional.Sequences
 
 /-!
 # uncompr.c: one iteration of the decompression loop

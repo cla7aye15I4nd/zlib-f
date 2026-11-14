@@ -1,6 +1,7 @@
 import ZlibF.Proof.«deflate.c.engine.rebuffer»
 import ZlibF.Spec.Public.Streams
 import ZlibF.Proof.LibcBorrow
+import ZlibF.Spec.Functional.Api.Compress
 
 /-! # Caller byte ranges survive private compressor writes
 

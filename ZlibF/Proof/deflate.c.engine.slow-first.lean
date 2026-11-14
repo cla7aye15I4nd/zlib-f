@@ -1,4 +1,5 @@
 import ZlibF.Proof.«deflate.c.engine.fill-preserve»
+import ZlibF.Spec.Functional.Checksums
 
 /-! # The default slow strategy's first streaming return
 

@@ -5,6 +5,8 @@ import ZlibF.Spec.Public.Sequences
 import ZlibF.Proof.«inflate.c.slow-output-exact-frame»
 import ZlibF.Proof.«inflate.c.construction-record-read-tail»
 import ZlibF.Proof.«inflate.c.output-frame-footprint-compose»
+import ZlibF.Spec.Functional.Api.Goals
+import ZlibF.Spec.Functional.Api.InflateAccepted
 
 namespace Zlib.Inflate.Proofs
 open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec.Public

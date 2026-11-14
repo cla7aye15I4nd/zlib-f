@@ -1,6 +1,7 @@
 import ZlibF.Proof.«inflate.c.window-compose»
 import ZlibF.Spec.Public.Lifecycle
 import ZlibF.Proof.«adler32.c.public-block»
+import ZlibF.Spec.Functional.Api.Basic
 
 namespace Zlib.Inflate.Proofs
 open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec.Public

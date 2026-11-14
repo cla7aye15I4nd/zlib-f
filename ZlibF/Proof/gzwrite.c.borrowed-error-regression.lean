@@ -1,6 +1,7 @@
 import ZlibF.Zlib.«gzwrite.c»
 import ZlibF.Proof.«gzfs.borrowed-error»
 import ZlibF.Spec.Public.GzClose
+import ZlibF.Spec.Functional.Api.Compress
 
 /-!
 # gzwrite.c: complete borrowed-error close regression

@@ -4,6 +4,8 @@ import ZlibF.Proof.«inflate.c.window-physical-history»
 import ZlibF.Proof.«inflate.c.need-dict-sourcecut»
 import ZlibF.Proof.«inflate.c.wrapper-output-credit»
 import ZlibF.Spec.Public.Sequences
+import ZlibF.Spec.Functional.Api.Goals
+import ZlibF.Spec.Functional.Api.InflateAccepted
 
 namespace Zlib.Inflate.Proofs.WindowHistory
 open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec ZlibF.Spec.Public

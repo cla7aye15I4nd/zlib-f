@@ -1,5 +1,6 @@
 import ZlibF.Proof.«deflate.c.universal-ops-copy»
 import ZlibF.Spec.Public.Copy
+import ZlibF.Spec.Functional.Api.Compress
 
 /-!
 # deflate.c: the success clauses of `deflateCopy` (`copy_success`)

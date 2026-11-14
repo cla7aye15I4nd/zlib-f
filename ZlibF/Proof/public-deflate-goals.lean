@@ -1,6 +1,8 @@
 import ZlibF.Proof.«public-deflate-safety-two»
 import ZlibF.Proof.«public-compress-safe-mid»
 import ZlibF.Proof.«deflate.c.engine.overlay-header-ref»
+import ZlibF.Spec.Functional.Streams
+import ZlibF.Spec.Safety.Sequences
 
 /-!
 # `Goal.deflate` and `Goal.deflate_sequence_safety` with no hypothesis

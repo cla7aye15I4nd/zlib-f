@@ -1,5 +1,6 @@
 import ZlibF.Proof.«deflate.c.engine.slow-boundary»
 import ZlibF.Proof.«deflate.c.engine.fill-slide-empty»
+import ZlibF.Spec.Functional.Checksums
 
 /-! # Input refill preserves the same initialized slow boundary -/
 

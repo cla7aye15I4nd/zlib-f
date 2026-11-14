@@ -3,6 +3,7 @@ import ZlibF.Proof.«deflate.c.engine.initial»
 import ZlibF.Proof.«deflate.c.engine.symbol-ledger»
 import ZlibF.Proof.«deflate.c.engine.block-initial»
 import ZlibF.Proof.«deflate.c.engine.chains»
+import ZlibF.Spec.Functional.Api.Compress
 
 /-!
 # deflate.c: the universal invariant of a deflate stream

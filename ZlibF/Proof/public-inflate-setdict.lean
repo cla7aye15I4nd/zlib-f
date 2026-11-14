@@ -1,5 +1,7 @@
 import ZlibF.Spec.Public.Lifecycle
 import ZlibF.Proof.«inflate.c.public-setdict-success»
+import ZlibF.Spec.Functional.Lifecycle
+import ZlibF.Spec.Functional.Api.Basic
 
 open C Zlib.Inflate Zlib.Inflate.Spec Zlib.Inflate.Proofs Zlib.Adler32.Proofs ZlibF.Spec.Public
 

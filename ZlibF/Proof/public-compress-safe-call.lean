@@ -1,4 +1,5 @@
 import ZlibF.Proof.«public-compress-safe-tiny»
+import ZlibF.Spec.Safety.Utilities
 
 /-!
 # compress.c: the two call facts of `compress*` from `deflate_call_full`

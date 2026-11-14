@@ -6,6 +6,8 @@ import ZlibF.Proof.«inffast.c.tableok»
 import ZlibF.Proof.«inftrees.c.decode.prefix-query»
 import ZlibF.Proof.«inftrees.c.decode.invariant»
 import ZlibF.Proof.«inftrees.c.decode.invariant-prefix»
+import ZlibF.Spec.Functional.Api.Goals
+import ZlibF.Spec.Functional.Api.InflateAccepted
 
 /-!
 # infback.c: the invariant of the dispatch loop over the caller protocol, and `PULL()`

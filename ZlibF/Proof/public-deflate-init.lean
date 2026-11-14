@@ -1,4 +1,5 @@
 import ZlibF.Proof.«deflate.c.init.failure»
+import ZlibF.Spec.Functional.Initialisation
 
 /-! # The default deflate initialization entry
 

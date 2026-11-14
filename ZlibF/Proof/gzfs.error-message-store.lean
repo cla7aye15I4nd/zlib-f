@@ -1,5 +1,6 @@
 import ZlibF.Proof.«gzfs.format-error-message»
 import ZlibF.Spec.Public.Initialisation
+import ZlibF.Spec.Functional.Api.Basic
 
 /-! # Actual copied message and terminating NUL
 

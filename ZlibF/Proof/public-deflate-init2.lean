@@ -1,4 +1,5 @@
 import ZlibF.Proof.«deflate.c.init.general-main»
+import ZlibF.Spec.Functional.Initialisation
 
 /-! # `Goal.deflateInit2_`
 

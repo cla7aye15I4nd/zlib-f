@@ -6,6 +6,7 @@ import ZlibF.Math.LZ77CopySpec
 import ZlibF.Proof.«inflate.c.check-default-accounting»
 import ZlibF.Math.DeflateChecksum
 import ZlibF.Proof.«inflate.c.code-length-repeat-meaning»
+import ZlibF.Spec.Functional.Checksums
 
 namespace Zlib.Inflate.Proofs
 open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec ZlibF.Spec.Public

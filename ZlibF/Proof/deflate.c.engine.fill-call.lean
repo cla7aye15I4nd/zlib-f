@@ -1,4 +1,5 @@
 import ZlibF.Proof.«deflate.c.engine.fill-padding»
+import ZlibF.Spec.Functional.Checksums
 
 /-! # Complete first fill_window call with input
 

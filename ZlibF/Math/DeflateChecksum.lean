@@ -1,4 +1,5 @@
 import ZlibF.Spec.Public.Checksums
+import ZlibF.Spec.Functional.Checksums
 
 /-! # Canonical Adler values compose across real compressor reads -/
 

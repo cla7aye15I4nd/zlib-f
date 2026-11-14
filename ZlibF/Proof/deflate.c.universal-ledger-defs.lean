@@ -2,6 +2,7 @@ import ZlibF.Proof.«deflate.c.universal-invariant»
 import ZlibF.Spec.Public.Sequences
 import ZlibF.Math.DeflateEncodingPrefix
 import ZlibF.Math.DeflateSymbolTrace
+import ZlibF.Spec.Functional.Sequences
 
 /-!
 # deflate.c: the ledger of a data epoch (definitions)

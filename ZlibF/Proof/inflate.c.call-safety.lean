@@ -11,6 +11,8 @@ import ZlibF.Proof.«inflate.c.default-readonly-controls»
 import ZlibF.Proof.«inflate.c.copy-both-origin»
 import ZlibF.Proof.«public-inflate-end»
 import ZlibF.Proof.«inflate.c.heap-call»
+import ZlibF.Spec.Functional.Api.Goals
+import ZlibF.Spec.Functional.Api.InflateAccepted
 
 /-!
 # inflate.c: frames and ledgers of the stream operations

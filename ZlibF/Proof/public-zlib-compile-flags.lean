@@ -1,4 +1,5 @@
 import ZlibF.Spec.Public.Queries
+import ZlibF.Spec.Functional.Queries
 
 namespace ZlibF.Spec.Public.Proofs
 

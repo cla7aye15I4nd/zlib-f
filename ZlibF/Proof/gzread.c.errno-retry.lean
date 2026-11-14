@@ -2,6 +2,7 @@ import ZlibF.Zlib.«gzread.c»
 import ZlibF.Proof.«gzlib.c.base»
 import ZlibF.Proof.«gzlib.c.errno-call-lifetime»
 import ZlibF.Spec.Public.GzState
+import ZlibF.Spec.Functional.Api.Compress
 
 /-! # gzread's deferred errno report on the zero-length retry path
 

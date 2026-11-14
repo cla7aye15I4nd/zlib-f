@@ -1,4 +1,5 @@
 import ZlibF.Spec.Public.Checksums
+import ZlibF.Spec.Functional.Checksums
 
 namespace ZlibF.Spec.Public.Proofs
 open C

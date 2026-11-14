@@ -1,5 +1,6 @@
 import ZlibF.Proof.«deflate.c.engine.pending-boundary»
 import ZlibF.Proof.«deflate.c.engine.fill-slow-boundary»
+import ZlibF.Spec.Functional.Checksums
 
 /-! # Deferred-insertion refill preserves the initialized engine boundary -/
 

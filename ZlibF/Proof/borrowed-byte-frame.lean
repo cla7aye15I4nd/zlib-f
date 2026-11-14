@@ -1,5 +1,6 @@
 import ZlibF.Spec.Public.History
 import ZlibF.Proof.LibcBorrow
+import ZlibF.Spec.Functional.Api.Basic
 
 /-!
 # Allocation frames and volatile external byte views

@@ -1,6 +1,7 @@
 import ZlibF.Proof.«inflate.c.uw»
 import ZlibF.Proof.«inflate.c.ring»
 import ZlibF.Spec.Public.Memory
+import ZlibF.Spec.Functional.Format.Checksum
 
 /-! General readable sources for the full-window update path. -/
 

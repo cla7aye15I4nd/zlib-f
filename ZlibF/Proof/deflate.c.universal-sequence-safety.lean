@@ -4,6 +4,7 @@ import ZlibF.Proof.«deflate.c.universal-ops-params-general»
 import ZlibF.Proof.«deflate.c.universal-ops-dictionary-slid»
 import ZlibF.Proof.«deflate.c.universal-ops-copy»
 import ZlibF.Proof.«deflate.c.universal-end»
+import ZlibF.Spec.Safety.Sequences
 
 /-!
 # deflate.c: safety of every permitted call sequence (composition)

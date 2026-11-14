@@ -1,6 +1,7 @@
 import ZlibF.Proof.«deflate.c.universal-ops-prime»
 import ZlibF.Proof.«deflate.c.universal-ops-caller-view»
 import ZlibF.Spec.Public.Streams
+import ZlibF.Spec.Functional.Api.Compress
 
 /-!
 # deflate.c: the case split of `operation_step` (batch A)

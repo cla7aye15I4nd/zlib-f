@@ -1,5 +1,6 @@
 import ZlibF.Proof.«deflate.c.engine.fill-insert-full-storage»
 import ZlibF.Proof.«deflate.c.engine.fill-empty-full-storage»
+import ZlibF.Spec.Functional.Checksums
 
 /-! # Complete refill execution, contents, counters and heap frame -/
 

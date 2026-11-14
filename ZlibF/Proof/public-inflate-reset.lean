@@ -1,5 +1,7 @@
 import ZlibF.Spec.Public.Lifecycle
 import ZlibF.Proof.«inflate.c.reset»
+import ZlibF.Spec.Functional.Lifecycle
+import ZlibF.Spec.Functional.Api.Basic
 
 open C Zlib.Inflate Zlib.Inflate.Spec Zlib.Inflate.Proofs ZlibF.Spec.Public ZlibF.Spec
 

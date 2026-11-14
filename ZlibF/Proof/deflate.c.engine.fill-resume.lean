@@ -1,6 +1,7 @@
 import ZlibF.Proof.«deflate.c.engine.fill-read-invariant»
 import ZlibF.Proof.«deflate.c.engine.fill-padding-invariant»
 import ZlibF.Proof.«deflate.c.engine.fill-initial»
+import ZlibF.Spec.Functional.Checksums
 
 /-! # Complete non-sliding fill_window resumption with new input -/
 

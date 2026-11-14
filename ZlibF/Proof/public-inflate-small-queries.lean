@@ -1,5 +1,7 @@
 import ZlibF.Spec.Public.StreamQueries
 import ZlibF.Proof.«inflate.c.base»
+import ZlibF.Spec.Functional.StreamQueries
+import ZlibF.Spec.Functional.Format.Checksum
 
 namespace ZlibF.Spec.Public.InflateQueryProof
 open C Zlib.Inflate Zlib.Inflate.Spec Zlib.Inflate.Proofs

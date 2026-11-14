@@ -1,22 +1,22 @@
 # NAME	FILE	OLD	NEW	PROOF_MODULES
 compress-local-storage-consumes-oracle	ZlibF/Zlib/compress.c.lean	  let strm ← allocLocalZ	  let strm ← allocZStream	Api/CompressFailure
-deflate-refusal-clears-started	ZlibF/Spec/Api/Deflate.lean	  (st.started = true → st'.started = true) ∧		Api/Deflate
+deflate-refusal-clears-started	ZlibF/Spec/Functional/Api/Deflate.lean	  (st.started = true → st'.started = true) ∧		Api/Deflate
 compress-bound-constant	ZlibF/Zlib/compress.c.lean	  let bound := sourceLen + (sourceLen >>> 12) + (sourceLen >>> 14) + (sourceLen >>> 25) + 13	  let bound := sourceLen + (sourceLen >>> 12) + (sourceLen >>> 14) + (sourceLen >>> 25) + 12	Api/Concrete
 compress-bound-overflow	ZlibF/Zlib/compress.c.lean	  if bound < sourceLen then 0xffffffffffffffff else bound	  if bound < sourceLen then 0 else bound	Api/Concrete
 compress-wrapper-null-length-return	ZlibF/Zlib/compress.c.lean	  let some got := destLen | ub "null dereference of destLen"	  let some got := destLen | return (Z_STREAM_ERROR, 0)	Api/CompressBoundary
-inflate-ok-speculative-output	ZlibF/Spec/Api/Inflate.lean	  (st.Exact → (o.rc = Z.ok ∨ o.rc = Z.bufError) →\n    st.Determined seen' out') ∧\n		Api/Inflate
-inflate-mem-speculative-output	ZlibF/Spec/Api/Inflate.lean	  (st.Exact → st.Determined seen' out') ∧\n		Api/Inflate
-inflate-prime-negative-low-bit	ZlibF/Spec/Api/Inflate.lean	(value % (2 ^ bits.toNat : Int)).toNat.testBit i	value.toNat.testBit i	Api/Inflate
-inflate-fdict-data-error-guard	ZlibF/Spec/Api/Inflate.lean	  (st.Exact → o.rc = Z.dataError → FullWindow st.wrap st.wbits all →\n    ∀ dictionary, st.PermitsDictionary dictionary →\n      ¬ Layer.Viable st.wrap st.wbits dictionary seen') ∧	  (st.Exact → o.rc = Z.dataError → (st.dict = none → ¬ HdrNeedsDict st.wrap st.wbits seen') →\n    FullWindow st.wrap st.wbits all → ¬ Layer.Viable st.wrap st.wbits st.dictEff seen') ∧	Api/Inflate
-inflate-unknown-dictionary-consistency	ZlibF/Spec/Api/Inflate.lean	  | none => st.wrap ≠ .raw ∨ dictionary = []	  | none => (st.wrap ≠ .raw ∧ False) ∨ dictionary = []	Api/Inflate
-inflate-legacy-lookahead-validity	ZlibF/Spec/Api/Inflate.lean	  Layer.OutputEvidence st.wrap st.wbits st.PermitsDictionary input output	  ∃ dictionary, st.PermitsDictionary dictionary ∧\n    Layer.Consistent st.wrap st.wbits dictionary input output	Api/InflateCausality
-inflate-causal-guessed-future	ZlibF/Spec/Api/Inflate.lean	  ∃ pfx : List Bool, pfx <+: bytesToBits input ∧	  ∃ pfx : List Bool, True ∧	Api/InflateCausality
+inflate-ok-speculative-output	ZlibF/Spec/Functional/Api/Inflate.lean	  (st.Exact → (o.rc = Z.ok ∨ o.rc = Z.bufError) →\n    st.Determined seen' out') ∧\n		Api/Inflate
+inflate-mem-speculative-output	ZlibF/Spec/Functional/Api/Inflate.lean	  (st.Exact → st.Determined seen' out') ∧\n		Api/Inflate
+inflate-prime-negative-low-bit	ZlibF/Spec/Functional/Api/Inflate.lean	(value % (2 ^ bits.toNat : Int)).toNat.testBit i	value.toNat.testBit i	Api/Inflate
+inflate-fdict-data-error-guard	ZlibF/Spec/Functional/Api/Inflate.lean	  (st.Exact → o.rc = Z.dataError → FullWindow st.wrap st.wbits all →\n    ∀ dictionary, st.PermitsDictionary dictionary →\n      ¬ Layer.Viable st.wrap st.wbits dictionary seen') ∧	  (st.Exact → o.rc = Z.dataError → (st.dict = none → ¬ HdrNeedsDict st.wrap st.wbits seen') →\n    FullWindow st.wrap st.wbits all → ¬ Layer.Viable st.wrap st.wbits st.dictEff seen') ∧	Api/Inflate
+inflate-unknown-dictionary-consistency	ZlibF/Spec/Functional/Api/Inflate.lean	  | none => st.wrap ≠ .raw ∨ dictionary = []	  | none => (st.wrap ≠ .raw ∧ False) ∨ dictionary = []	Api/Inflate
+inflate-legacy-lookahead-validity	ZlibF/Spec/Functional/Api/Inflate.lean	  Layer.OutputEvidence st.wrap st.wbits st.PermitsDictionary input output	  ∃ dictionary, st.PermitsDictionary dictionary ∧\n    Layer.Consistent st.wrap st.wbits dictionary input output	Api/InflateCausality
+inflate-causal-guessed-future	ZlibF/Spec/Functional/Api/Inflate.lean	  ∃ pfx : List Bool, pfx <+: bytesToBits input ∧	  ∃ pfx : List Bool, True ∧	Api/InflateCausality
 gzclearerr-omit-clear	ZlibF/Zlib/gzlib.c.lean	    updS state fun s => { s with eof := 0, past := 0 }\n  gz_error state Z_OK .null	    updS state fun s => { s with eof := 0, past := 0 }\n  pure ()	gzlib.c.simple,gzlib.c.public-clearerr
 gzclearerr-keep-past	ZlibF/Zlib/gzlib.c.lean	    updS state fun s => { s with eof := 0, past := 0 }	    updS state fun s => { s with eof := 0 }	gzlib.c.simple,gzlib.c.public-clearerr
 gzclearerr-keep-eof	ZlibF/Zlib/gzlib.c.lean	    updS state fun s => { s with eof := 0, past := 0 }	    updS state fun s => { s with past := 0 }	gzlib.c.simple,gzlib.c.public-clearerr
 codes-used-count	ZlibF/Zlib/inflate.c.lean	  return d.toUInt64	  return d.toUInt64 + 1	inflate.c.misc,Api/QueryLayout
 codes-used-difference	ZlibF/Zlib/inflate.c.lean	  let d ← Ptr.diff s.next (codesP st)	  let d ← Ptr.diff (codesP st) s.next	inflate.c.misc,Api/QueryLayout
-codes-used-legacy-layout	ZlibF/Spec/Public/StreamQueries.lean	  ∀ h r i z s n, InflateView h r i z s → s.codes.size = 1444 →	  ∀ h r i z s n, InflateView h r i z s →	Api/QueryLayout
+codes-used-legacy-layout	ZlibF/Spec/Functional/StreamQueries.lean	  ∀ h r i z s n, InflateView h r i z s → s.codes.size = 1444 →	  ∀ h r i z s n, InflateView h r i z s →	Api/QueryLayout
 # uncompress2_z safety: each mutant must break the proof of Goal.uncompress2_z_safe, not a copy of the program.
 uncompress2_z-drop-inflateEnd	ZlibF/Zlib/uncompr.c.lean	  let _ ← inflateEnd stream	  let _ ← pure Z_OK	public-uncompress-safe
 uncompress2_z-destLen-count	ZlibF/Zlib/uncompr.c.lean	  store64 destLen ((← load64 destLen) - left)	  store64 destLen ((← load64 destLen) - len)	public-uncompress-safe

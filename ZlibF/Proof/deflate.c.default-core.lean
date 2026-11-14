@@ -1,6 +1,7 @@
 import ZlibF.Spec.Public.DeflateCore
 import ZlibF.Proof.«deflate.c.engine.observed-history-contract»
 import ZlibF.Proof.«deflate.c.engine.all-scalar-history»
+import ZlibF.Spec.Functional.Sequences
 
 /-! # Existing actual default executions discharge the separated core clauses -/
 

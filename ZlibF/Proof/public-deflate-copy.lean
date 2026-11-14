@@ -2,6 +2,8 @@ import ZlibF.Proof.«deflate.c.copy-failure»
 import ZlibF.Proof.«deflate.c.copy-success»
 import ZlibF.Proof.«public-deflate-goals»
 import ZlibF.Spec.Public.Copy
+import ZlibF.Spec.Functional.Copy
+import ZlibF.Spec.Safety.Copy
 
 /-!
 # `Goal.deflateCopy` and `Goal.deflateCopy_safety`

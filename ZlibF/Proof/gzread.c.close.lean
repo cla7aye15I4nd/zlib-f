@@ -1,6 +1,7 @@
 import ZlibF.Proof.«public-gz-offset»
 import ZlibF.Spec.Public.GzClose
 import ZlibF.Proof.«gzfs.oracle»
+import ZlibF.Spec.Functional.Api.Compress
 
 /-!
 # gzread.c: closing a reader before lazy buffer allocation

@@ -1,6 +1,8 @@
 import ZlibF.Spec.Public.DeflateCore
 import ZlibF.Proof.«deflate.c.engine.common-initial-first-ordinary-encoding»
 import ZlibF.Proof.«deflate.c.engine.common-encoded-request»
+import ZlibF.Spec.Functional.Api.Goals
+import ZlibF.Spec.Functional.Api.InflateAccepted
 
 /-! # A common-level invariant includes initialization before any output -/
 namespace Zlib.Deflate.Engine.Proofs

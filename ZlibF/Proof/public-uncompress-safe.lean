@@ -1,5 +1,6 @@
 import ZlibF.Proof.«public-uncompress2»
 import ZlibF.Proof.«public-inflate»
+import ZlibF.Spec.Safety.Utilities
 
 /-!
 # uncompr.c: safety of `uncompress2_z`, `uncompress2`, `uncompress_z` and `uncompress`

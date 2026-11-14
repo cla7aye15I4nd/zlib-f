@@ -1,4 +1,5 @@
 import ZlibF.Proof.«deflate.c.engine.fill-read-resume»
+import ZlibF.Spec.Functional.Checksums
 
 /-! # Representation and chains on the exact resumed-read result -/
 

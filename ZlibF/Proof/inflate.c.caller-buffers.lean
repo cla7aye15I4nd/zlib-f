@@ -1,5 +1,6 @@
 import ZlibF.Proof.«inflate.c.slow-step»
 import ZlibF.Spec.Public.History
+import ZlibF.Spec.Functional.Api.Basic
 
 namespace Zlib.Inflate.Proofs
 open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec.Public

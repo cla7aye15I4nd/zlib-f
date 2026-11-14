@@ -3,6 +3,8 @@ import ZlibF.Proof.«inflate.c.dictionary-install-origin»
 import ZlibF.Proof.«inflate.c.default-readonly-controls»
 import ZlibF.Proof.«inflate.c.output-frame-footprint-compose»
 import ZlibF.Spec.Public.Sequences
+import ZlibF.Spec.Functional.Api.Goals
+import ZlibF.Spec.Functional.Api.InflateAccepted
 
 namespace Zlib.Inflate.Proofs
 open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec.Public

@@ -3,6 +3,7 @@ import ZlibF.Proof.«gzlib.c.base»
 import ZlibF.Proof.«gzlib.c.errno-call-lifetime»
 import ZlibF.Spec.Public.GzState
 import ZlibF.Proof.«gzfs.oracle»
+import ZlibF.Spec.Functional.Api.Compress
 
 /-! # Compressed pending output reaches the real errno handler
 

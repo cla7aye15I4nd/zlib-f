@@ -1,5 +1,6 @@
 import ZlibF.Proof.«inflate.c.completes-meaning»
 import ZlibF.Proof.«inflate.c.completes-evidence-grammar»
+import ZlibF.Spec.Functional.Sequences
 
 /-!
 # inflate.c: output evidence after every protocol history

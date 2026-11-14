@@ -1,6 +1,7 @@
 import ZlibF.Proof.«gzfs.error-message-store»
 import ZlibF.Proof.«gzlib.c.base»
 import ZlibF.Spec.Public.GzState
+import ZlibF.Spec.Functional.Api.Compress
 
 /-! # Actual successful owned error-message production
 

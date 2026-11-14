@@ -1,5 +1,6 @@
 import ZlibF.Proof.«deflate.c.engine.fill-counters»
 import ZlibF.Proof.«deflate.c.engine.output-storage»
+import ZlibF.Spec.Functional.Checksums
 
 /-! # Complete heap frames for private refill writes -/
 

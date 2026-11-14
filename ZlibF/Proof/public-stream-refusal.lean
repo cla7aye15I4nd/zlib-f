@@ -1,4 +1,4 @@
-import ZlibF.Spec.Public.Refusals
+import ZlibF.Spec.Safety.Refusals
 import ZlibF.Proof.«public-inflate-small-queries»
 import ZlibF.Proof.«public-deflate-small-queries»
 import ZlibF.Proof.«deflate.c.life.getdict»

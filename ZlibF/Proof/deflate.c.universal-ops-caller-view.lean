@@ -2,6 +2,7 @@ import ZlibF.Proof.«deflate.c.universal-ops-prime»
 import ZlibF.Proof.«deflate.c.universal-stored-io»
 import ZlibF.Proof.«deflate.c.public-getdict»
 import ZlibF.Spec.Public.Streams
+import ZlibF.Spec.Functional.Api.Compress
 
 /-!
 # deflate.c: a caller buffer that the model views inside library storage

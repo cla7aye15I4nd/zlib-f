@@ -1,5 +1,6 @@
 import ZlibF.Spec.Public.GzControl
 import ZlibF.Spec.PlatformMemory
+import ZlibF.Spec.Functional.Api.Compress
 
 /-!
 # gz file interface, safety: the representation invariant `GzInv` and the shape of a safe call

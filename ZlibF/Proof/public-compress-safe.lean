@@ -1,4 +1,6 @@
 import ZlibF.Proof.«public-compress-safe-end»
+import ZlibF.Spec.Functional.Streams
+import ZlibF.Spec.Safety.Utilities
 
 /-!
 # compress.c: safety of `compress2_z`, `compress2`, `compress_z` and `compress`

@@ -1,5 +1,6 @@
 import ZlibF.Proof.«deflate.c.engine.fill-room»
 import ZlibF.Proof.«deflate.c.engine.fill-prime-resume»
+import ZlibF.Spec.Functional.Checksums
 
 /-! # Actual input read into a resumed, non-sliding window -/
 

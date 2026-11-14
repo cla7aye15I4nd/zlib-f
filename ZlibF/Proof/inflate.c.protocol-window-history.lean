@@ -1,6 +1,7 @@
 import ZlibF.Proof.«inflate.c.logical-window-history»
 import ZlibF.Proof.«inflate.c.havedict-public»
 import ZlibF.Proof.«public-inflate-protocol»
+import ZlibF.Spec.Functional.Sequences
 
 namespace Zlib.Inflate.Proofs.ProtocolWindow
 open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec ZlibF.Spec.Public

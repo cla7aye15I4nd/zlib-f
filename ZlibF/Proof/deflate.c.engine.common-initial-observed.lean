@@ -1,6 +1,7 @@
 import ZlibF.Proof.«deflate.c.engine.common-initial-valid-protocol»
 import ZlibF.Proof.«deflate.c.engine.encoding-init-observed»
 import ZlibF.Spec.Public.Domains
+import ZlibF.Spec.Functional.Api.Compress
 
 /-! # Successful observed standard initialization establishes common-level phases -/
 

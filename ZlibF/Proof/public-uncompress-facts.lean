@@ -1,4 +1,5 @@
 import ZlibF.Proof.«public-uncompress2»
+import ZlibF.Spec.Functional.Utilities
 
 /-!
 # uncompr.c: the functional goals from the decoder facts

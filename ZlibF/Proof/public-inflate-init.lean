@@ -1,5 +1,8 @@
 import ZlibF.Spec.Public.Domains
 import ZlibF.Proof.«inflate.c.hdr»
+import ZlibF.Spec.Functional.Initialisation
+import ZlibF.Spec.Safety.Domains
+import ZlibF.Spec.Functional.Api.Compress
 
 open C Zlib.Inflate Zlib.Inflate.Spec Zlib.Inflate.Proofs ZlibF.Spec.Public ZlibF.Spec
 

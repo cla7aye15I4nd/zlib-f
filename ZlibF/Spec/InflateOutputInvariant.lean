@@ -1,5 +1,6 @@
 import ZlibF.Spec.Public.History
 import ZlibF.Zlib.«inflate.c»
+import ZlibF.Spec.Functional.Api.Basic
 
 namespace Zlib.Inflate.Spec
 open C ZlibF.Spec.Public

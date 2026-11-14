@@ -1,5 +1,6 @@
 import ZlibF.Proof.«inflate.c.region-frame-compose»
 import ZlibF.Spec.Public.Back
+import ZlibF.Spec.Functional.Api.Compress
 
 /-!
 # infback.c: frames of the callback decoder

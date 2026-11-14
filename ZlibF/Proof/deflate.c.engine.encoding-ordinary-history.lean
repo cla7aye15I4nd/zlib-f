@@ -1,5 +1,6 @@
 import ZlibF.Proof.«deflate.c.engine.encoding-data-history»
 import ZlibF.Proof.«deflate.c.engine.encoded-state-ordinary-request»
+import ZlibF.Spec.Functional.Sequences
 
 /-! # Ordinary observed histories carry exact independent compression meaning -/
 

@@ -1,4 +1,5 @@
 import ZlibF.Proof.«deflate.c.engine.fill-storage»
+import ZlibF.Spec.Functional.Checksums
 
 /-! # Complete non-sliding refill with a real deferred-insertion count -/
 

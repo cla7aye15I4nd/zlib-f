@@ -1,6 +1,7 @@
 import ZlibF.Proof.«deflate.c.base»
 import ZlibF.Proof.«inflate.c.base»
 import ZlibF.Spec.Public.History
+import ZlibF.Spec.Functional.Api.Basic
 
 /-!
 # The codec of a gz handle owns no part of the gz record's block

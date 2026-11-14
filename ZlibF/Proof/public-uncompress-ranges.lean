@@ -1,5 +1,6 @@
 import ZlibF.Proof.«public-uncompress-heap»
 import ZlibF.Spec.Public.Streams
+import ZlibF.Spec.Functional.Api.Compress
 
 /-!
 # uncompr.c: byte ranges of the caller buffers

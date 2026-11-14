@@ -2,6 +2,8 @@ import ZlibF.Proof.«inflate.c.completes-within»
 import ZlibF.Proof.«public-uncompress-step»
 import ZlibF.Proof.«inflate.c.borrow-stable-run»
 import ZlibF.Proof.«inflate.c.completes-percall»
+import ZlibF.Spec.Functional.Sequences
+import ZlibF.Spec.Functional.Streams
 
 /-!
 # uncompr.c: the `inflate` call of one iteration

@@ -1,4 +1,5 @@
 import ZlibF.Proof.«inflate.c.leave-restore»
+import ZlibF.Spec.Functional.Checksums
 
 namespace Zlib.Inflate.Proofs
 open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec.Public

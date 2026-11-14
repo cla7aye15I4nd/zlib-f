@@ -1,4 +1,4 @@
-import ZlibF.Spec.Api.Basic
+import ZlibF.Spec.Public.Parameters
 import ZlibF.Spec.Public.StreamQueries
 import ZlibF.Proof.«inflate.c.base»
 import ZlibF.Proof.«deflate.c.base»
@@ -87,15 +87,6 @@ def InflateInitContract (program : ZStreamPtr → BPtr → Int32 → M Int32) (w
           SameObjectsUpToTableShape (r.put h { preparedStream z with state := none }) after
       | some (wrap, bits) => rc = Z_OK ∧ InflateInitial h after r wrap bits))
 
-/-- `int inflateInit2_(z_streamp strm, int windowBits, const char *version, int stream_size)`.
-All signed window arguments and every allocation oracle are included, in source error order. -/
-def Goal.inflateInit2_ : Prop :=
-  ∀ wb, InflateInitContract (fun p v size => Zlib.Inflate.inflateInit2_ p wb v size) wb
-
-/-- `int inflateInit_(z_streamp strm, const char *version, int stream_size)`.
-The same version, stream, allocation, cleanup and invariant contract at window bits 15. -/
-def Goal.inflateInit_ : Prop := InflateInitContract Zlib.Inflate.inflateInit_ 15
-
 def DeflateInitial (before after : Heap) (r : ZStreamRef) (p : Api.DeflParams) : Prop :=
   ∃ z s, Zlib.Deflate.Spec.DGood after r before.nextBlk z s ∧
     z.zalloc = .fn "zcalloc" ∧ z.zfree = .fn "zcfree" ∧
@@ -133,19 +124,5 @@ def DeflateInitContract (program : ZStreamPtr → BPtr → Int32 → M Int32)
             (∃ z', r.get after = some z' ∧ z'.state = none) ∧
             LiveChange h after (fun _ => False) (fun _ => False) ∧
             Frame h after (StreamRoot r)))
-
-/-- `int deflateInit2_(z_streamp strm, int level, int method, int windowBits, int memLevel,
-int strategy, const char *version, int stream_size)`.
-Every signed argument, source-ordered refusal, five allocations, failure cleanup and success invariant. -/
-def Goal.deflateInit2_ : Prop :=
-  ∀ level method wb mem strategy,
-    DeflateInitContract (fun p v size => Zlib.Deflate.deflateInit2_ p level method wb mem strategy v size)
-      level method wb mem strategy
-
-/-- `int deflateInit_(z_streamp strm, int level, const char *version, int stream_size)`.
-The default method, window, memory level and strategy; the level remains arbitrary. -/
-def Goal.deflateInit_ : Prop :=
-  ∀ level, DeflateInitContract (fun p v size => Zlib.Deflate.deflateInit_ p level v size)
-    level 8 15 8 0
 
 end ZlibF.Spec.Public

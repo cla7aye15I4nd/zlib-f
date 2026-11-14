@@ -1,4 +1,5 @@
 import ZlibF.Proof.«inflate.c.table-invariant»
+import ZlibF.Spec.Functional.Initialisation
 
 /-!
 # inflate.c: the default initialization entry
