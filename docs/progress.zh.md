@@ -1,4 +1,4 @@
-<!-- source-sha256: 6ac2de98460047c8b089ad7d65f3d0cf663f069ccce96f5648640b5bf171bbe5 -->
+<!-- source-sha256: 5caa94dfa7bcfd5cd7bdc95cfcde3dd79de79e5c9f9332f373534fb7d51e7f8e -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
