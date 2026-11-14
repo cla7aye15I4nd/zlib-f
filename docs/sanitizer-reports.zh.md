@@ -1,4 +1,4 @@
-<!-- source-sha256: a62580dc8b01341fd1897f2945979f6f8debceea4f069326f2d083a61ca819e4 -->
+<!-- source-sha256: c9c34b95b12d9f24c04ebd77ec0d798cbc23f4e89ad6f4a9481cb1c82b9379b7 -->
 # Sanitizer 报告
 
 本页列出所有保留的复现：在这些复现中，sanitizer 报告真实 C 代码有未定义行为或内存错误。每个复现都有一个目录，内含运行脚本、C 驱动程序，以及 `report.txt` 中的原始 sanitizer 输出。
@@ -26,6 +26,7 @@
 | deflate extra 缩短 | 开头相同；调用者把 `extra_len` 设为 10，小于已写出的 500 字节；再调用 `deflate` | `heap-buffer-overflow`，512 字节读，`deflate.c:1142` | `DeflateHeaderProgress`（字段仍覆盖 `gzindex`），`ActiveHeader` 的合取项：`Goal.deflate` 和 `Goal.deflate_sequence` 的前提 | [deflate-history-domain](../tests/regression/deflate-history-domain/README.md)，`header.c 2`，[报告](../tests/regression/deflate-history-domain/report.txt) | 未说明写头部期间能否修改 |
 | deflate extra 清空 | gzip，`memLevel` 1，1500 字节 extra 字段，3 字节名称；第一次 `deflate` 停在 extra 字段内；调用者把 `extra` 设为 `NULL`；再调用 `deflate` | `heap-buffer-overflow`，1 字节读，`deflate.c:1177`，位于名称之后 496 字节 | `DeflateHeaderProgress`（字段为 `NULL` 时 `gzindex` 为 0）：`Goal.deflate` 和 `Goal.deflate_sequence` 的前提 | [deflate-history-domain](../tests/regression/deflate-history-domain/README.md)，`clear.c`，[报告](../tests/regression/deflate-history-domain/report.txt) | 未说明写头部期间能否修改 |
 | compress 空长度 | `compress2(dest, NULL, source, 1, 6)` 和 `compress(dest, NULL, source, 1)` | UBSan：加载类型为 `uLongf` 的空指针，`compress.c:70` | 长度单元非空的 `CompressorContract`（`capacity ≠ none`）：`Goal.compress2` 和 `Goal.compress` 的前提 | [compress-allocation](../tests/regression/compress-allocation/README.md)，`ubwitness.c`，[报告](../tests/regression/compress-allocation/report.txt) | 把 `destLen` 描述为入口时的缓冲区大小；没有提到 `NULL` |
+| 使用句柄错误字符串的 gzprintf | 非阻塞管道被填满，`gzdopen(fd, "wT")`；写入 100000 字节的 `gzwrite` 停滞（`EAGAIN`）；`m = gzerror(f, &e)`；`gzprintf(f, "%s", m)` | ASan `heap-use-after-free` 读取，`gzwrite.c:491`（`gzvprintf` 中的 `vsnprintf`），由 `gz_error`（`gzlib.c:568`）从 `gzwrite.c:448` 释放；arm64 macOS | printf 字符串与句柄所拥有的块分离（`GzArguments`，[偏差](deviations.md)） | [gzprintf-error-string](../tests/regression/gzprintf-error-string/README.md)，`errstr.c`，[报告](../tests/regression/gzprintf-error-string/report.txt) | 只说明之后的 `gzerror` 调用可能使该字符串失效 |
 
 对 `compress 空长度`，`report.txt` 只包含 `run.sh` 的见证步骤。该脚本其余部分是 Lean 对比，没有 sanitizer 报告。
 
