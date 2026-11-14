@@ -1,4 +1,5 @@
 import ZlibF.Proof.«inflate.c.reachable»
+import ZlibF.Spec.Functional.Streams
 
 namespace Zlib.Inflate.Proofs
 open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec.Public

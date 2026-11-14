@@ -4,6 +4,7 @@ import ZlibF.Proof.«inflate.c.completes-needdict»
 import ZlibF.Proof.«inflate.c.completes-stops»
 import ZlibF.Proof.«inflate.c.completes-blocked»
 import ZlibF.Proof.«inflate.c.completes-gzip-fields»
+import ZlibF.Spec.Functional.Sequences
 
 /-!
 # inflate.c: completion on a reachable heap within the object-size limit

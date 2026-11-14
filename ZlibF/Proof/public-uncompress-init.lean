@@ -1,5 +1,6 @@
 import ZlibF.Proof.«public-uncompress-loop»
 import ZlibF.Proof.«public-inflate-init»
+import ZlibF.Spec.Functional.Sequences
 
 /-!
 # uncompr.c: preparation and initialization of the automatic stream

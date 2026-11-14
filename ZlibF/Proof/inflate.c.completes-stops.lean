@@ -1,5 +1,7 @@
 import ZlibF.Proof.«inflate.c.completes-meaning»
 import ZlibF.Proof.«inflate.c.completes-due»
+import ZlibF.Spec.Functional.Sequences
+import ZlibF.Spec.Functional.Streams
 
 /-!
 # inflate.c: a call blocked on a valid stream has output still due

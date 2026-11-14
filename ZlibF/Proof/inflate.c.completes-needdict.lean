@@ -1,4 +1,6 @@
 import ZlibF.Proof.«inflate.c.completes-meaning»
+import ZlibF.Spec.Functional.Sequences
+import ZlibF.Spec.Functional.Streams
 
 /-!
 # inflate.c: where `Z_NEED_DICT` comes from

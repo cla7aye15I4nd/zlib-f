@@ -1,4 +1,5 @@
 import ZlibF.Proof.«deflate.c.universal-sequence-safety»
+import ZlibF.Spec.Functional.Streams
 
 /-!
 # deflate.c: `Goal.deflate` from the invariant of every reachable history

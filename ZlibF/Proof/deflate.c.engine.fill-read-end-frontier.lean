@@ -1,4 +1,5 @@
 import ZlibF.Proof.«deflate.c.engine.fill-prime-end-frontier»
+import ZlibF.Spec.Functional.Checksums
 
 /-! # The complete non-sliding real refill retains the earlier EOF frontier -/
 

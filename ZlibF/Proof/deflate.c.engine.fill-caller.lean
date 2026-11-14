@@ -1,5 +1,6 @@
 import ZlibF.Proof.«deflate.c.engine.fill-history»
 import ZlibF.Spec.Public.Streams
+import ZlibF.Spec.Functional.Checksums
 
 /-! # Resumed fill from the public buffer and engine boundary -/
 

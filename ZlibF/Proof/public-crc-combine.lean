@@ -1,5 +1,6 @@
 import ZlibF.Proof.«crc32.c»
 import ZlibF.Spec.Public.Checksums
+import ZlibF.Spec.Functional.Checksums
 
 /-! Complete numeric results for the public CRC combination entries. -/
 

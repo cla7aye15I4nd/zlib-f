@@ -3,6 +3,7 @@ import ZlibF.Proof.«inflate.c.meaning-init»
 import ZlibF.Proof.«inflate.c.meaning-rebuffer»
 import ZlibF.Proof.«inflate.c.meaning-dictionary»
 import ZlibF.Proof.«inflate.c.meaning-format»
+import ZlibF.Spec.Functional.Sequences
 
 /-!
 # inflate.c: the format meaning along a protocol history

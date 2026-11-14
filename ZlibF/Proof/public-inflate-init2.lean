@@ -1,4 +1,5 @@
 import ZlibF.Proof.«public-inflate-init-valid»
+import ZlibF.Spec.Functional.Initialisation
 
 /-!
 # inflateInit2_ on every window parameter

@@ -1,4 +1,5 @@
 import ZlibF.Proof.«inflate.c.protocol-window-history»
+import ZlibF.Spec.Functional.Sequences
 
 namespace Zlib.Inflate.Proofs.ProtocolWindow
 open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec ZlibF.Spec.Public

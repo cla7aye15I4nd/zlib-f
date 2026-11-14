@@ -1,4 +1,5 @@
 import ZlibF.Proof.«deflate.c.engine.fill-slide-call»
+import ZlibF.Spec.Functional.Checksums
 
 /-! # A complete sliding fill call from public caller buffers -/
 

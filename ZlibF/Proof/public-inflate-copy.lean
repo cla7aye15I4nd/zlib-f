@@ -1,4 +1,5 @@
 import ZlibF.Proof.«inflate.c.copy-public»
+import ZlibF.Spec.Functional.Copy
 
 namespace Zlib.Inflate.Proofs
 open C Zlib.Inflate Zlib.Inflate.Spec ZlibF.Spec.Public

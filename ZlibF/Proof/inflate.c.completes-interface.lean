@@ -3,6 +3,8 @@ import ZlibF.Spec.Public.Streams
 import ZlibF.Spec.Public.Utilities
 import ZlibF.Proof.«inflate.c.meaning»
 import ZlibF.Proof.«inflate.c.completes-premises»
+import ZlibF.Spec.Functional.Sequences
+import ZlibF.Spec.Functional.Streams
 
 /-!
 # inflate.c: the decoder facts that completion and the decompression utilities use

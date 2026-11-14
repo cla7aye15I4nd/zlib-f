@@ -1,4 +1,5 @@
 import ZlibF.Proof.«deflate.c.engine.slow-defer»
+import ZlibF.Spec.Functional.Checksums
 
 /-! # A complete slow call at the first matching threshold -/
 

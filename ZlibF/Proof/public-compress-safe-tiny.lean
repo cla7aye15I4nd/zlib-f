@@ -1,6 +1,7 @@
 import ZlibF.Proof.«public-compress-safe»
 import ZlibF.Proof.«public-compress-finished»
 import ZlibF.Proof.«public-deflate-safety»
+import ZlibF.Spec.Safety.Utilities
 
 /-!
 # compress.c: the `compress*` safety goals under `TinyOverlay`

@@ -1,5 +1,6 @@
 import ZlibF.Spec.Public.Checksums
 import ZlibF.Proof.«adler32.c.public-any»
+import ZlibF.Spec.Functional.Checksums
 
 open C Zlib.Adler32 Zlib.Adler32.Spec Zlib.Adler32.Proofs ZlibF.Spec.Public
 

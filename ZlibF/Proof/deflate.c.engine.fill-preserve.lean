@@ -1,4 +1,5 @@
 import ZlibF.Proof.«deflate.c.engine.fill-call»
+import ZlibF.Spec.Functional.Checksums
 
 /-! # Invariants on the actual first-fill result -/
 

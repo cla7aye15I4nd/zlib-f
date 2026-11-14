@@ -1,5 +1,6 @@
 import ZlibF.Spec.Public.StreamQueries
 import ZlibF.Proof.«inflate.c.base»
+import ZlibF.Spec.Functional.StreamQueries
 
 namespace ZlibF.Spec.Public.InflateQueryProof
 open C Zlib.Inflate Zlib.Inflate.Spec Zlib.Inflate.Proofs

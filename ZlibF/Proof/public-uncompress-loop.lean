@@ -1,4 +1,5 @@
 import ZlibF.Proof.«public-uncompress-call»
+import ZlibF.Spec.Functional.Streams
 
 /-!
 # uncompr.c: the decompression loop

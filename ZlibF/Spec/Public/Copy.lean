@@ -21,36 +21,6 @@ def SameWordPrefix (before after : Heap) (source dest : WPtr) (n : Nat) : Prop :
     off + n ≤ a.size ∧ off' + n ≤ a'.size ∧
     (a.toList.drop off).take n = (a'.toList.drop off').take n
 
-/-- `int inflateCopy(z_streamp dest, z_streamp source)`.
-Copy every decoder field, relocate internal table pointers, share application header pointers,
-and copy the initialized window bytes. All new storage is independent; failure releases it. -/
-def Goal.inflateCopy : Prop :=
-  (∀ h source, C.run (Zlib.Inflate.inflateCopy none source) h = .ok (Z_STREAM_ERROR, h)) ∧
-  (∀ h dest z, dest.get h = some z →
-    C.run (Zlib.Inflate.inflateCopy (some dest) none) h =
-      .ok (Z_STREAM_ERROR, dest.put h { z with state := none })) ∧
-  (∀ h source i z s dest oldDest,
-    StreamReachable .inflate h source → Zlib.Inflate.Spec.Good h source i z s →
-    Zlib.Inflate.Spec.DefAlloc z → source ≠ dest → dest.get h = some oldDest →
-    ∃ rc after,
-      C.run (Zlib.Inflate.inflateCopy (some dest) (some source)) h = .ok (rc, after) ∧
-      source.get after = some z ∧ after.istates i = some s ∧ Frame h after (StreamRoot dest) ∧
-      ((rc = Z_MEM_ERROR ∧ AllocationFailed h after ∧
-        dest.get after = some { oldDest with state := none } ∧
-        LiveChange h after (fun _ => False) (fun _ => False)) ∨
-       (rc = Z_OK ∧ ∃ copied,
-         Zlib.Inflate.Spec.Good after dest h.nextBlk
-           { z with state := some (.inflate h.nextBlk) } copied ∧
-         copied = { s with
-           strm := some dest, window := copied.window
-           lencode := relocateCode i h.nextBlk s.lencode
-           distcode := relocateCode i h.nextBlk s.distcode
-           next := relocateCode i h.nextBlk s.next } ∧
-         (s.window = .null ↔ copied.window = .null) ∧
-         (s.window ≠ .null → SameBytePrefix h after s.window copied.window s.whave.toNat) ∧
-         (∀ b, InflateOwned h.nextBlk copied b → h.nextBlk ≤ b) ∧
-         LiveChange h after (InflateOwned h.nextBlk copied) (fun _ => False))))
-
 def copiedDeflate (dest : ZStreamRef) (fresh : Nat) (old copied : DeflateState) : DeflateState :=
   { old with
     strm := some dest, window := copied.window, prev := copied.prev, head := copied.head
@@ -60,71 +30,5 @@ def copiedDeflate (dest : ZStreamRef) (fresh : Nat) (old copied : DeflateState) 
     l_desc := { old.l_desc with dyn_tree := .ref (.dstate_dyn_ltree fresh) 0 }
     d_desc := { old.d_desc with dyn_tree := .ref (.dstate_dyn_dtree fresh) 0 }
     bl_desc := { old.bl_desc with dyn_tree := .ref (.dstate_bl_tree fresh) 0 } }
-
-/-- `int deflateCopy(z_streamp dest, z_streamp source)`.
-Copy the initialized window, hash entries, pending bytes and symbols. Relocate the owned
-buffers and tree descriptors. A failure clears destination state and releases every new block. -/
-def Goal.deflateCopy : Prop :=
-  (∀ h source, C.run (Zlib.Deflate.deflateCopy none source) h = .ok (Z_STREAM_ERROR, h)) ∧
-  (∀ h dest z, dest.get h = some z →
-    C.run (Zlib.Deflate.deflateCopy (some dest) none) h =
-      .ok (Z_STREAM_ERROR, dest.put h { z with state := none })) ∧
-  (∀ h source i z s dest oldDest,
-    StreamReachable .deflate h source → Zlib.Deflate.Spec.DGood h source i z s →
-    Zlib.Deflate.Spec.DefAlloc z → source ≠ dest → dest.get h = some oldDest →
-    ∃ rc after,
-      C.run (Zlib.Deflate.deflateCopy (some dest) (some source)) h = .ok (rc, after) ∧
-      source.get after = some z ∧ after.dstates i = some s ∧ Frame h after (StreamRoot dest) ∧
-      ((rc = Z_MEM_ERROR ∧ AllocationFailed h after ∧
-        dest.get after = some { oldDest with state := none } ∧
-        LiveChange h after (fun _ => False) (fun _ => False)) ∨
-       (rc = Z_OK ∧ ∃ copied,
-         Zlib.Deflate.Spec.DGood after dest h.nextBlk
-           { z with state := some (.deflate h.nextBlk) } copied ∧
-         copied = copiedDeflate dest h.nextBlk s copied ∧
-         SameBytePrefix h after s.window copied.window s.high_water.toNat ∧
-         SameWordPrefix h after s.head copied.head s.hash_size.toNat ∧
-         SameWordPrefix h after s.prev copied.prev
-           (if s.slid ≠ 0 ∨ s.strstart - s.insert > s.w_size then s.w_size.toNat
-            else (s.strstart - s.insert).toNat) ∧
-         SameBytePrefix h after s.pending_out copied.pending_out s.pending.toNat ∧
-         SameBytePrefix h after s.sym_buf copied.sym_buf s.sym_next.toNat ∧
-         (∀ b, DeflateOwned h.nextBlk copied b ↔ h.nextBlk ≤ b ∧ b < h.nextBlk + 5) ∧
-         LiveChange h after (DeflateOwned h.nextBlk copied) (fun _ => False))))
-
-/-- **Safety of `deflateCopy`** (the safety content of `Goal.deflateCopy`). Null arguments are
-refused. From every reachable source (`StreamInvariant .deflate` is `DGood` with the default
-allocator) into a distinct, readable destination record, the call returns without a fault, with
-`Z_OK` or `Z_MEM_ERROR`. It leaves the source record and its state unchanged and writes only the
-destination record and new blocks. On `Z_MEM_ERROR` an allocation really failed, the destination
-state is cleared and the live blocks are unchanged (no leak). On `Z_OK` the destination satisfies
-the stream invariant (`StreamInvariant .deflate`, written out) and the live blocks grow by exactly the five new blocks it owns. The copied
-contents (`copiedDeflate` and the prefix clauses) are left to `Goal.deflateCopy`. The last clause is
-zlib.h's refusal of an inconsistent source ("such as zalloc being Z_NULL"): a source record with a
-null `zalloc`, a null `zfree` or no state (as a never-initialised record has in the model) is
-refused with `Z_STREAM_ERROR`, and the destination state is cleared. -/
-def Goal.deflateCopy_safety : Prop :=
-  (∀ h source, C.run (Zlib.Deflate.deflateCopy none source) h = .ok (Z_STREAM_ERROR, h)) ∧
-  (∀ h dest z, dest.get h = some z →
-    C.run (Zlib.Deflate.deflateCopy (some dest) none) h =
-      .ok (Z_STREAM_ERROR, dest.put h { z with state := none })) ∧
-  (∀ h source i z s dest oldDest,
-    StreamReachable .deflate h source → Zlib.Deflate.Spec.DGood h source i z s →
-    Zlib.Deflate.Spec.DefAlloc z → source ≠ dest → dest.get h = some oldDest →
-    ∃ rc after,
-      C.run (Zlib.Deflate.deflateCopy (some dest) (some source)) h = .ok (rc, after) ∧
-      source.get after = some z ∧ after.dstates i = some s ∧ Frame h after (StreamRoot dest) ∧
-      ((rc = Z_MEM_ERROR ∧ AllocationFailed h after ∧
-        dest.get after = some { oldDest with state := none } ∧
-        LiveChange h after (fun _ => False) (fun _ => False)) ∨
-       (rc = Z_OK ∧ (∃ i' z' s', Zlib.Deflate.Spec.DGood after dest i' z' s' ∧ Zlib.Deflate.Spec.DefAlloc z') ∧
-       ∃ copied,
-         after.dstates h.nextBlk = some copied ∧
-         (∀ b, DeflateOwned h.nextBlk copied b ↔ h.nextBlk ≤ b ∧ b < h.nextBlk + 5) ∧
-         LiveChange h after (DeflateOwned h.nextBlk copied) (fun _ => False)))) ∧
-  (∀ h source dest zs oldDest, source.get h = some zs → dest.get h = some oldDest →
-    (zs.zalloc = .null ∨ zs.zfree = .null ∨ zs.state = none) →
-    C.run (Zlib.Deflate.deflateCopy (some dest) (some source)) h =
-      .ok (Z_STREAM_ERROR, dest.put h { oldDest with state := none }))
 
 end ZlibF.Spec.Public

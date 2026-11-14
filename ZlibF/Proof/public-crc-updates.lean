@@ -1,5 +1,6 @@
 import ZlibF.Spec.Public.Checksums
 import ZlibF.Proof.«crc32.c.views»
+import ZlibF.Spec.Functional.Checksums
 
 /-!
 # Complete public CRC update results

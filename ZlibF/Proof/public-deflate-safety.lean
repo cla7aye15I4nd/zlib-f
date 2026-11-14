@@ -1,5 +1,7 @@
 import ZlibF.Proof.«deflate.c.universal-call-header-fact»
 import ZlibF.Proof.«deflate.c.universal-deflate-proof»
+import ZlibF.Spec.Functional.Streams
+import ZlibF.Spec.Safety.Sequences
 
 /-!
 # `Goal.deflate` and `Goal.deflate_sequence_safety` under `TinyOverlay`

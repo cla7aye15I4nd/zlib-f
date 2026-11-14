@@ -2,6 +2,7 @@ import ZlibF.Proof.«deflate.c.borrow-stable-base»
 import ZlibF.Proof.«deflate.c.engine.readbuf»
 import ZlibF.Proof.«deflate.c.engine.initial»
 import ZlibF.Proof.«public-adler-update»
+import ZlibF.Spec.Functional.Checksums
 
 /-! # read_buf on the default zlib path
 

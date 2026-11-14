@@ -5,6 +5,8 @@ import ZlibF.Proof.«inflate.c.completes-stops»
 import ZlibF.Proof.«inflate.c.completes-blocked»
 import ZlibF.Proof.«inflate.c.completes-gzip-fields»
 import ZlibF.Spec.Api.Examples
+import ZlibF.Spec.Functional.Sequences
+import ZlibF.Spec.Functional.Utilities
 
 /-!
 # uncompr.c: the data relation from the last decoder call

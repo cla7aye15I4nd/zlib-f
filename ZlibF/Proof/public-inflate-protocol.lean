@@ -1,4 +1,5 @@
 import ZlibF.Spec.Public.Sequences
+import ZlibF.Spec.Functional.Sequences
 
 /-!
 The functional protocol records the same actual calls as the broad data

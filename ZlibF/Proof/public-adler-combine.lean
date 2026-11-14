@@ -1,5 +1,6 @@
 import ZlibF.Proof.«adler32.c»
 import ZlibF.Spec.Public.Checksums
+import ZlibF.Spec.Functional.Checksums
 
 /-! Bridging the bytewise format checksum to the component-sum proof. -/
 

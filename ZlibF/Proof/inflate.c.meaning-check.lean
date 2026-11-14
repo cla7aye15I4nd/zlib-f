@@ -1,6 +1,7 @@
 import ZlibF.Proof.«inflate.c.check-dispatch»
 import ZlibF.Proof.«inflate.c.meaning-trailer»
 import ZlibF.Proof.«inflate.c.meaning-checksum»
+import ZlibF.Spec.Functional.Checksums
 
 /-!
 # inflate.c: `CHECK` keeps the format meaning in the loop

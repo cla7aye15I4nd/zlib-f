@@ -1,6 +1,5 @@
-import ZlibF.Spec.Format.Bits
-import ZlibF.Spec.Format.Checksum
-import ZlibF.Spec.Format.Huffman
-import ZlibF.Spec.Format.Deflate
-import ZlibF.Spec.Format.Wrapper
-import ZlibF.Spec.Format.Examples
+import ZlibF.Spec.Functional.Format
+
+/-! Compatibility module: `ZlibF/Spec/Format.lean` moved to `ZlibF/Spec/Functional/Format.lean` (`docs/design/safety-functional-split.md`).
+It is kept for one release so that branches that import the old name still build; import the new
+module instead. -/

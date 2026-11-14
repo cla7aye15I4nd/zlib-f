@@ -1,5 +1,6 @@
 import ZlibF.Math.DeflateChecksum
 import ZlibF.Proof.«deflate.c.engine.fill-counters»
+import ZlibF.Spec.Functional.Checksums
 
 /-! # Actual complete refill updates Adler over exactly the consumed caller bytes -/
 

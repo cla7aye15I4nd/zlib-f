@@ -1,5 +1,6 @@
 import ZlibF.Spec.Public.StreamQueries
 import ZlibF.Proof.«deflate.c.base»
+import ZlibF.Spec.Functional.StreamQueries
 
 namespace ZlibF.Spec.Public.DeflateQueryProof
 open C Zlib.Deflate Zlib.Deflate.Spec Zlib.Deflate.Proofs

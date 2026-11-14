@@ -1,5 +1,6 @@
 import ZlibF.Proof.«deflate.c.engine.encoding-init-observed»
 import ZlibF.Proof.«deflate.c.engine.encoding-finish-observed»
+import ZlibF.Spec.Functional.Sequences
 
 /-! # Actual default data histories retain the initialized protocol -/
 

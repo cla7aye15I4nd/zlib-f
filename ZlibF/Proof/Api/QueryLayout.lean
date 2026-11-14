@@ -1,5 +1,6 @@
 import ZlibF.Spec.Public.StreamQueries
 import ZlibF.Proof.«inflate.c.misc»
+import ZlibF.Spec.Functional.StreamQueries
 
 /-! Fixed C array layout for the public decode-table query. The legacy counterexample
 is an impossible C object shape, not a reachable library bug. -/

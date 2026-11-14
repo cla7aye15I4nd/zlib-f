@@ -1,4 +1,7 @@
 import ZlibF.Proof.«public-compress-safe-call»
+import ZlibF.Spec.Functional.Streams
+import ZlibF.Spec.Safety.Sequences
+import ZlibF.Spec.Safety.Utilities
 
 /-!
 # The deflate goals from the overlay room of the two small buffer sizes

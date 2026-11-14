@@ -1,5 +1,6 @@
 import ZlibF.Proof.«public-compress-safe-call»
 import ZlibF.Proof.«deflate.c.universal-init-lit»
+import ZlibF.Spec.Safety.Utilities
 
 /-!
 # compress.c: the four `compress*` safety goals with no hypothesis

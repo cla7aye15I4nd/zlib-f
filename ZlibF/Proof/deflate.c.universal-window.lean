@@ -4,6 +4,7 @@ import ZlibF.Proof.«deflate.c.engine.fill-full-storage»
 import ZlibF.Proof.«deflate.c.engine.fill-caller-storage»
 import ZlibF.Proof.«deflate.c.universal-invariant»
 import ZlibF.Proof.«deflate.c.engine.short-search»
+import ZlibF.Spec.Functional.Checksums
 
 /-!
 # deflate.c, universal engine: `read_buf` and `fill_window` for every parameter tuple

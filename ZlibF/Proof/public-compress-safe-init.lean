@@ -3,6 +3,7 @@ import ZlibF.Proof.«deflate.c.borrow-stable»
 import ZlibF.Proof.«deflate.c.borrow-stable-lifecycle»
 import ZlibF.Proof.«deflate.c.borrow-stable-allocation»
 import ZlibF.Proof.«public-deflate-init»
+import ZlibF.Spec.Functional.Streams
 
 /-!
 # compress.c: safety, the entry and `deflateInit`

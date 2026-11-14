@@ -1,5 +1,6 @@
 import ZlibF.Spec.Public.Lifecycle
 import ZlibF.Proof.«deflate.c.life.reset»
+import ZlibF.Spec.Functional.Lifecycle
 
 open C Zlib.Deflate Zlib.Deflate.Spec Zlib.Deflate.Proofs ZlibF.Spec.Public
 

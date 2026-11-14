@@ -1,5 +1,6 @@
 import ZlibF.Proof.«deflate.c.engine.fill-slide-call»
 import ZlibF.Proof.«deflate.c.engine.fill-prime-pending»
+import ZlibF.Spec.Functional.Checksums
 
 /-! # The real input-read prefix before deferred insertion -/
 

@@ -92,6 +92,8 @@ jobs:
         run: scripts/check-sorry.sh
       - name: Every string literal of the translations is in strTable
         run: python3 scripts/check-strlit.py
+      - name: Safety specifications import no functional specification
+        run: python3 scripts/check-spec-layers.py
 
   # The audit: axioms, doc strings and the goals.
   audit_core:

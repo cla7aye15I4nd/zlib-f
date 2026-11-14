@@ -1,5 +1,6 @@
 import ZlibF.Proof.«deflate.c.engine.encoding-data-history»
 import ZlibF.Proof.«deflate.c.engine.encoded-state-scalar-request»
+import ZlibF.Spec.Functional.Sequences
 
 /-! # Every actual signed request history retains exact independent encoding -/
 
