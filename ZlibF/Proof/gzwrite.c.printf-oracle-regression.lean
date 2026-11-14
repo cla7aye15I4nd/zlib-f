@@ -74,6 +74,10 @@ theorem printf_failure_reachable (statics : Statics) (hg : LibraryGlobals (calle
   refine ⟨fs', after, run, ?_⟩
   exact GzReachable.step hb (show (smallHeap statics).gzstates 2 = some smallState from rfl)
     (show GzOperation 2 (.gzprintf (some (.in_gzstate_x 2)) (.ref (.blk 0) 0) []) from rfl)
-    ⟨[112], p_formatted statics⟩ run
+    ⟨⟨[112], p_formatted statics⟩, fun b hb => by
+      have e : b = 0 := hb
+      subst e
+      simp [GzOwned, smallState, openedState, GzState.zeroed, GzState.garbage]
+      exact fun hz => absurd rfl hz, fun q hq => nomatch hq⟩ run
 
 end Zlib.Gzwrite.PrintfOracleRegression
