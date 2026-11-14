@@ -73,7 +73,8 @@ def FetchKeeps (s s' : GzState) : Prop :=
 /-- **`gz_look`** on a reader with no buffered output, in state LOOK (its callers, `gz_fetch` and `gzdirect`, call it
 only there; from COPY with no input left it returns 0 with `how = COPY`). The read budget never rises. A `0` that leaves
 `how = LOOK` is at the end of the input (`eof ≠ 0`, `avail_in = 0`) or a stall that read at least one byte, so the
-budget fell by at least one. -/
+budget fell by at least one. A `0` in COPY has consumed the pending input and buffered only what fits before
+`GZ_OFF_MAX` (patch 0004): `x.pos + x.have ≤ GZ_OFF_MAX`, and nothing is buffered only at `x.pos = GZ_OFF_MAX`. -/
 def GzLookSpec : Prop :=
   ∀ (i : Nat) (h : Heap) (fs : Fs) (s : GzState), GzInvUpToOutput h i s → s.x.have = 0 → FileSystem fs →
     s.mode = GZ_READ → s.how = LOOK → MsgLit s →
@@ -87,7 +88,10 @@ def GzLookSpec : Prop :=
         (s'.size = 0 → s'.err ≠ Z_OK ∧ s'.err ≠ Z_BUF_ERROR) ∧
         (r = 0 → (s'.how = LOOK ∧ s'.x.have = 0 ∧
             ((s'.eof ≠ 0 ∧ s'.strm.avail_in = 0) ∨ BudgetAcc s.fd fs fs' 1)) ∨
-          (s'.how = GZIP ∧ s'.x.have = 0 ∧ InflateAtHead after s') ∨ (s'.how = GZ_COPY ∧ s'.x.have ≠ 0))
+          (s'.how = GZIP ∧ s'.x.have = 0 ∧ InflateAtHead after s') ∨
+          (s'.how = GZ_COPY ∧ s'.strm.avail_in = 0 ∧
+            (s'.x.have ≠ 0 ∨ s'.x.pos.toInt = 9223372036854775807) ∧
+            s'.x.pos.toInt + s'.x.have.toNat ≤ 9223372036854775807))
 
 /-- **`gz_decomp`** into the output region `out` (from the record's `out` in `gz_fetch`, then no caller region is
 written; the caller's buffer in `gz_read`), as the skeleton states it, with the fields kept and the progress clauses `gz_fetch` needs. -/

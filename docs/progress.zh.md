@@ -1,4 +1,4 @@
-<!-- source-sha256: ab3a8ef05c75e14a7fb74274da23d03bee01984963f1da53e2bb89410ad23be0 -->
+<!-- source-sha256: 6bed011e3aa6e8f8dec8266dcf7fcb64817928f4a1211bcdd07ca6cd2016f5e1 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -2124,6 +2124,7 @@ zlib.h 文档化的每个函数占一行。每行给出表明该调用不会出�
 
 - F-1，[gzread 位置溢出](findings/gzread-pos-overflow/README.md)：在 Linux 的 `/dev/zero` 上透明 `gzseek` 到 `INT64_MAX` 之后，`gzread` 使有符号的 `x.pos` 溢出。在 x86_64 Linux 上由 UBSan 确认。补丁 0004。
 - W7，[gzwrite 位置溢出](findings/gzwrite-pos-overflow/README.md)：`/dev/null` 上的透明写入者定位到 `INT64_MAX - 10` 后，`gzwrite` 使 `x.pos` 溢出（在 `INT64_MAX` 处的 `gzputc` 也是）。在 x86_64 Linux 上用真实设备由 UBSan 确认。补丁 0004。
+- [gz look COPY 越过上限](findings/gz-position-copy-overflow.md)：`gz_look` 的 COPY 分支缓冲了全部待处理输入而没有空间上限，因此在一个 gzip 成员、尾随数据和 `gzclearerr` 之后、接近 `GZ_OFF_MAX` 的读取者返回时 `x.pos + x.have` 越过该上限。已在模型中确认（`gz.position-copy-overflow-regression`）并通过阅读 C 确认；实际上无法复现（约 2^63 个解码字节）。补丁 0004，于 2026-11-13 扩展。随之的陈述变化：`GzLookSpec` 的 COPY 析取项现为 `how = COPY ∧ avail_in = 0 ∧ (x.have ≠ 0 ∨ x.pos = GZ_OFF_MAX) ∧ x.pos + x.have ≤ GZ_OFF_MAX`（原为 `how = COPY ∧ x.have ≠ 0`）；`gz_fetch` 的 `BodyPost` 允许循环在 `avail_in = 0` 的 COPY 中继续，其度量把 COPY 记为 0。
 - R-3，[x.next 从未写入](findings/gz-reset-next-uninitialised/README.md)：`gzopen` 之后立即调用的 `gzseek` 和 `gzdirect` 把从未写入的 `x.next` 前进零。按 C 标准的字面规定未定义；没有 sanitizer 报告。补丁 0005。
 - R-4，[直接读取之后 x.next 悬空](findings/gz-next-dangling-after-direct-read/README.md)：大块 `gzread` 读入调用者随后释放的缓冲区之后，`gzseek` 和 `gzdirect` 在已释放的缓冲区内把 `x.next` 前进零。按 C 标准的字面规定未定义；没有 sanitizer 报告。补丁 0005。
 

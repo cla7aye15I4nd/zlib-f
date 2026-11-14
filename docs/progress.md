@@ -2711,6 +2711,14 @@ not yet submitted upstream ([patches](../patches/README.md)).
 - W7, [gzwrite position overflow](findings/gzwrite-pos-overflow/README.md): a transparent writer
   on `/dev/null` that seeks to `INT64_MAX - 10` overflows `x.pos` in `gzwrite` (and in `gzputc` at
   `INT64_MAX`). Confirmed by UBSan on x86_64 Linux with the real device. Patch 0004.
+- [gz look COPY past the limit](findings/gz-position-copy-overflow.md): `gz_look`'s COPY branch
+  buffered all pending input without the room bound, so a reader after a gzip member, trailing
+  data and `gzclearerr` near `GZ_OFF_MAX` returned with `x.pos + x.have` past it. Confirmed in the
+  model (`gz.position-copy-overflow-regression`) and by reading the C; not reproducible in practice
+  (about 2^63 decoded bytes). Patch 0004, extended on 2026-11-13. Statement changes with it:
+  `GzLookSpec`'s COPY disjunct is now `how = COPY ∧ avail_in = 0 ∧ (x.have ≠ 0 ∨ x.pos =
+  GZ_OFF_MAX) ∧ x.pos + x.have ≤ GZ_OFF_MAX` (was `how = COPY ∧ x.have ≠ 0`); `BodyPost` of
+  `gz_fetch` lets the loop continue in COPY with `avail_in = 0`, and its measure ranks COPY 0.
 - R-3, [x.next never written](findings/gz-reset-next-uninitialised/README.md): `gzseek` and
   `gzdirect` right after `gzopen` advance the never-written `x.next` by zero. Undefined by the
   letter of C; no sanitizer report. Patch 0005.

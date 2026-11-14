@@ -329,9 +329,11 @@ theorem gz_fetch_source (i : Nat) : Zlib.Gzread.gz_fetch (gzSt i) = (do
 /-! ## One trip -/
 
 open Classical in
-/-- The rank of a record's state in the measure: LOOK 2, GZIP at `HEAD` 1, otherwise 3. -/
+/-- The rank of a record's state in the measure: LOOK 2, GZIP at `HEAD` 1, COPY 0, otherwise 3. COPY ranks lowest:
+`gz_look` may leave COPY with nothing buffered (at `x.pos = GZ_OFF_MAX`, patch 0004), and the next trip is the
+COPY trip, which ends the loop. -/
 noncomputable def cOf (h : Heap) (s : GzState) : Nat :=
-  if s.how = LOOK then 2 else if s.how = GZIP ∧ InflateAtHead h s then 1 else 3
+  if s.how = LOOK then 2 else if s.how = GZIP ∧ InflateAtHead h s then 1 else if s.how = GZ_COPY then 0 else 3
 
 /-- The measure of `gz_fetch`'s loop: `4 · inputLeft + cOf` of the record. -/
 noncomputable def fetchMeasure (i : Nat) (fs : Fs) (h : Heap) : Nat :=
@@ -346,12 +348,15 @@ theorem cOf_head {h : Heap} {s : GzState} (hg : s.how = GZIP) (hd : InflateAtHea
   unfold cOf; rw [if_neg (by rw [hg]; decide), if_pos ⟨hg, hd⟩]
 
 theorem cOf_gzip {h : Heap} {s : GzState} (hg : s.how = GZIP) (hd : ¬ InflateAtHead h s) : cOf h s = 3 := by
-  unfold cOf; rw [if_neg (by rw [hg]; decide), if_neg (fun hh => hd hh.2)]
+  unfold cOf; rw [if_neg (by rw [hg]; decide), if_neg (fun hh => hd hh.2), if_neg (by rw [hg]; decide)]
+
+theorem cOf_copy {h : Heap} {s : GzState} (hc : s.how = GZ_COPY) : cOf h s = 0 := by
+  unfold cOf
+  rw [if_neg (by rw [hc]; decide), if_neg (fun hh => absurd (hc.symm.trans hh.1) (by decide)), if_pos hc]
 
 theorem cOf_le (h : Heap) (s : GzState) : cOf h s ≤ 3 := by
-  unfold cOf; split
-  · omega
-  · split <;> omega
+  unfold cOf; repeat' split
+  all_goals omega
 
 theorem inputLeft_lt {fs : Fs} {s : GzState} (hb : ReadsBounded fs s.fd) : inputLeft fs s < 2 ^ 61 + 2 ^ 32 := by
   unfold inputLeft
@@ -370,7 +375,8 @@ def BodyPost (i : Nat) (h : Heap) (fs : Fs) (s : GzState) (y : Option Int32) (fs
     (y = some 0 → s'.x.«have» ≠ 0 ∨ (s'.eof ≠ 0 ∧ s'.strm.avail_in = 0) ∨
       (s'.how = LOOK ∧ BudgetAcc s.fd fs fs' 1)) ∧
     (y = none → s'.x.«have» = 0 → (s'.eof = 0 ∨ s'.strm.avail_in ≠ 0) →
-      (s'.how = LOOK ∨ s'.how = GZIP) ∧ (ReadsBounded fs s.fd → s.err ≠ Z_STREAM_END →
+      (s'.how = LOOK ∨ s'.how = GZIP ∨ (s'.how = GZ_COPY ∧ s'.strm.avail_in = 0)) ∧
+        (ReadsBounded fs s.fd → s.err ≠ Z_STREAM_END →
         4 * inputLeft fs' s' + cOf h' s' < 4 * inputLeft fs s + cOf h s))
 
 theorem invOut_of_have0 {h : Heap} {i : Nat} {s : GzState} (hs : h.gzstates i = some s) (hh : s.x.«have» = 0) :
@@ -423,7 +429,8 @@ theorem fetch_look (look : GzLookSpec) (i : Nat) (h : Heap) (fs : Fs) (s : GzSta
       (y = some 0 → s'.x.«have» ≠ 0 ∨ (s'.eof ≠ 0 ∧ s'.strm.avail_in = 0) ∨
         (s'.how = LOOK ∧ BudgetAcc s.fd fs fs1 1)) →
       (y = none → s'.x.«have» = 0 → (s'.eof = 0 ∨ s'.strm.avail_in ≠ 0) →
-        (s'.how = LOOK ∨ s'.how = GZIP) ∧ (ReadsBounded fs s.fd → s.err ≠ Z_STREAM_END →
+        (s'.how = LOOK ∨ s'.how = GZIP ∨ (s'.how = GZ_COPY ∧ s'.strm.avail_in = 0)) ∧
+        (ReadsBounded fs s.fd → s.err ≠ Z_STREAM_END →
           4 * inputLeft fs1 s' + cOf h1 s' < 4 * inputLeft fs s + cOf h s)) →
       BodyPost i h fs s y fs1 h1 := fun y hy h0 hn =>
     ⟨hy, hk, post, rf, rb, bud, s', hs', keep, hml', herr, hil, hsize, h0, hn⟩
@@ -447,13 +454,17 @@ theorem fetch_look (look : GzLookSpec) (i : Nat) (h : Heap) (fs : Fs) (s : GzSta
     · have hl' : s'.how ≠ LOOK := by simpa using hc2
       refine RunSafe.pure' (common _ (Or.inl rfl) (fun e => absurd e (by decide)) ?_)
       intro _ hh' _
-      rcases hprog hr0 with ⟨e, _, _⟩ | ⟨hg, _, hd⟩ | ⟨_, hne⟩
+      rcases hprog hr0 with ⟨e, _, _⟩ | ⟨hg, _, hd⟩ | ⟨hcp, ha0, -, -⟩
       · exact absurd e hl'
-      · refine ⟨Or.inr hg, fun hb _ => ?_⟩
+      · refine ⟨Or.inr (Or.inl hg), fun hb _ => ?_⟩
         have := hil hb.1
         rw [cOf_head hg hd, cOf_look hl]
         omega
-      · exact absurd hh' hne
+      · -- COPY with nothing buffered (`x.pos = GZ_OFF_MAX`): the next trip is the COPY trip
+        refine ⟨Or.inr (Or.inr ⟨hcp, ha0⟩), fun hb _ => ?_⟩
+        have := hil hb.1
+        rw [cOf_copy hcp, cOf_look hl]
+        omega
 
 /-- **The COPY trip.** -/
 theorem fetch_copy (i : Nat) (h : Heap) (fs : Fs) (s : GzState) (hu : GzInvUpToOutput h i s)
@@ -720,7 +731,10 @@ theorem fetch_step (look : GzLookSpec) (decomp : GzDecompSpec) (i : Nat) (h0 : H
     obtain ⟨hhow, hdrop⟩ := hcont1 hn hh' hc
     refine ⟨⟨rfl, hk', post', rf', rb', bud', s', hs', hu', hh', keep', hml1, herr', fun hcp => ?_, il'⟩,
       fun hb => ⟨rb1' hb, ?_⟩⟩
-    · rcases hhow with e | e <;> rw [e] at hcp <;> exact absurd hcp (by decide)
+    · rcases hhow with e | e | ⟨-, ha⟩
+      · rw [e] at hcp; exact absurd hcp (by decide)
+      · rw [e] at hcp; exact absurd hcp (by decide)
+      · exact ha
     · simp only [fetchMeasure, hs', hs]
       exact hdrop (by rw [hfd]; exact hb) herr
   unfold fetchCond
