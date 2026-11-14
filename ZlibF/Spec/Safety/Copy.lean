@@ -45,4 +45,32 @@ def Goal.deflateCopy_safety : Prop :=
     C.run (Zlib.Deflate.deflateCopy (some dest) (some source)) h =
       .ok (Z_STREAM_ERROR, dest.put h { oldDest with state := none }))
 
+/-- `int inflateCopy(z_streamp dest, z_streamp source)`.
+**Safety of `inflateCopy`** (the safety content of `Goal.inflateCopy`). Null arguments are
+refused. From every reachable source into a distinct, readable destination record, the call
+returns without a fault, with `Z_OK` or `Z_MEM_ERROR`. It leaves the source record and its state
+unchanged and writes only the destination record and new blocks. On `Z_MEM_ERROR` an allocation
+really failed, the destination state is cleared and the live blocks are unchanged (no leak). On
+`Z_OK` the destination is a reachable stream (`StreamReachable.inflateCopy`) and the live blocks
+grow by exactly the fresh blocks its new state owns. The copied contents are left to
+`Goal.inflateCopy`. An inconsistent source is refused by `Goal.inflate_refusal`. -/
+def Goal.inflateCopy_safety : Prop :=
+  (∀ h source, C.run (Zlib.Inflate.inflateCopy none source) h = .ok (Z_STREAM_ERROR, h)) ∧
+  (∀ h dest z, dest.get h = some z →
+    C.run (Zlib.Inflate.inflateCopy (some dest) none) h =
+      .ok (Z_STREAM_ERROR, dest.put h { z with state := none })) ∧
+  (∀ h source i z s dest oldDest,
+    StreamReachable .inflate h source → Zlib.Inflate.Spec.Good h source i z s →
+    Zlib.Inflate.Spec.DefAlloc z → source ≠ dest → dest.get h = some oldDest →
+    ∃ rc after,
+      C.run (Zlib.Inflate.inflateCopy (some dest) (some source)) h = .ok (rc, after) ∧
+      source.get after = some z ∧ after.istates i = some s ∧ Frame h after (StreamRoot dest) ∧
+      ((rc = Z_MEM_ERROR ∧ AllocationFailed h after ∧
+        dest.get after = some { oldDest with state := none } ∧
+        LiveChange h after (fun _ => False) (fun _ => False)) ∨
+       (rc = Z_OK ∧ StreamReachable .inflate after dest ∧
+        ∃ copied, after.istates h.nextBlk = some copied ∧
+          (∀ b, InflateOwned h.nextBlk copied b → h.nextBlk ≤ b) ∧
+          LiveChange h after (InflateOwned h.nextBlk copied) (fun _ => False))))
+
 end ZlibF.Spec.Public

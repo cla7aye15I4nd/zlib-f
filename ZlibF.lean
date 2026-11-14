@@ -180,6 +180,10 @@ import ZlibF.Spec.Functional.Utilities
 import ZlibF.Spec.Safety.Copy
 import ZlibF.Spec.Safety.Domains
 import ZlibF.Spec.Safety.Sequences
+import ZlibF.Spec.Safety.Streams
+import ZlibF.Spec.Safety.Initialisation
+import ZlibF.Spec.Safety.Checksums
+import ZlibF.Spec.Safety.Queries
 import ZlibF.Spec.Safety.Utilities
 import ZlibF.Spec.Functional.Api.Basic
 import ZlibF.Spec.Functional.Api.Compress
@@ -649,3 +653,7 @@ import ZlibF.Proof.«infback.c.safety-dispatch»
 import ZlibF.Proof.«infback.c.safety-call»
 import ZlibF.Proof.«infback.c.safety-reach»
 import ZlibF.Proof.«deflate.c.universal-flush-cursor»
+import ZlibF.Proof.«public-stream-call-safety»
+import ZlibF.Proof.«public-init-safety»
+import ZlibF.Proof.«public-inflate-copy-safety»
+import ZlibF.Proof.«public-stateless-safety»
