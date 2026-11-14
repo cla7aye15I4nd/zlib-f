@@ -2235,10 +2235,14 @@ Safety of the gzip file interface (result 5, owner's decision of 2026-11-12): no
 behaviour, no memory error, no leak of a block or of the descriptor, and termination, on every
 history of a handle. The goal `Goal.gz_sequence_safety` and its definitions (`GzHistory`,
 `GzCloseSafe`, `GzOpenSafe`, `GzDopenSafe`) are on `dev` in `ZlibF/Spec/Public/GzSafety.lean`
-(`61fc2678`), over `GzInv` and `GzCallSafe` of `gz.inv-model`. The skeleton is on the branch
-`skeleton/gz`, commit `7efd3e5e`, a merge of `dev`: files `gz.skeleton-model.lean` (the two loop rules
-only), `gz.skeleton.lean` and `gz.skeleton-read.lean`. It type-checks: `Goal.gz_sequence_safety`
-is proved there from the open lemmas below. A skeleton leaf that `dev` proves with exactly its
+(`61fc2678`), over `GzInv` and `GzCallSafe` of `gz.inv-model`. The assembly is on `dev`:
+`gz_sequence_safety_of` (`gz.sequence-safety`, `7d3c6b80`) has the conclusion `Goal.gz_sequence_safety`
+and one premise, `GzReadLeaves`: the six open read leaves `gzread_step`, `gzfread_step`, `gzgetc_step`,
+`gzungetc_step`, `gzgets_step`, `gzdirect_step`, each with the skeleton's exact statement. Every other
+leaf is used from `dev` directly; no loop rule is used. The skeleton is on the branch `skeleton/gz`,
+commit `17770416`, after a merge of `dev`: files `gz.skeleton-model.lean` (the two loop rules only),
+`gz.skeleton-read.lean` (the open read leaves) and `gz.skeleton.lean` (`gz_sequence_safety_of` applied to
+the read leaves). It type-checks: `Goal.gz_sequence_safety` is proved there from the open lemmas below. A skeleton leaf that `dev` proves with exactly its
 statement is deleted from the skeleton (or closed by the `dev` theorem) and listed as checked.
 The goal ranges over every open (`gzopen`, `gzopen64`, `gzdopen`), every public call of
 `GzOperation`, every close, caller edits outside the handle and changes of the file-system world
@@ -2260,18 +2264,18 @@ are unchanged.
 | --- | --- | --- | ---: | --- |
 | `GzInv.caller`, `GzInv.gz_error`, `GzInv.gz_reset`, `GzInv.put_scalars` | Interface lemmas of `GzInv`. | checked: `gz.inv-frame`, `gzlib.c.error-inv-premises`, `gz.inv-reset`, `gz.inv-put-scalars` | 0 | batch 1, deflate owner |
 | `gwhile_partial`, `gdoWhile_partial` | Partial-correctness loop rules (`gz.skeleton-model`); no proof uses them yet. | open | 2 | unassigned |
-| `gzopen_safe` | `gzopen` returns; NULL leaves nothing; a handle is in `GzInv` with only its descriptor new. | open | 6 | batch C |
-| `gzopen64_safe` | `gzopen64` is `gzopen`. | checked (skeleton, from `gzopen_safe`) | 0 | batch C |
-| `gzdopen_safe` | As `gzopen_safe`, with no descriptor opened or closed. | open | 2 | batch C |
+| `gzopen_safe` | `gzopen` returns; NULL leaves nothing; a handle is in `GzInv` with only its descriptor new. | checked: `gzopen_safe` (`gz.inv-open-fresh`, `5252a412`) | 0 | batch C |
+| `gzopen64_safe` | `gzopen64` is `gzopen`. | checked: `gzopen64_safe` (`gz.inv-open-fresh`, `5252a412`) | 0 | batch C |
+| `gzdopen_safe` | As `gzopen_safe`, with no descriptor opened or closed. | checked: `gzdopen_safe` (`gz.inv-open`, `8c2bba51`) | 0 | batch C |
 | `gzclose_dispatch_inv` | `gzclose` is `gzclose_r` or `gzclose_w` by mode. | checked: `gzclose_dispatch_inv` (`gz.inv-queries`) | 0 | batch 1 |
-| `gzclose_step` | `gzclose` from the dispatch and the two close steps. | checked (skeleton, no open leaf below it); to move to `dev` | 0.5 | batch C |
+| `gzclose_step` | `gzclose` from the dispatch and the two close steps. | checked: `gzclose_step` (`gz.inv-close`, `fdb8c613`) | 0 | batch C |
 | `gzseek64_step`, `gzseek_step` | Seek is safe on `GzInv`. | checked: `gzseek64_step`, `gzseek_step` (`gz.inv-seek`) | 0 | batch 1 |
 | `gztell64_step`, `gztell_step`, `gzeof_step`, `gzbuffer_step` | Tell, eof and buffer; with `post_unchanged`, `safe_of_unchanged`. | checked: same names (`gz.inv-queries`) | 0 | batch 1 |
 | `gzerror_step` | `gzerror` stores the code in the caller's cell. | checked: `gzerror_step` (`gz.inv-frame`) | 0 | batch 1 |
 | `gzclearerr_step` | `gzclearerr` through `gz_error`. | checked: `gzclearerr_step` (`gz.inv-clearerr`) | 0 | batch 1 |
-| `gzoffset64_step`, `gzoffset_step` | One `lseek` (M3); nothing else changes. | in progress (batch C, `gz.inv-offset-rewind`) | 2 | batch C |
-| `gzrewind_step` | `lseek` (M3) and `gz_reset`. | in progress (batch C, `gz.inv-offset-rewind`) | 2 | batch C |
-| `history_inv`, `operation_safe`, `close_safe`, `gz_sequence_safety` | Assembly, re-checked under `dev`'s `GzInv` and `GzSafety`. | checked (skeleton) | 0 | batch C |
+| `gzoffset64_step`, `gzoffset_step` | One `lseek` (M3); nothing else changes. | checked: same names (`gz.inv-offset-rewind`, `646b1ab6`) | 0 | batch C |
+| `gzrewind_step` | `lseek` (M3) and `gz_reset`. | checked: `gzrewind_step` (`gz.inv-offset-rewind`, `646b1ab6`) | 0 | batch C |
+| `history_inv`, `operation_safe`, `close_safe`, `gz_sequence_safety` | Assembly, re-checked under `dev`'s `GzInv` and `GzSafety`. | checked given hypotheses: `gz_sequence_safety_of` (`gz.sequence-safety`, `7d3c6b80`), premise `GzReadLeaves` (the six open read leaves below); `gz_sequence_safety` on the skeleton | 0 | batch C |
 | `gz_init_safe`, `gz_comp_safe`, `gz_zero_safe`, `gz_write_safe`, `gz_vacate_safe` | Write-side helpers. | checked: same names (`gzwrite.c.safety`) | 0 | batch C |
 | `gzwrite_step`, `gzfwrite_step`, `gzputc_step`, `gzputs_step`, `gzvprintf_step`, `gzprintf_step`, `gzflush_step`, `gzsetparams_step` | Write-side public calls. | checked: same names (`gzwrite.c.safety`) | 0 | batch C |
 | `gzclose_w_step` | Finish, `deflateEnd`, frees, descriptor released. | checked: `gzclose_w_step` (`gzwrite.c.safety`, stated with `GzCloseSafe`) | 0 | batch C |
@@ -2291,7 +2295,7 @@ are unchanged.
 | `gzgets_step` | Bounded `memchr`, copy, NUL. No `dev` theorem. | open | 6 | read side (deflate owner) |
 | `gzdirect_step` | One `gz_look` and `gz_skip_have`. No `dev` theorem. | open | 3 | read side (deflate owner) |
 | Merge the `deflate.c.quiet-*` restated copies | Cleanup, not on the critical path. | open | 4 | later |
-| **Total remaining** | batch C 12.5 (4 of them in progress); read side 36.5; unassigned 2 | | **51** | |
+| **Total remaining** | batch C 0; read side 36.5; unassigned 2 | | **38.5** | |
 
 
 ### No-fault coverage of zlib.h functions
