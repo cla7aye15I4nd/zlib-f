@@ -1,4 +1,4 @@
-<!-- source-sha256: a9cbc2ab6629d0f60587fbdd7c03bdffea230869bce78239fc89dd3bddbb1beb -->
+<!-- source-sha256: 2a3e52345f20816ca97277260ab0ed81773750e624aa78a14dd81c7efacbae17 -->
 # 调用者定义域与表示限制
 
 超出模型能力的定理不是 C 正确性结果。本登记记录 API 适配器的受限定义域和缺口。每个强于 `zlib.h` 的前置条件，也必须写入定理文档字符串。聚焦手册中的狭窄例子不改变固定公开目标，也不把排除调用判为未定义。见[契约约定](spec/api/contracts.md)。[Sanitizer 报告](sanitizer-reports.md)列出 sanitizer 在真实 C 上报告的每种调用者布局，以及排除它的前提。
@@ -36,6 +36,7 @@
 | 流缓冲区（`StreamBuffers`） | 输入范围（`next_in`、`avail_in`）与输出范围（`next_out`、`avail_out`）互相分离，且都不在流自己拥有的存储内。每个范围或为 NULL，或可读，输出范围还须可写。 | `Goal.inflate` 与 `Goal.deflate` 以它为前提。输入与输出重叠，或缓冲区落在流自身状态内的调用不在覆盖范围内。 |
 | 整缓冲区压缩（`CompressArguments`） | 源与目标不重叠：`Separate source n dest c`。 | 适用于 `compress`、`compress2` 及其 `_z` 形式。源与目标重叠的调用不在覆盖范围内。 |
 | 计数解压（`UtilitySeparation`、`UncompressSingle`） | 源、目标、目标长度单元和源长度单元两两分离。`uncompress` 与 `uncompress_z` 需要源与目标、长度单元与数据的分离。 | 适用于 `uncompress`、`uncompress2` 及其 `_z` 形式。长度单元与数据缓冲区或另一个单元重叠的调用不在覆盖范围内。 |
+| 被拒绝的流（`RefusedInflate`、`RefusedDeflate`；`Goal.inflate_refusal`、`Goal.deflate_refusal`） | 被拒绝的流是 `NULL`，或者是一个可读记录，其状态为 `NULL`、其 `zalloc` 或 `zfree` 为 `NULL`，或其状态是一个被检查拒绝的存活状态记录（反向指针、模式或状态错误）。 | 这包括 `End` 之后、初始化失败之后、复制失败的目标，以及存活记录的结构体副本。状态字段为垃圾指针的记录在定义域之外，例如从未初始化的自动 `z_stream`。检查会经由该指针读取，在 C 中这是未定义行为。模型同样无法表达它：在模型中，新内存里的指针为 `NULL`（`docs/trusted-base.md`，“Uninitialised pointers become NULL”一行）。 |
 | 复制目标（`Goal.inflateCopy`、`Goal.deflateCopy`、`Goal.deflateCopy_safety`） | 目标记录不是源记录（`source ≠ dest`）。模型把 `z_stream` 记录放在自己的表中，与字节和字缓冲区以及状态记录分开。因此无法表达部分重叠源记录、缓冲区或源所拥有的状态记录的目标。 | 当 `dest == source` 时，C 的 `zmemcpy(dest, source, sizeof(z_stream))` 把对象复制到自身上，这是未定义行为；该情况不在覆盖范围内。部分重叠的目标同样在定理之外：独立的记录表把它假设掉了（`docs/trusted-base.md`，地址与布局模型）。zlib.h 没有说明是否允许这种布局。 |
 | 字典缓冲区 | 字典的目标或源与流的窗口分离。 | 适用于 `inflateGetDictionary`、`deflateGetDictionary`、`inflateSetDictionary` 与 `deflateSetDictionary`。 |
 | inflate gzip extra 字段（`InflateHeaderProgress`） | `inflate` 把 gzip 头（`HEAD` .. `HCRC`）读入挂接的 `gz_header` 时，其 `extra` 缓冲区（`extra_max` 字节）与未读输入分离；在 `EXTRA` 中，头记录的 `extra_len` 不小于 `state->length`。 | `ActiveHeader` 的一个合取项，因此是 `Goal.inflate` 及 `Goal.inflate_sequence` 中每次 `inflate` 调用的前提。每个被排除的情形都是真实 C 在 EXTRA 的 `zmemcpy` 中的未定义行为（[复现](../tests/regression/inflate-gzip-extra/README.md)）：重叠复制，或调用者在 extra 字段内调低 `extra_len` 后越过 `extra_max` 写入。zlib.h 没有说明这两种布局是否允许。 |

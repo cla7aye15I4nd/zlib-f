@@ -168,6 +168,7 @@ import ZlibF.Spec.Public.Lifecycle
 import ZlibF.Spec.Public.History
 import ZlibF.Spec.Public.Streams
 import ZlibF.Spec.Public.Copy
+import ZlibF.Spec.Public.Refusals
 import ZlibF.Spec.Public.GzState
 import ZlibF.Spec.Public.GzControl
 import ZlibF.Spec.Public.GzOpen
