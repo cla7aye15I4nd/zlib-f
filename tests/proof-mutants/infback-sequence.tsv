@@ -1,0 +1,18 @@
+# Proof mutants of Goal.inflate_back_sequence_safety (inflate_back_sequence_safety, infback.c.safety-fast):
+# inflateBack, inflateBackInit_ and inflateBackEnd. Structural rows only: a dropped check or store, a wrong
+# return code, a wrong constant; no loop body and no machine arithmetic, so the kernel replay of the goal
+# theorem rejects each in budget. The row of the epilogue is a script (infback-sequence.py): it makes the same
+# edit in the restatement `backTail`, so that a semantic lemma must fail, not the `rfl` of `inflateBack_eq`.
+# Run in the mutant shards with the other safety lists (scripts/verification.py).
+# NAME	FILE	OLD	NEW	PROOF_MODULES
+inflateBack-null-ok	ZlibF/Zlib/infback.c.lean	if strm == none then return Z_STREAM_ERROR\n  let z ← ldZStream strm\n  if z.state == none then return Z_STREAM_ERROR	if strm == none then return Z_OK\n  let z ← ldZStream strm\n  if z.state == none then return Z_STREAM_ERROR	infback.c.back,infback.c.safety-fast
+inflateBack-mode-not-reset	ZlibF/Zlib/infback.c.lean	wrS st fun s => { s with mode := TYPE, last := 0, whave := 0 }	wrS st fun s => { s with last := 0, whave := 0 }	infback.c.back,infback.c.safety-fast
+inflateBack-null-output	ZlibF/Zlib/infback.c.lean	bits := 0, put := s.window, left := s.wsize }	bits := 0, put := .null, left := s.wsize }	infback.c.back,infback.c.safety-fast
+inflateBack-flush-failure-ok	script:tests/proof-mutants/infback-sequence.py	-	-	infback.c.safety-call,infback.c.safety-fast
+inflateBackInit_-state-not-stored	ZlibF/Zlib/infback.c.lean	wrZ strm fun z => { z with state := StateRef.ofInflateState state }	wrZ strm fun z => z	infback.c.init,infback.c.safety-fast
+inflateBackInit_-window-not-stored	ZlibF/Zlib/infback.c.lean	window := window, wnext := 0	window := .null, wnext := 0	infback.c.init,infback.c.safety-fast
+inflateBackInit_-allocation-failure-ok	ZlibF/Zlib/infback.c.lean	if state == none then return Z_MEM_ERROR	if state == none then return Z_OK	infback.c.init,infback.c.safety-fast
+inflateBackInit_-sane-cleared	ZlibF/Zlib/infback.c.lean	sane := 1 }	sane := 0 }	infback.c.init,infback.c.safety-fast
+inflateBackEnd-free-skipped	ZlibF/Zlib/infback.c.lean	ZFREES strm st	pure ()	infback.c.end,infback.c.safety-fast
+inflateBackEnd-state-kept	ZlibF/Zlib/infback.c.lean	wrZ strm fun z => { z with state := none }	wrZ strm fun z => z	infback.c.end,infback.c.safety-fast
+inflateBackEnd-wrong-code	ZlibF/Zlib/infback.c.lean	e }\n  return Z_OK\n\n	e }\n  return Z_STREAM_ERROR\n\n	infback.c.end,infback.c.safety-fast

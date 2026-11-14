@@ -95,6 +95,19 @@ goals `Goal.inflate_refusal` and `Goal.deflate_refusal` are not public entries. 
 safety list `tests/proof-mutants/stream-refusal.tsv`, which the mutation shards check by
 re-elaboration: each row turns a refusal into `Z_OK`.
 
+`Goal.inflate_back_sequence_safety` is not a public entry either. Its eleven rows are in the safety list
+`tests/proof-mutants/infback-sequence.tsv`: four of `inflateBack`, four of `inflateBackInit_` and three of
+`inflateBackEnd`, all structural:
+- `inflateBack`: a null stream returns `Z_OK`; the mode is not reset to `TYPE`; the output starts at
+  `NULL`, not the window; a refused last window after the end returns `Z_OK`;
+- `inflateBackInit_`: the state is not stored in the stream; the window is not stored; an allocation
+  failure returns `Z_OK`; `sane` is cleared;
+- `inflateBackEnd`: the free of the state is skipped; `strm->state` is kept; it returns `Z_STREAM_ERROR`.
+The row of the epilogue is a script (`infback-sequence.py`) that makes the same edit in the restatement
+`backTail`, so that a semantic lemma fails and not the `rfl` of `inflateBack_eq`. The mutation shards
+check the rows by re-elaboration. A kernel replay of `inflate_back_sequence_safety` with the
+translation edit of each row also rejects all eleven; the replay of the original peaks at about 9.8 GB.
+
 ## List format
 
 Lists use one tab-separated row per mutant. Lines starting with `#` are comments.

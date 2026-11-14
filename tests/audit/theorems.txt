@@ -393,6 +393,7 @@ Zlib.Deflate.Universal.deflate_copy_safety
 ZlibF.Spec.Public.RefusalProof.inflate_refusal
 ZlibF.Spec.Public.RefusalProof.Deflate.deflate_refusal
 Zlib.Deflate.Proofs.deflateGetDictionary_reject
+Zlib.Infback.Safety.inflate_back_sequence_safety
 ZlibF.Spec.Public.Proofs.Uncompress.uncompress2_z_safe
 ZlibF.Spec.Public.Proofs.Uncompress.uncompress2_safe
 ZlibF.Spec.Public.Proofs.Uncompress.uncompress_z_safe

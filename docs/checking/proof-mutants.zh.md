@@ -1,4 +1,4 @@
-<!-- source-sha256: 17cf5fd30faaf0f9912e369fd27d197df53e9e98bdcb72b1caf72d47200f2fac -->
+<!-- source-sha256: 5e67fb10fd7827a6617cb90d55bb64e85cebea16c863fdc40454d65becccbd51 -->
 
 # 证明变异
 
@@ -54,6 +54,12 @@ bash tests/audit/proofmut.sh tests/audit/proofmut/crc32.tsv '^combine'
 - 缓冲区失败路径跳过对 `pending_buf` 的释放；
 - 副本的反向指针被设为源。
 每一行都被重放拒绝；`deflate_copy_public` 的重放峰值约为 10.4 GB。拒绝目标 `Goal.inflate_refusal` 与 `Goal.deflate_refusal` 不是公开入口。它们的行在安全表 `tests/proof-mutants/stream-refusal.tsv` 中，由变异分片以重新繁饰检查：每一行把一次拒绝改为 `Z_OK`。
+
+`Goal.inflate_back_sequence_safety` 也不是公开入口。它的十一行在安全表 `tests/proof-mutants/infback-sequence.tsv` 中：`inflateBack` 四行、`inflateBackInit_` 四行、`inflateBackEnd` 三行，都是结构性的：
+- `inflateBack`：空流返回 `Z_OK`；模式没有重置为 `TYPE`；输出从 `NULL` 而不是窗口开始；结束之后最后一个窗口被拒绝时返回 `Z_OK`；
+- `inflateBackInit_`：状态没有存入流；窗口没有存入；分配失败返回 `Z_OK`；`sane` 被清零；
+- `inflateBackEnd`：跳过对状态的释放；保留 `strm->state`；返回 `Z_STREAM_ERROR`。
+收尾部分的那一行是脚本（`infback-sequence.py`），它在重述 `backTail` 中做相同修改，使失败的是语义引理，而不是 `inflateBack_eq` 的 `rfl`。变异分片以重新繁饰检查这些行。用每行的翻译修改对 `inflate_back_sequence_safety` 做内核重放，也拒绝全部十一行；原始证明的重放峰值约为 9.8 GB。
 
 ## 列表格式
 

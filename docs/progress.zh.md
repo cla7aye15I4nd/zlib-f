@@ -1916,8 +1916,8 @@ zlib.h 文档化的每个函数占一行。每行给出表明该调用不会出�
 | 函数 | 路线 | 定理（Lean 名称，文件） | 已登记？ | 定义域缺口或备注 |
 | --- | --- | --- | --- | --- |
 | inflateBackInit_（宏 inflateBackInit） | 自身目标 | `ZlibF.Spec.Public.InflateBackInitProof.back_init_public`，`public-infback-init.lean` | 是 | 完整：错误版本或大小、NULL strm、NULL 窗口、错误的 `windowBits`、分配失败。成功分支需要一个可写的 `2^wb` 字节窗口（zlib.h 自己的规则）。 |
-| inflateBack | 序列（`Goal.inflate_back_sequence_safety`） | **无无条件定理**。只有 `inflate_back_sequence_safety_of (fast : FastOk)`，`infback.c.safety-reach.lean` | 否 | **open**：`LEN_fast_p` 和 `fast_alias` 未完成（progress.md，约 15 小时）。自身的 `Goal.inflateBack`（功能性）不在计划内。NULL strm 和 state 为 NULL 已覆盖（`inflateBack_nullstream`、`inflateBack_nostate`，已登记）。该目标还有收窄：`inputBound < 2^48`，窗口是堆字节块的一个切片，每个输入块都位于堆字节块内（偏差行）。 |
-| inflateBackEnd | 自身目标 | `ZlibF.Spec.Public.InflateBackEndProof.back_end_public`，`public-infback-end.lean` | 是 | 完整：NULL、state 为 NULL 或 zfree 为 NULL，以及 `BackValid`。inflateBack 序列目标的第 4 子句也只在条件定理内部得到证明。 |
+| inflateBack | 序列（`Goal.inflate_back_sequence_safety`） | `Zlib.Infback.Safety.inflate_back_sequence_safety`，`infback.c.safety-fast.lean`（已检查，c7169b54） | 是 | 已登记，带 `inflateBack`、`inflateBackInit_` 与 `inflateBackEnd` 的十一个结构性证明变异（`tests/proof-mutants/infback-sequence.tsv`），每个都被杀死，并被目标定理的内核重放拒绝。自身的 `Goal.inflateBack`（功能性）不在计划内。NULL strm 和 state 为 NULL 已覆盖（`inflateBack_nullstream`、`inflateBack_nostate`，已登记）。该目标还有收窄：`inputBound < 2^48`，窗口是堆字节块的一个切片，每个输入块都位于堆字节块内（偏差行）。 |
+| inflateBackEnd | 自身目标 | `ZlibF.Spec.Public.InflateBackEndProof.back_end_public`，`public-infback-end.lean` | 是 | 完整：NULL、state 为 NULL 或 zfree 为 NULL，以及 `BackValid`。inflateBack 序列目标的第 4 子句在 `inflate_back_sequence_safety` 中得到证明（`back_end_blk`）。 |
 
 #### 校验和
 
@@ -1967,7 +1967,7 @@ zlib.h 文档化的每个函数占一行。每行给出表明该调用不会出�
 
 对完整文档化定义域没有已检查无故障定理的已文档化函数：
 
-1. **inflateBack**：open。只有 `inflate_back_sequence_safety_of (FastOk)`；`LEN_fast_p` 和 `fast_alias` 未完成。progress.md 也把该目标行列为“Not proved”。
+1. **inflateBack**：已登记（`inflate_back_sequence_safety`）。定义域按偏差行收窄：`inputBound < 2^48`，窗口与每个输入块都在堆字节块中。
 2. **deflateCopy**：已登记。假设 `source ≠ dest`（偏差行）。
 3. **inflateEnd**：已关闭。NULL、state 为 NULL、`End` 之后、初始化失败之后，以及复制失败的目标由 `Goal.inflate_refusal`（checked）覆盖。
 4. **inflateCopy**：已关闭。不一致的源由 `Goal.inflate_refusal`（checked）覆盖。
@@ -2035,7 +2035,7 @@ zlib.h 文档化的每个函数占一行。每行给出表明该调用不会出�
 问题（不在计划内的功能目标）：`Goal.inflateBack` 对 `inputBound` 没有上限，因此输入超过循环额度的协议在模型中使它为假。
 所需不变量：`inflate_fast` 假定入口处 `state->bits < 8`。`inflate.c` 在快速路径前检查它（上游 e7bb978）；`infback.c` 不检查，因此证明要说明每轮以 `TYPE`、`TABLE` 或 `LEN` 开始时持有的位少于 8（`BitsShort` 行）。若持有 8 位或更多，`inflate_fast` 可能把 `next` 退回到 `in` 给出的数据块之前。证据：`tests/goals/infback-callbacks/bits8.sh`（60000 个用例，未触发陷阱）。
 目标修正（46ce3a0a、200f80e1）：历史为 `BackSafeReachable`。窗口是一个堆字节块的切片；在每次调用所在的堆上以及每个回调步骤之后，每个字节对象都小于 `2^63` 字节（`BackPlatform`）；每个输入块都位于一个堆字节块中（`BackFirstChunk`、`BackPlatform`）；两次调用之间的调用者修改保持存活块的只读标志。偏差行："回调解码器窗口"、"回调解码器输入块"、平台行与"回调"。候选推广（现在不做）：让两个解码器 `inflate` 与 `inflateBack` 一起接受位于任意字节引用的输入块（调用者结构体字段、静态数据）；两者都依赖 `inflate_fast`，其入口要求原始字节块。
-组合（6f9575e7）：`inflate_back_sequence_safety_of` 由 `FastOk`（不变量上 `case LEN` 的快速路径）证明目标；剩余的是 `LEN_fast_p` 与 `fast_alias`。
+组合：`inflate_back_sequence_safety`（c7169b54）用 `lenFast_of_blk`（窗口位于堆字节块时的快速路径）组合下列引理，没有未证前提；每个历史的窗口都在这样的块中（`back_reach_window`）。较早的组合 `inflate_back_sequence_safety_of` 以前提 `FastOk`（每个窗口上的快速路径）为条件，已删除；`docs/proof/callbacks.md` 说明该前提为何没有证明。已登记，带证明变异（`tests/proof-mutants/infback-sequence.tsv`）。
 
 | 引理 | 含义 | 状态 | 小时 |
 | --- | --- | --- | ---: |
@@ -2047,15 +2047,16 @@ zlib.h 文档化的每个函数占一行。每行给出表明该调用不会出�
 | `STORED_p` | `case STORED`：长度检查以及经 `PULL` 和 `ROOM` 的复制；数据块可与窗口同属一个块 | 已检查（eec477cd） | 0 |
 | `TABLE_p` | `case TABLE`：头部、码长码、解码出的码长、三次 `inflate_table` 调用，表已安装（`TablesOk`，含解码不变量与查询稳定性），以及转入 `LEN` | 已检查（650c8931） | 0 |
 | `BitsShort` | 每轮以 `TYPE`、`TABLE`、`LEN` 开始时持有的位少于 8（`Round` 中的 `Short`）：带读入见证的查表、由 `StableQuery` 与 `PrefixQuery` 得到的 `consumed_gt`、依据 `CodeLengthContents` 的 `TABLE` 码长解码 | 已检查（57c7fabd、9e93b576） | 0 |
-| `fast_alias` | 输出位于窗口块内的 `inflate_fast`（`wnext = 0`）：`Goal.fast_safe` 的 `Env.hwin` 要求窗口块与输出块不同；计划：在 `wnext = 0` 时允许输出块，经 `Src.out`（`cpyG`）复制，精确内容引理保留不同块的情形 | 待完成 | 12 |
 | `LEN_slow_p` | 不走快速路径的 `case LEN`：字面量、块结束、带距离检查并经 `ROOM` 复制的长度/距离对、无效码 | 已检查（06e4a17d） | 0 |
-| `LEN_fast_p` | 走快速路径的 `case LEN`：`RESTORE`、`fast_alias`、`LOAD` | 待完成 | 3 |
+| `fast_env` | 在 `RESTORE` 之后由 `LEN` 处的 `PInv` 得到 `start = wsize` 的 `EnvG true`；窗口与自身的别名由 c51943af 覆盖（`EnvG true`、`inflate_fast_safe_progress`）。负责人：batch C | 已检查（c7169b54） | 0 |
+| `fast_consumes` | 在长度表满足 `LenLeavesPositive` 的 `EnvG α` 上，`inflate_fast` 严格消耗位：除非结束于 `TYPE` 或 `BAD`，有 `bits' + 8·avail_in' < bits + 8·avail_in`（路线 (a) 的度量）。负责人：batch C | 已检查（02e8c222） | 0 |
+| `LEN_fast_p` | 走快速路径的 `case LEN`：`RESTORE`、在 `fast_env` 上调用 `inflate_fast`、`LOAD`；之后的 `PInv`、度量（由 `fast_consumes`）与 `Short`。负责人：batch C | 已检查（c7169b54） | 0 |
 | `dispatch_p` | 调度的一轮：`PInv` 可达的每种模式；度量下降，或调用以三种结果之一离开；在 `LEN_fast_p` 之前快速路径是前提 `LenFast` | 已检查（650c8931） | 0 |
 | `loop_p` | 调度循环在额度内结束（由 `inputBound < 2^48` 得 `backMeasure < 2^64`） | 已检查（650c8931） | 0 |
 | `back_call` | 一次调用：入口、`loop_p`、出口（把最后的部分窗口交给 `out`，写 `next_in`、`avail_in`）：`back_call_partial`（返回的调用，任意输入）与 `back_call_total`（输入少于 `2^48`） | 已检查（3a2a8753、f91f401d） | 0 |
-| `back_null`、`back_end` | 空流；可达历史上的 `inflateBackEnd`（`back_end_public`） | 已检查（6f9575e7） | 0 |
-| `back_reach_valid` | 每个可达历史都在调用者窗口上留下有效状态（初始化、换缓冲区、使用无度量循环规则的 `back_call_partial`） | 已检查（6f9575e7） | 0 |
-| **合计** | | | **15** |
+| `back_null`、`back_end_blk` | 空流；可达历史上的 `inflateBackEnd`（`back_end_public`） | 已检查（6f9575e7、c7169b54） | 0 |
+| `back_reach_valid_blk` | 每个可达历史都在调用者窗口上留下有效状态（初始化、换缓冲区、使用无度量循环规则的 `back_call_partial`） | 已检查（6f9575e7、c7169b54） | 0 |
+| **合计** | | | **0** |
 
 #### 每个未完成公开目标的下一步
 

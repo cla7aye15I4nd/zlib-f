@@ -2420,8 +2420,8 @@ Abbreviations:
 | function | route | theorem (Lean name, file) | registered? | domain gap or note |
 | --- | --- | --- | --- | --- |
 | inflateBackInit_ (macro inflateBackInit) | own goal | `ZlibF.Spec.Public.InflateBackInitProof.back_init_public`, `public-infback-init.lean` | yes | Full: bad version or size, NULL strm, NULL window, bad `windowBits`, allocation failure. The success branch needs a writable window of `2^wb` bytes (zlib.h's own rule). |
-| inflateBack | sequence (`Goal.inflate_back_sequence_safety`) | `Zlib.Infback.Safety.inflate_back_sequence_safety`, `infback.c.safety-fast.lean` (checked, c7169b54) | no | Checked, not yet accepted (registration, proof mutants and replay are milestone work). Own `Goal.inflateBack` (functional) is not planned. NULL strm and state NULL are covered (`inflateBack_nullstream`, `inflateBack_nostate`, registered). The goal also narrows: `inputBound < 2^48`, the window is a slice of a heap byte block, every input chunk lies in a heap byte block (deviation rows). |
-| inflateBackEnd | own goal | `ZlibF.Spec.Public.InflateBackEndProof.back_end_public`, `public-infback-end.lean` | yes | Full: NULL, state NULL or zfree NULL, and `BackValid`. Clause 4 of the inflateBack sequence goal is also proved inside the conditional theorem only. |
+| inflateBack | sequence (`Goal.inflate_back_sequence_safety`) | `Zlib.Infback.Safety.inflate_back_sequence_safety`, `infback.c.safety-fast.lean` (checked, c7169b54) | yes | Registered, with eleven structural proof mutants of `inflateBack`, `inflateBackInit_` and `inflateBackEnd` (`tests/proof-mutants/infback-sequence.tsv`), each killed and rejected by the kernel replay of the goal theorem. Own `Goal.inflateBack` (functional) is not planned. NULL strm and state NULL are covered (`inflateBack_nullstream`, `inflateBack_nostate`, registered). The goal also narrows: `inputBound < 2^48`, the window is a slice of a heap byte block, every input chunk lies in a heap byte block (deviation rows). |
+| inflateBackEnd | own goal | `ZlibF.Spec.Public.InflateBackEndProof.back_end_public`, `public-infback-end.lean` | yes | Full: NULL, state NULL or zfree NULL, and `BackValid`. Clause 4 of the inflateBack sequence goal is proved in `inflate_back_sequence_safety` (`back_end_blk`). |
 
 #### Checksums
 
@@ -2474,7 +2474,7 @@ handles, and an unlisted fd rule (rows below).
 
 Documented functions with no checked no-fault theorem for their full documented domain:
 
-1. **inflateBack**: checked (`inflate_back_sequence_safety`, c7169b54), not yet registered. The generated target row still says "Not proved" until the progress view is regenerated at the milestone.
+1. **inflateBack**: registered (`inflate_back_sequence_safety`). The domain narrows as the deviation rows say: `inputBound < 2^48`, the window and every input chunk in a heap byte block.
 2. **deflateCopy**: registered. `source ≠ dest` is assumed (deviation row).
 3. **inflateEnd**: closed. NULL, state NULL, after `End`, after a failed init and the destination of a failed copy are covered by `Goal.inflate_refusal` (checked).
 4. **inflateCopy**: closed. An inconsistent source is covered by `Goal.inflate_refusal` (checked).
@@ -2604,10 +2604,11 @@ block. Deviation rows: "Callback decoder window", "Callback decoder input chunks
 row and "Callbacks". Candidate generalisation, not planned now: an input chunk at any byte reference
 (a caller's structure field, static data) for both decoders together, `inflate` and `inflateBack`;
 both rest on `inflate_fast`, whose entry takes a raw byte block.
-Composition (6f9575e7): `inflate_back_sequence_safety_of` proves the goal from `FastOk`, the fast
-path of `case LEN` on the invariant. `FastOk` asks for that path at every window; the goal's histories have
-their window in a heap byte block, so `inflate_back_sequence_safety` (c7169b54) composes the same lemmas
-with `lenFast_of_blk`, the fast path at such windows, and no open premise.
+Composition: `inflate_back_sequence_safety` (c7169b54) composes the lemmas below with `lenFast_of_blk`,
+the fast path at a window in a heap byte block, and no open premise; every history has its window there
+(`back_reach_window`). The earlier composition `inflate_back_sequence_safety_of`, from the premise
+`FastOk` (the fast path at every window), is deleted; `docs/proof/callbacks.md` says why the premise was
+not proved. Registered with proof mutants (`tests/proof-mutants/infback-sequence.tsv`).
 
 | Lemma | Meaning | State | Hours |
 | --- | --- | --- | ---: |
@@ -2626,8 +2627,8 @@ with `lenFast_of_blk`, the fast path at such windows, and no open premise.
 | `dispatch_p` | One round of the dispatch: every mode reachable from `PInv`; the measure falls or the call leaves with one of three results; the fast path is the premise `LenFast` until `LEN_fast_p` | checked (650c8931) | 0 |
 | `loop_p` | The dispatch loop ends within the fuel (`backMeasure < 2^64` from `inputBound < 2^48`) | checked (650c8931) | 0 |
 | `back_call` | One call: prologue, `loop_p`, epilogue (the last partial window to `out`, `next_in`, `avail_in`): `back_call_partial` (a call that returns, any input) and `back_call_total` (input below `2^48`) | checked (3a2a8753, f91f401d) | 0 |
-| `back_null`, `back_end` | Null stream; `inflateBackEnd` on a reachable history (`back_end_public`) | checked (6f9575e7) | 0 |
-| `back_reach_valid` | Every reachable history leaves a valid state over the caller's window (init, rebuffer, `back_call_partial` with the loop rule without a measure) | checked (6f9575e7) | 0 |
+| `back_null`, `back_end_blk` | Null stream; `inflateBackEnd` on a reachable history (`back_end_public`) | checked (6f9575e7, c7169b54) | 0 |
+| `back_reach_valid_blk` | Every reachable history leaves a valid state over the caller's window (init, rebuffer, `back_call_partial` with the loop rule without a measure) | checked (6f9575e7, c7169b54) | 0 |
 | **Total** | | | **0** |
 
 #### Next work for every unfinished public target
