@@ -32,7 +32,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Adler32.adler32",
       "source": "ZlibF/Zlib/adler32.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.adler32"
+      "functional_goal": "ZlibF.Spec.Public.Goal.adler32",
+      "safety_goal": "ZlibF.Spec.Public.Goal.adler32_safety"
     },
     {
       "function": "adler32_combine",
@@ -40,7 +41,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Adler32.adler32_combine",
       "source": "ZlibF/Zlib/adler32.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.adler32_combine"
+      "functional_goal": "ZlibF.Spec.Public.Goal.adler32_combine",
+      "safety_goal": "ZlibF.Spec.Public.Goal.adler32_combine_safety"
     },
     {
       "function": "adler32_combine64",
@@ -48,7 +50,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Adler32.adler32_combine64",
       "source": "ZlibF/Zlib/adler32.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.adler32_combine64"
+      "functional_goal": "ZlibF.Spec.Public.Goal.adler32_combine64",
+      "safety_goal": "ZlibF.Spec.Public.Goal.adler32_combine64_safety"
     },
     {
       "function": "adler32_z",
@@ -56,7 +59,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Adler32.adler32_z",
       "source": "ZlibF/Zlib/adler32.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.adler32_z"
+      "functional_goal": "ZlibF.Spec.Public.Goal.adler32_z",
+      "safety_goal": "ZlibF.Spec.Public.Goal.adler32_z_safety"
     },
     {
       "function": "compress",
@@ -64,7 +68,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Compress.compress",
       "source": "ZlibF/Zlib/compress.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.compress"
+      "functional_goal": "ZlibF.Spec.Public.Goal.compress",
+      "safety_goal": "ZlibF.Spec.Public.Goal.compress_safety"
     },
     {
       "function": "compress2",
@@ -72,7 +77,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Compress.compress2",
       "source": "ZlibF/Zlib/compress.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.compress2"
+      "functional_goal": "ZlibF.Spec.Public.Goal.compress2",
+      "safety_goal": "ZlibF.Spec.Public.Goal.compress2_safety"
     },
     {
       "function": "compress2_z",
@@ -80,7 +86,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Compress.compress2_z",
       "source": "ZlibF/Zlib/compress.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.compress2_z"
+      "functional_goal": "ZlibF.Spec.Public.Goal.compress2_z",
+      "safety_goal": "ZlibF.Spec.Public.Goal.compress2_z_safety"
     },
     {
       "function": "compressBound",
@@ -88,7 +95,9 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Compress.compressBound",
       "source": "ZlibF/Zlib/compress.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.compressBound"
+      "functional_goal": "ZlibF.Spec.Public.Goal.compressBound",
+      "safety_goal": "ZlibF.Spec.Public.Goal.compressBound",
+      "safety_note": "The translation is a pure function with no heap and no fault, so a separate safety goal would hold by definition; the full contract is the safety goal."
     },
     {
       "function": "compressBound_z",
@@ -96,7 +105,9 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Compress.compressBound_z",
       "source": "ZlibF/Zlib/compress.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.compressBound_z"
+      "functional_goal": "ZlibF.Spec.Public.Goal.compressBound_z",
+      "safety_goal": "ZlibF.Spec.Public.Goal.compressBound_z",
+      "safety_note": "The translation is a pure function with no heap and no fault, so a separate safety goal would hold by definition; the full contract is the safety goal."
     },
     {
       "function": "compress_z",
@@ -104,7 +115,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Compress.compress_z",
       "source": "ZlibF/Zlib/compress.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.compress_z"
+      "functional_goal": "ZlibF.Spec.Public.Goal.compress_z",
+      "safety_goal": "ZlibF.Spec.Public.Goal.compress_z_safety"
     },
     {
       "function": "crc32",
@@ -112,7 +124,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Crc32.crc32",
       "source": "ZlibF/Zlib/crc32.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.crc32"
+      "functional_goal": "ZlibF.Spec.Public.Goal.crc32",
+      "safety_goal": "ZlibF.Spec.Public.Goal.crc32_safety"
     },
     {
       "function": "crc32_combine",
@@ -120,7 +133,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Crc32.crc32_combine",
       "source": "ZlibF/Zlib/crc32.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.crc32_combine"
+      "functional_goal": "ZlibF.Spec.Public.Goal.crc32_combine",
+      "safety_goal": "ZlibF.Spec.Public.Goal.crc32_combine_safety"
     },
     {
       "function": "crc32_combine64",
@@ -128,7 +142,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Crc32.crc32_combine64",
       "source": "ZlibF/Zlib/crc32.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.crc32_combine64"
+      "functional_goal": "ZlibF.Spec.Public.Goal.crc32_combine64",
+      "safety_goal": "ZlibF.Spec.Public.Goal.crc32_combine64_safety"
     },
     {
       "function": "crc32_combine_gen",
@@ -136,7 +151,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Crc32.crc32_combine_gen",
       "source": "ZlibF/Zlib/crc32.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.crc32_combine_gen"
+      "functional_goal": "ZlibF.Spec.Public.Goal.crc32_combine_gen",
+      "safety_goal": "ZlibF.Spec.Public.Goal.crc32_combine_gen_safety"
     },
     {
       "function": "crc32_combine_gen64",
@@ -144,7 +160,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Crc32.crc32_combine_gen64",
       "source": "ZlibF/Zlib/crc32.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.crc32_combine_gen64"
+      "functional_goal": "ZlibF.Spec.Public.Goal.crc32_combine_gen64",
+      "safety_goal": "ZlibF.Spec.Public.Goal.crc32_combine_gen64_safety"
     },
     {
       "function": "crc32_combine_op",
@@ -152,7 +169,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Crc32.crc32_combine_op",
       "source": "ZlibF/Zlib/crc32.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.crc32_combine_op"
+      "functional_goal": "ZlibF.Spec.Public.Goal.crc32_combine_op",
+      "safety_goal": "ZlibF.Spec.Public.Goal.crc32_combine_op_safety"
     },
     {
       "function": "crc32_z",
@@ -160,7 +178,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Crc32.crc32_z",
       "source": "ZlibF/Zlib/crc32.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.crc32_z"
+      "functional_goal": "ZlibF.Spec.Public.Goal.crc32_z",
+      "safety_goal": "ZlibF.Spec.Public.Goal.crc32_z_safety"
     },
     {
       "function": "deflate",
@@ -168,7 +187,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Deflate.deflate",
       "source": "ZlibF/Zlib/deflate.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.deflate"
+      "functional_goal": "ZlibF.Spec.Public.Goal.deflate",
+      "safety_goal": "ZlibF.Spec.Public.Goal.deflate_safety"
     },
     {
       "function": "deflateBound",
@@ -176,7 +196,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Deflate.deflateBound",
       "source": "ZlibF/Zlib/deflate.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.deflateBound"
+      "functional_goal": "ZlibF.Spec.Public.Goal.deflateBound",
+      "safety_goal": "ZlibF.Spec.Public.Goal.deflateBound_safety"
     },
     {
       "function": "deflateBound_z",
@@ -184,7 +205,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Deflate.deflateBound_z",
       "source": "ZlibF/Zlib/deflate.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.deflateBound_z"
+      "functional_goal": "ZlibF.Spec.Public.Goal.deflateBound_z",
+      "safety_goal": "ZlibF.Spec.Public.Goal.deflateBound_z_safety"
     },
     {
       "function": "deflateCopy",
@@ -192,7 +214,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Deflate.deflateCopy",
       "source": "ZlibF/Zlib/deflate.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.deflateCopy"
+      "functional_goal": "ZlibF.Spec.Public.Goal.deflateCopy",
+      "safety_goal": "ZlibF.Spec.Public.Goal.deflateCopy_safety"
     },
     {
       "function": "deflateEnd",
@@ -200,7 +223,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Deflate.deflateEnd",
       "source": "ZlibF/Zlib/deflate.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.deflateEnd"
+      "functional_goal": "ZlibF.Spec.Public.Goal.deflateEnd",
+      "safety_goal": "ZlibF.Spec.Public.Goal.deflateEnd_safety"
     },
     {
       "function": "deflateGetDictionary",
@@ -208,7 +232,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Deflate.deflateGetDictionary",
       "source": "ZlibF/Zlib/deflate.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.deflateGetDictionary"
+      "functional_goal": "ZlibF.Spec.Public.Goal.deflateGetDictionary",
+      "safety_goal": "ZlibF.Spec.Public.Goal.deflateGetDictionary_safety"
     },
     {
       "function": "deflateInit2_",
@@ -216,7 +241,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Deflate.deflateInit2_",
       "source": "ZlibF/Zlib/deflate.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.deflateInit2_"
+      "functional_goal": "ZlibF.Spec.Public.Goal.deflateInit2_",
+      "safety_goal": "ZlibF.Spec.Public.Goal.deflateInit2__safety"
     },
     {
       "function": "deflateInit_",
@@ -224,7 +250,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Deflate.deflateInit_",
       "source": "ZlibF/Zlib/deflate.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.deflateInit_"
+      "functional_goal": "ZlibF.Spec.Public.Goal.deflateInit_",
+      "safety_goal": "ZlibF.Spec.Public.Goal.deflateInit__safety"
     },
     {
       "function": "deflateParams",
@@ -232,7 +259,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Deflate.deflateParams",
       "source": "ZlibF/Zlib/deflate.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.deflateParams"
+      "functional_goal": "ZlibF.Spec.Public.Goal.deflateParams",
+      "safety_goal": "ZlibF.Spec.Public.Goal.deflateParams_safety"
     },
     {
       "function": "deflatePending",
@@ -240,7 +268,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Deflate.deflatePending",
       "source": "ZlibF/Zlib/deflate.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.deflatePending"
+      "functional_goal": "ZlibF.Spec.Public.Goal.deflatePending",
+      "safety_goal": "ZlibF.Spec.Public.Goal.deflatePending_safety"
     },
     {
       "function": "deflatePrime",
@@ -248,7 +277,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Deflate.deflatePrime",
       "source": "ZlibF/Zlib/deflate.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.deflatePrime"
+      "functional_goal": "ZlibF.Spec.Public.Goal.deflatePrime",
+      "safety_goal": "ZlibF.Spec.Public.Goal.deflatePrime_safety"
     },
     {
       "function": "deflateReset",
@@ -256,7 +286,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Deflate.deflateReset",
       "source": "ZlibF/Zlib/deflate.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.deflateReset"
+      "functional_goal": "ZlibF.Spec.Public.Goal.deflateReset",
+      "safety_goal": "ZlibF.Spec.Public.Goal.deflateReset_safety"
     },
     {
       "function": "deflateResetKeep",
@@ -264,7 +295,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Deflate.deflateResetKeep",
       "source": "ZlibF/Zlib/deflate.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.deflateResetKeep"
+      "functional_goal": "ZlibF.Spec.Public.Goal.deflateResetKeep",
+      "safety_goal": null
     },
     {
       "function": "deflateSetDictionary",
@@ -272,7 +304,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Deflate.deflateSetDictionary",
       "source": "ZlibF/Zlib/deflate.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.deflateSetDictionary"
+      "functional_goal": "ZlibF.Spec.Public.Goal.deflateSetDictionary",
+      "safety_goal": "ZlibF.Spec.Public.Goal.deflateSetDictionary_safety"
     },
     {
       "function": "deflateSetHeader",
@@ -280,7 +313,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Deflate.deflateSetHeader",
       "source": "ZlibF/Zlib/deflate.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.deflateSetHeader"
+      "functional_goal": "ZlibF.Spec.Public.Goal.deflateSetHeader",
+      "safety_goal": "ZlibF.Spec.Public.Goal.deflateSetHeader_safety"
     },
     {
       "function": "deflateTune",
@@ -288,7 +322,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Deflate.deflateTune",
       "source": "ZlibF/Zlib/deflate.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.deflateTune"
+      "functional_goal": "ZlibF.Spec.Public.Goal.deflateTune",
+      "safety_goal": "ZlibF.Spec.Public.Goal.deflateTune_safety"
     },
     {
       "function": "deflateUsed",
@@ -296,7 +331,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Deflate.deflateUsed",
       "source": "ZlibF/Zlib/deflate.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.deflateUsed"
+      "functional_goal": "ZlibF.Spec.Public.Goal.deflateUsed",
+      "safety_goal": "ZlibF.Spec.Public.Goal.deflateUsed_safety"
     },
     {
       "function": "get_crc_table",
@@ -304,7 +340,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Crc32.get_crc_table",
       "source": "ZlibF/Zlib/crc32.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.get_crc_table"
+      "functional_goal": "ZlibF.Spec.Public.Goal.get_crc_table",
+      "safety_goal": null
     },
     {
       "function": "gzbuffer",
@@ -312,7 +349,9 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzlib.gzbuffer",
       "source": "ZlibF/Zlib/gzlib.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.gzbuffer"
+      "functional_goal": "ZlibF.Spec.Public.Goal.gzbuffer",
+      "safety_goal": "ZlibF.Spec.Public.Goal.gz_sequence_safety",
+      "safety_note": "The sequence safety goal until per-function goals are stated (docs/design/safety-functional-split.md, step 4)."
     },
     {
       "function": "gzclearerr",
@@ -320,7 +359,9 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzlib.gzclearerr",
       "source": "ZlibF/Zlib/gzlib.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.gzclearerr"
+      "functional_goal": "ZlibF.Spec.Public.Goal.gzclearerr",
+      "safety_goal": "ZlibF.Spec.Public.Goal.gz_sequence_safety",
+      "safety_note": "The sequence safety goal until per-function goals are stated (docs/design/safety-functional-split.md, step 4)."
     },
     {
       "function": "gzclose",
@@ -328,7 +369,9 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzclose.gzclose",
       "source": "ZlibF/Zlib/gzclose.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.gzclose"
+      "functional_goal": "ZlibF.Spec.Public.Goal.gzclose",
+      "safety_goal": "ZlibF.Spec.Public.Goal.gz_sequence_safety",
+      "safety_note": "The sequence safety goal until per-function goals are stated (docs/design/safety-functional-split.md, step 4)."
     },
     {
       "function": "gzclose_r",
@@ -336,7 +379,9 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzread.gzclose_r",
       "source": "ZlibF/Zlib/gzread.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.gzclose_r"
+      "functional_goal": "ZlibF.Spec.Public.Goal.gzclose_r",
+      "safety_goal": "ZlibF.Spec.Public.Goal.gz_sequence_safety",
+      "safety_note": "The sequence safety goal until per-function goals are stated (docs/design/safety-functional-split.md, step 4)."
     },
     {
       "function": "gzclose_w",
@@ -344,7 +389,9 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzwrite.gzclose_w",
       "source": "ZlibF/Zlib/gzwrite.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.gzclose_w"
+      "functional_goal": "ZlibF.Spec.Public.Goal.gzclose_w",
+      "safety_goal": "ZlibF.Spec.Public.Goal.gz_sequence_safety",
+      "safety_note": "The sequence safety goal until per-function goals are stated (docs/design/safety-functional-split.md, step 4)."
     },
     {
       "function": "gzdirect",
@@ -352,7 +399,9 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzread.gzdirect",
       "source": "ZlibF/Zlib/gzread.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.gzdirect"
+      "functional_goal": "ZlibF.Spec.Public.Goal.gzdirect",
+      "safety_goal": "ZlibF.Spec.Public.Goal.gz_sequence_safety",
+      "safety_note": "The sequence safety goal until per-function goals are stated (docs/design/safety-functional-split.md, step 4)."
     },
     {
       "function": "gzdopen",
@@ -360,7 +409,9 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzlib.gzdopen",
       "source": "ZlibF/Zlib/gzlib.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.gzdopen"
+      "functional_goal": "ZlibF.Spec.Public.Goal.gzdopen",
+      "safety_goal": "ZlibF.Spec.Public.Goal.gz_sequence_safety",
+      "safety_note": "The sequence safety goal until per-function goals are stated (docs/design/safety-functional-split.md, step 4)."
     },
     {
       "function": "gzeof",
@@ -368,7 +419,9 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzlib.gzeof",
       "source": "ZlibF/Zlib/gzlib.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.gzeof"
+      "functional_goal": "ZlibF.Spec.Public.Goal.gzeof",
+      "safety_goal": "ZlibF.Spec.Public.Goal.gz_sequence_safety",
+      "safety_note": "The sequence safety goal until per-function goals are stated (docs/design/safety-functional-split.md, step 4)."
     },
     {
       "function": "gzerror",
@@ -376,7 +429,9 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzlib.gzerror",
       "source": "ZlibF/Zlib/gzlib.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.gzerror"
+      "functional_goal": "ZlibF.Spec.Public.Goal.gzerror",
+      "safety_goal": "ZlibF.Spec.Public.Goal.gz_sequence_safety",
+      "safety_note": "The sequence safety goal until per-function goals are stated (docs/design/safety-functional-split.md, step 4)."
     },
     {
       "function": "gzflush",
@@ -384,7 +439,9 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzwrite.gzflush",
       "source": "ZlibF/Zlib/gzwrite.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.gzflush"
+      "functional_goal": "ZlibF.Spec.Public.Goal.gzflush",
+      "safety_goal": "ZlibF.Spec.Public.Goal.gz_sequence_safety",
+      "safety_note": "The sequence safety goal until per-function goals are stated (docs/design/safety-functional-split.md, step 4)."
     },
     {
       "function": "gzfread",
@@ -392,7 +449,9 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzread.gzfread",
       "source": "ZlibF/Zlib/gzread.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.gzfread"
+      "functional_goal": "ZlibF.Spec.Public.Goal.gzfread",
+      "safety_goal": "ZlibF.Spec.Public.Goal.gz_sequence_safety",
+      "safety_note": "The sequence safety goal until per-function goals are stated (docs/design/safety-functional-split.md, step 4)."
     },
     {
       "function": "gzfwrite",
@@ -400,7 +459,9 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzwrite.gzfwrite",
       "source": "ZlibF/Zlib/gzwrite.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.gzfwrite"
+      "functional_goal": "ZlibF.Spec.Public.Goal.gzfwrite",
+      "safety_goal": "ZlibF.Spec.Public.Goal.gz_sequence_safety",
+      "safety_note": "The sequence safety goal until per-function goals are stated (docs/design/safety-functional-split.md, step 4)."
     },
     {
       "function": "gzgetc",
@@ -408,7 +469,9 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzread.gzgetc",
       "source": "ZlibF/Zlib/gzread.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.gzgetc"
+      "functional_goal": "ZlibF.Spec.Public.Goal.gzgetc",
+      "safety_goal": "ZlibF.Spec.Public.Goal.gz_sequence_safety",
+      "safety_note": "The sequence safety goal until per-function goals are stated (docs/design/safety-functional-split.md, step 4)."
     },
     {
       "function": "gzgetc_",
@@ -416,7 +479,9 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzread.gzgetc_",
       "source": "ZlibF/Zlib/gzread.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.gzgetc_"
+      "functional_goal": "ZlibF.Spec.Public.Goal.gzgetc_",
+      "safety_goal": "ZlibF.Spec.Public.Goal.gz_sequence_safety",
+      "safety_note": "The sequence safety goal until per-function goals are stated (docs/design/safety-functional-split.md, step 4)."
     },
     {
       "function": "gzgets",
@@ -424,7 +489,9 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzread.gzgets",
       "source": "ZlibF/Zlib/gzread.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.gzgets"
+      "functional_goal": "ZlibF.Spec.Public.Goal.gzgets",
+      "safety_goal": "ZlibF.Spec.Public.Goal.gz_sequence_safety",
+      "safety_note": "The sequence safety goal until per-function goals are stated (docs/design/safety-functional-split.md, step 4)."
     },
     {
       "function": "gzoffset",
@@ -432,7 +499,9 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzlib.gzoffset",
       "source": "ZlibF/Zlib/gzlib.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.gzoffset"
+      "functional_goal": "ZlibF.Spec.Public.Goal.gzoffset",
+      "safety_goal": "ZlibF.Spec.Public.Goal.gz_sequence_safety",
+      "safety_note": "The sequence safety goal until per-function goals are stated (docs/design/safety-functional-split.md, step 4)."
     },
     {
       "function": "gzoffset64",
@@ -440,7 +509,9 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzlib.gzoffset64",
       "source": "ZlibF/Zlib/gzlib.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.gzoffset64"
+      "functional_goal": "ZlibF.Spec.Public.Goal.gzoffset64",
+      "safety_goal": "ZlibF.Spec.Public.Goal.gz_sequence_safety",
+      "safety_note": "The sequence safety goal until per-function goals are stated (docs/design/safety-functional-split.md, step 4)."
     },
     {
       "function": "gzopen",
@@ -448,7 +519,9 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzlib.gzopen",
       "source": "ZlibF/Zlib/gzlib.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.gzopen"
+      "functional_goal": "ZlibF.Spec.Public.Goal.gzopen",
+      "safety_goal": "ZlibF.Spec.Public.Goal.gz_sequence_safety",
+      "safety_note": "The sequence safety goal until per-function goals are stated (docs/design/safety-functional-split.md, step 4)."
     },
     {
       "function": "gzopen64",
@@ -456,7 +529,9 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzlib.gzopen64",
       "source": "ZlibF/Zlib/gzlib.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.gzopen64"
+      "functional_goal": "ZlibF.Spec.Public.Goal.gzopen64",
+      "safety_goal": "ZlibF.Spec.Public.Goal.gz_sequence_safety",
+      "safety_note": "The sequence safety goal until per-function goals are stated (docs/design/safety-functional-split.md, step 4)."
     },
     {
       "function": "gzopen_w",
@@ -470,7 +545,9 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzwrite.gzprintf",
       "source": "ZlibF/Zlib/gzwrite.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.gzprintf"
+      "functional_goal": "ZlibF.Spec.Public.Goal.gzprintf",
+      "safety_goal": "ZlibF.Spec.Public.Goal.gz_sequence_safety",
+      "safety_note": "The sequence safety goal until per-function goals are stated (docs/design/safety-functional-split.md, step 4)."
     },
     {
       "function": "gzputc",
@@ -478,7 +555,9 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzwrite.gzputc",
       "source": "ZlibF/Zlib/gzwrite.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.gzputc"
+      "functional_goal": "ZlibF.Spec.Public.Goal.gzputc",
+      "safety_goal": "ZlibF.Spec.Public.Goal.gz_sequence_safety",
+      "safety_note": "The sequence safety goal until per-function goals are stated (docs/design/safety-functional-split.md, step 4)."
     },
     {
       "function": "gzputs",
@@ -486,7 +565,9 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzwrite.gzputs",
       "source": "ZlibF/Zlib/gzwrite.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.gzputs"
+      "functional_goal": "ZlibF.Spec.Public.Goal.gzputs",
+      "safety_goal": "ZlibF.Spec.Public.Goal.gz_sequence_safety",
+      "safety_note": "The sequence safety goal until per-function goals are stated (docs/design/safety-functional-split.md, step 4)."
     },
     {
       "function": "gzread",
@@ -494,7 +575,9 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzread.gzread",
       "source": "ZlibF/Zlib/gzread.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.gzread"
+      "functional_goal": "ZlibF.Spec.Public.Goal.gzread",
+      "safety_goal": "ZlibF.Spec.Public.Goal.gz_sequence_safety",
+      "safety_note": "The sequence safety goal until per-function goals are stated (docs/design/safety-functional-split.md, step 4)."
     },
     {
       "function": "gzrewind",
@@ -502,7 +585,9 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzlib.gzrewind",
       "source": "ZlibF/Zlib/gzlib.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.gzrewind"
+      "functional_goal": "ZlibF.Spec.Public.Goal.gzrewind",
+      "safety_goal": "ZlibF.Spec.Public.Goal.gz_sequence_safety",
+      "safety_note": "The sequence safety goal until per-function goals are stated (docs/design/safety-functional-split.md, step 4)."
     },
     {
       "function": "gzseek",
@@ -510,7 +595,9 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzlib.gzseek",
       "source": "ZlibF/Zlib/gzlib.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.gzseek"
+      "functional_goal": "ZlibF.Spec.Public.Goal.gzseek",
+      "safety_goal": "ZlibF.Spec.Public.Goal.gz_sequence_safety",
+      "safety_note": "The sequence safety goal until per-function goals are stated (docs/design/safety-functional-split.md, step 4)."
     },
     {
       "function": "gzseek64",
@@ -518,7 +605,9 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzlib.gzseek64",
       "source": "ZlibF/Zlib/gzlib.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.gzseek64"
+      "functional_goal": "ZlibF.Spec.Public.Goal.gzseek64",
+      "safety_goal": "ZlibF.Spec.Public.Goal.gz_sequence_safety",
+      "safety_note": "The sequence safety goal until per-function goals are stated (docs/design/safety-functional-split.md, step 4)."
     },
     {
       "function": "gzsetparams",
@@ -526,7 +615,9 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzwrite.gzsetparams",
       "source": "ZlibF/Zlib/gzwrite.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.gzsetparams"
+      "functional_goal": "ZlibF.Spec.Public.Goal.gzsetparams",
+      "safety_goal": "ZlibF.Spec.Public.Goal.gz_sequence_safety",
+      "safety_note": "The sequence safety goal until per-function goals are stated (docs/design/safety-functional-split.md, step 4)."
     },
     {
       "function": "gztell",
@@ -534,7 +625,9 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzlib.gztell",
       "source": "ZlibF/Zlib/gzlib.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.gztell"
+      "functional_goal": "ZlibF.Spec.Public.Goal.gztell",
+      "safety_goal": "ZlibF.Spec.Public.Goal.gz_sequence_safety",
+      "safety_note": "The sequence safety goal until per-function goals are stated (docs/design/safety-functional-split.md, step 4)."
     },
     {
       "function": "gztell64",
@@ -542,7 +635,9 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzlib.gztell64",
       "source": "ZlibF/Zlib/gzlib.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.gztell64"
+      "functional_goal": "ZlibF.Spec.Public.Goal.gztell64",
+      "safety_goal": "ZlibF.Spec.Public.Goal.gz_sequence_safety",
+      "safety_note": "The sequence safety goal until per-function goals are stated (docs/design/safety-functional-split.md, step 4)."
     },
     {
       "function": "gzungetc",
@@ -550,7 +645,9 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzread.gzungetc",
       "source": "ZlibF/Zlib/gzread.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.gzungetc"
+      "functional_goal": "ZlibF.Spec.Public.Goal.gzungetc",
+      "safety_goal": "ZlibF.Spec.Public.Goal.gz_sequence_safety",
+      "safety_note": "The sequence safety goal until per-function goals are stated (docs/design/safety-functional-split.md, step 4)."
     },
     {
       "function": "gzvprintf",
@@ -558,7 +655,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzwrite.gzvprintf",
       "source": "ZlibF/Zlib/gzwrite.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.gzvprintf"
+      "functional_goal": "ZlibF.Spec.Public.Goal.gzvprintf",
+      "safety_goal": null
     },
     {
       "function": "gzwrite",
@@ -566,7 +664,9 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Gzwrite.gzwrite",
       "source": "ZlibF/Zlib/gzwrite.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.gzwrite"
+      "functional_goal": "ZlibF.Spec.Public.Goal.gzwrite",
+      "safety_goal": "ZlibF.Spec.Public.Goal.gz_sequence_safety",
+      "safety_note": "The sequence safety goal until per-function goals are stated (docs/design/safety-functional-split.md, step 4)."
     },
     {
       "function": "inflate",
@@ -574,7 +674,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Inflate.inflate",
       "source": "ZlibF/Zlib/inflate.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.inflate"
+      "functional_goal": "ZlibF.Spec.Public.Goal.inflate",
+      "safety_goal": "ZlibF.Spec.Public.Goal.inflate_safety"
     },
     {
       "function": "inflateBack",
@@ -582,7 +683,9 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Infback.inflateBack",
       "source": "ZlibF/Zlib/infback.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.inflateBack"
+      "functional_goal": "ZlibF.Spec.Public.Goal.inflateBack",
+      "safety_goal": "ZlibF.Spec.Public.Goal.inflate_back_sequence_safety",
+      "safety_note": "The sequence safety goal until per-function goals are stated (docs/design/safety-functional-split.md, step 4)."
     },
     {
       "function": "inflateBackEnd",
@@ -590,7 +693,9 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Infback.inflateBackEnd",
       "source": "ZlibF/Zlib/infback.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.inflateBackEnd"
+      "functional_goal": "ZlibF.Spec.Public.Goal.inflateBackEnd",
+      "safety_goal": "ZlibF.Spec.Public.Goal.inflate_back_sequence_safety",
+      "safety_note": "The sequence safety goal until per-function goals are stated (docs/design/safety-functional-split.md, step 4)."
     },
     {
       "function": "inflateBackInit_",
@@ -598,7 +703,9 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Infback.inflateBackInit_",
       "source": "ZlibF/Zlib/infback.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.inflateBackInit_"
+      "functional_goal": "ZlibF.Spec.Public.Goal.inflateBackInit_",
+      "safety_goal": "ZlibF.Spec.Public.Goal.inflate_back_sequence_safety",
+      "safety_note": "The sequence safety goal until per-function goals are stated (docs/design/safety-functional-split.md, step 4)."
     },
     {
       "function": "inflateCodesUsed",
@@ -606,7 +713,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Inflate.inflateCodesUsed",
       "source": "ZlibF/Zlib/inflate.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.inflateCodesUsed"
+      "functional_goal": "ZlibF.Spec.Public.Goal.inflateCodesUsed",
+      "safety_goal": null
     },
     {
       "function": "inflateCopy",
@@ -614,7 +722,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Inflate.inflateCopy",
       "source": "ZlibF/Zlib/inflate.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.inflateCopy"
+      "functional_goal": "ZlibF.Spec.Public.Goal.inflateCopy",
+      "safety_goal": "ZlibF.Spec.Public.Goal.inflateCopy_safety"
     },
     {
       "function": "inflateEnd",
@@ -622,7 +731,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Inflate.inflateEnd",
       "source": "ZlibF/Zlib/inflate.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.inflateEnd"
+      "functional_goal": "ZlibF.Spec.Public.Goal.inflateEnd",
+      "safety_goal": "ZlibF.Spec.Public.Goal.inflateEnd_safety"
     },
     {
       "function": "inflateGetDictionary",
@@ -630,7 +740,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Inflate.inflateGetDictionary",
       "source": "ZlibF/Zlib/inflate.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.inflateGetDictionary"
+      "functional_goal": "ZlibF.Spec.Public.Goal.inflateGetDictionary",
+      "safety_goal": "ZlibF.Spec.Public.Goal.inflateGetDictionary_safety"
     },
     {
       "function": "inflateGetHeader",
@@ -638,7 +749,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Inflate.inflateGetHeader",
       "source": "ZlibF/Zlib/inflate.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.inflateGetHeader"
+      "functional_goal": "ZlibF.Spec.Public.Goal.inflateGetHeader",
+      "safety_goal": "ZlibF.Spec.Public.Goal.inflateGetHeader_safety"
     },
     {
       "function": "inflateInit2_",
@@ -646,7 +758,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Inflate.inflateInit2_",
       "source": "ZlibF/Zlib/inflate.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.inflateInit2_"
+      "functional_goal": "ZlibF.Spec.Public.Goal.inflateInit2_",
+      "safety_goal": "ZlibF.Spec.Public.Goal.inflateInit2__safety"
     },
     {
       "function": "inflateInit_",
@@ -654,7 +767,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Inflate.inflateInit_",
       "source": "ZlibF/Zlib/inflate.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.inflateInit_"
+      "functional_goal": "ZlibF.Spec.Public.Goal.inflateInit_",
+      "safety_goal": "ZlibF.Spec.Public.Goal.inflateInit__safety"
     },
     {
       "function": "inflateMark",
@@ -662,7 +776,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Inflate.inflateMark",
       "source": "ZlibF/Zlib/inflate.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.inflateMark"
+      "functional_goal": "ZlibF.Spec.Public.Goal.inflateMark",
+      "safety_goal": "ZlibF.Spec.Public.Goal.inflateMark_safety"
     },
     {
       "function": "inflatePrime",
@@ -670,7 +785,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Inflate.inflatePrime",
       "source": "ZlibF/Zlib/inflate.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.inflatePrime"
+      "functional_goal": "ZlibF.Spec.Public.Goal.inflatePrime",
+      "safety_goal": "ZlibF.Spec.Public.Goal.inflatePrime_safety"
     },
     {
       "function": "inflateReset",
@@ -678,7 +794,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Inflate.inflateReset",
       "source": "ZlibF/Zlib/inflate.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.inflateReset"
+      "functional_goal": "ZlibF.Spec.Public.Goal.inflateReset",
+      "safety_goal": "ZlibF.Spec.Public.Goal.inflateReset_safety"
     },
     {
       "function": "inflateReset2",
@@ -686,7 +803,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Inflate.inflateReset2",
       "source": "ZlibF/Zlib/inflate.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.inflateReset2"
+      "functional_goal": "ZlibF.Spec.Public.Goal.inflateReset2",
+      "safety_goal": "ZlibF.Spec.Public.Goal.inflateReset2_safety"
     },
     {
       "function": "inflateResetKeep",
@@ -694,7 +812,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Inflate.inflateResetKeep",
       "source": "ZlibF/Zlib/inflate.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.inflateResetKeep"
+      "functional_goal": "ZlibF.Spec.Public.Goal.inflateResetKeep",
+      "safety_goal": null
     },
     {
       "function": "inflateSetDictionary",
@@ -702,7 +821,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Inflate.inflateSetDictionary",
       "source": "ZlibF/Zlib/inflate.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.inflateSetDictionary"
+      "functional_goal": "ZlibF.Spec.Public.Goal.inflateSetDictionary",
+      "safety_goal": "ZlibF.Spec.Public.Goal.inflateSetDictionary_safety"
     },
     {
       "function": "inflateSync",
@@ -710,7 +830,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Inflate.inflateSync",
       "source": "ZlibF/Zlib/inflate.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.inflateSync"
+      "functional_goal": "ZlibF.Spec.Public.Goal.inflateSync",
+      "safety_goal": "ZlibF.Spec.Public.Goal.inflateSync_safety"
     },
     {
       "function": "inflateSyncPoint",
@@ -718,7 +839,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Inflate.inflateSyncPoint",
       "source": "ZlibF/Zlib/inflate.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.inflateSyncPoint"
+      "functional_goal": "ZlibF.Spec.Public.Goal.inflateSyncPoint",
+      "safety_goal": null
     },
     {
       "function": "inflateUndermine",
@@ -726,7 +848,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Inflate.inflateUndermine",
       "source": "ZlibF/Zlib/inflate.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.inflateUndermine"
+      "functional_goal": "ZlibF.Spec.Public.Goal.inflateUndermine",
+      "safety_goal": null
     },
     {
       "function": "inflateValidate",
@@ -734,7 +857,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Inflate.inflateValidate",
       "source": "ZlibF/Zlib/inflate.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.inflateValidate"
+      "functional_goal": "ZlibF.Spec.Public.Goal.inflateValidate",
+      "safety_goal": null
     },
     {
       "function": "uncompress",
@@ -742,7 +866,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Uncompr.uncompress",
       "source": "ZlibF/Zlib/uncompr.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.uncompress"
+      "functional_goal": "ZlibF.Spec.Public.Goal.uncompress",
+      "safety_goal": "ZlibF.Spec.Public.Goal.uncompress_safe"
     },
     {
       "function": "uncompress2",
@@ -750,7 +875,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Uncompr.uncompress2",
       "source": "ZlibF/Zlib/uncompr.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.uncompress2"
+      "functional_goal": "ZlibF.Spec.Public.Goal.uncompress2",
+      "safety_goal": "ZlibF.Spec.Public.Goal.uncompress2_safe"
     },
     {
       "function": "uncompress2_z",
@@ -758,7 +884,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Uncompr.uncompress2_z",
       "source": "ZlibF/Zlib/uncompr.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.uncompress2_z"
+      "functional_goal": "ZlibF.Spec.Public.Goal.uncompress2_z",
+      "safety_goal": "ZlibF.Spec.Public.Goal.uncompress2_z_safe"
     },
     {
       "function": "uncompress_z",
@@ -766,7 +893,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Uncompr.uncompress_z",
       "source": "ZlibF/Zlib/uncompr.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.uncompress_z"
+      "functional_goal": "ZlibF.Spec.Public.Goal.uncompress_z",
+      "safety_goal": "ZlibF.Spec.Public.Goal.uncompress_z_safe"
     },
     {
       "function": "zError",
@@ -774,7 +902,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Zutil.zError",
       "source": "ZlibF/Zlib/zutil.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.zError"
+      "functional_goal": "ZlibF.Spec.Public.Goal.zError",
+      "safety_goal": null
     },
     {
       "function": "zlibCompileFlags",
@@ -782,7 +911,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Zutil.zlibCompileFlags",
       "source": "ZlibF/Zlib/zutil.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.zlibCompileFlags"
+      "functional_goal": "ZlibF.Spec.Public.Goal.zlibCompileFlags",
+      "safety_goal": "ZlibF.Spec.Public.Goal.zlibCompileFlags_safety"
     },
     {
       "function": "zlibVersion",
@@ -790,7 +920,8 @@
       "scope": "lp64-linux",
       "implementation": "Zlib.Zutil.zlibVersion",
       "source": "ZlibF/Zlib/zutil.c.lean",
-      "goal": "ZlibF.Spec.Public.Goal.zlibVersion"
+      "functional_goal": "ZlibF.Spec.Public.Goal.zlibVersion",
+      "safety_goal": "ZlibF.Spec.Public.Goal.zlibVersion_safety"
     }
   ],
   "sequence_goals": [
@@ -864,5 +995,191 @@
     "ZlibF.Spec.Public.Goal.crc32_combine64_safety",
     "ZlibF.Spec.Public.Goal.zlibVersion_safety",
     "ZlibF.Spec.Public.Goal.zlibCompileFlags_safety"
+  ],
+  "open_safety": [
+    {
+      "goal": "ZlibF.Spec.Public.Goal.adler32_safety",
+      "owner": "batch B"
+    },
+    {
+      "goal": "ZlibF.Spec.Public.Goal.adler32_combine_safety",
+      "owner": "batch B"
+    },
+    {
+      "goal": "ZlibF.Spec.Public.Goal.adler32_combine64_safety",
+      "owner": "batch B"
+    },
+    {
+      "goal": "ZlibF.Spec.Public.Goal.adler32_z_safety",
+      "owner": "batch B"
+    },
+    {
+      "goal": "ZlibF.Spec.Public.Goal.crc32_safety",
+      "owner": "batch B"
+    },
+    {
+      "goal": "ZlibF.Spec.Public.Goal.crc32_combine_safety",
+      "owner": "batch B"
+    },
+    {
+      "goal": "ZlibF.Spec.Public.Goal.crc32_combine64_safety",
+      "owner": "batch B"
+    },
+    {
+      "goal": "ZlibF.Spec.Public.Goal.crc32_combine_gen_safety",
+      "owner": "batch B"
+    },
+    {
+      "goal": "ZlibF.Spec.Public.Goal.crc32_combine_gen64_safety",
+      "owner": "batch B"
+    },
+    {
+      "goal": "ZlibF.Spec.Public.Goal.crc32_combine_op_safety",
+      "owner": "batch B"
+    },
+    {
+      "goal": "ZlibF.Spec.Public.Goal.crc32_z_safety",
+      "owner": "batch B"
+    },
+    {
+      "goal": "ZlibF.Spec.Public.Goal.deflate_safety",
+      "owner": "batch B"
+    },
+    {
+      "goal": "ZlibF.Spec.Public.Goal.deflateBound_safety",
+      "owner": "batch B"
+    },
+    {
+      "goal": "ZlibF.Spec.Public.Goal.deflateBound_z_safety",
+      "owner": "batch B"
+    },
+    {
+      "goal": "ZlibF.Spec.Public.Goal.deflateEnd_safety",
+      "owner": "batch B"
+    },
+    {
+      "goal": "ZlibF.Spec.Public.Goal.deflateGetDictionary_safety",
+      "owner": "batch B"
+    },
+    {
+      "goal": "ZlibF.Spec.Public.Goal.deflateInit2__safety",
+      "owner": "batch B"
+    },
+    {
+      "goal": "ZlibF.Spec.Public.Goal.deflateInit__safety",
+      "owner": "batch B"
+    },
+    {
+      "goal": "ZlibF.Spec.Public.Goal.deflateParams_safety",
+      "owner": "batch B"
+    },
+    {
+      "goal": "ZlibF.Spec.Public.Goal.deflatePending_safety",
+      "owner": "batch B"
+    },
+    {
+      "goal": "ZlibF.Spec.Public.Goal.deflatePrime_safety",
+      "owner": "batch B"
+    },
+    {
+      "goal": "ZlibF.Spec.Public.Goal.deflateReset_safety",
+      "owner": "batch B"
+    },
+    {
+      "goal": "ZlibF.Spec.Public.Goal.deflateSetDictionary_safety",
+      "owner": "batch B"
+    },
+    {
+      "goal": "ZlibF.Spec.Public.Goal.deflateSetHeader_safety",
+      "owner": "batch B"
+    },
+    {
+      "goal": "ZlibF.Spec.Public.Goal.deflateTune_safety",
+      "owner": "batch B"
+    },
+    {
+      "goal": "ZlibF.Spec.Public.Goal.deflateUsed_safety",
+      "owner": "batch B"
+    },
+    {
+      "goal": "ZlibF.Spec.Public.Goal.gz_sequence_safety",
+      "owner": "batch C"
+    },
+    {
+      "goal": "ZlibF.Spec.Public.Goal.inflate_safety",
+      "owner": "batch B"
+    },
+    {
+      "goal": "ZlibF.Spec.Public.Goal.inflateCopy_safety",
+      "owner": "batch B"
+    },
+    {
+      "goal": "ZlibF.Spec.Public.Goal.inflateEnd_safety",
+      "owner": "batch B"
+    },
+    {
+      "goal": "ZlibF.Spec.Public.Goal.inflateGetDictionary_safety",
+      "owner": "batch B"
+    },
+    {
+      "goal": "ZlibF.Spec.Public.Goal.inflateGetHeader_safety",
+      "owner": "batch B"
+    },
+    {
+      "goal": "ZlibF.Spec.Public.Goal.inflateInit2__safety",
+      "owner": "batch B"
+    },
+    {
+      "goal": "ZlibF.Spec.Public.Goal.inflateInit__safety",
+      "owner": "batch B"
+    },
+    {
+      "goal": "ZlibF.Spec.Public.Goal.inflateMark_safety",
+      "owner": "batch B"
+    },
+    {
+      "goal": "ZlibF.Spec.Public.Goal.inflatePrime_safety",
+      "owner": "batch B"
+    },
+    {
+      "goal": "ZlibF.Spec.Public.Goal.inflateReset_safety",
+      "owner": "batch B"
+    },
+    {
+      "goal": "ZlibF.Spec.Public.Goal.inflateReset2_safety",
+      "owner": "batch B"
+    },
+    {
+      "goal": "ZlibF.Spec.Public.Goal.inflateSetDictionary_safety",
+      "owner": "batch B"
+    },
+    {
+      "goal": "ZlibF.Spec.Public.Goal.inflateSync_safety",
+      "owner": "batch B"
+    },
+    {
+      "goal": "ZlibF.Spec.Public.Goal.zlibCompileFlags_safety",
+      "owner": "batch B"
+    },
+    {
+      "goal": "ZlibF.Spec.Public.Goal.zlibVersion_safety",
+      "owner": "batch B"
+    },
+    {
+      "goal": "ZlibF.Spec.Public.Goal.gz_refusal",
+      "owner": "batch C"
+    },
+    {
+      "goal": "ZlibF.Spec.Public.Goal.deflate_initialisation_domain",
+      "owner": "deflate owner"
+    },
+    {
+      "goal": "ZlibF.Spec.Public.Goal.gz_initialisation_domain",
+      "owner": "batch C"
+    },
+    {
+      "goal": "ZlibF.Spec.Public.Goal.gz_sequence_nonvacuity",
+      "owner": "batch C"
+    }
   ]
 }

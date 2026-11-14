@@ -102,7 +102,7 @@ class PublicMutationTests(unittest.TestCase):
         (lists / 'fixture.tsv').write_text('sibling\tZlibF/Zlib/fixture.c.lean\tprivate def helper : Nat := 7\tprivate def helper : Nat := 8\tProof\n')
         (directory / 'public-mutants.json').write_text(json.dumps({'version': 1, 'targets': {
             'Fixture.Goal.checked': [{'list': 'tests/proof-mutants/fixture.tsv', 'name': 'sibling'}]}}))
-        manifest = {'apis': [{'goal': 'Fixture.Goal.checked', 'function': 'target',
+        manifest = {'apis': [{'functional_goal': 'Fixture.Goal.checked', 'function': 'target',
             'implementation': 'Fixture.target', 'source': 'ZlibF/Zlib/fixture.c.lean', 'scope': 'lp64-linux'}]}
         with patch.object(verification, 'ROOT', self.root):
             # The old sibling regex accepts this. The compiler boundary must reject it.
@@ -192,7 +192,7 @@ class PublicMutationTests(unittest.TestCase):
         (directory / 'public-mutants.json').write_text(json.dumps({'version': 1, 'targets': {
             'Fixture.Goal.checked': [{'list': 'tests/proof-mutants/fixture.tsv',
                                       'name': 'actual-result'}]}}))
-        manifest = {'apis': [{'goal': 'Fixture.Goal.checked', 'function': 'target',
+        manifest = {'apis': [{'functional_goal': 'Fixture.Goal.checked', 'function': 'target',
             'source': 'ZlibF/Zlib/fixture.c.lean', 'scope': 'lp64-linux'}]}
         unused = self.root / '.lake/build/bin/unused'
         unused.parent.mkdir(parents=True)

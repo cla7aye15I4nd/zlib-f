@@ -152,7 +152,7 @@ for entry in manifest['apis']:
         assert page.return_guides==[entry['function']],(path,'Missing canonical return map')
         assert page.return_exact==[entry['function']],(path,'Missing complete return clauses')
         assert len(page.return_case_counts)==1 and page.return_case_counts[0]>0,(path,'Missing return cases')
-        if entry.get('goal'):
+        if entry.get('functional_goal'):
             assert 'formal-target' in all_pages[path.resolve()].ids, ('Missing formal target', entry['function'])
 for suffix in ['.html','.zh.html']:
     assert all_pages[(ROOT/'reference'/('api'+suffix)).resolve()].return_roles==len(manifest['apis'])

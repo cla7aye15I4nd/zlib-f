@@ -400,7 +400,7 @@ def render_api(manifest: dict) -> None:
             common = re.sub(r"<h2\b[^>]*>.*?</h2>\s*", "", common, count=1, flags=re.S)
             common = rewrite(common, source, target, lang)
             body += f'<details class="rf-common"><summary>{t("本组共同前提与范围","Shared conditions and scope")}</summary>{common}</details>'
-            goal = entry.get("goal")
+            goal = entry.get("functional_goal")
             if goal:
                 short = goal.rsplit(".", 1)[-1]
                 if short not in excerpts:
