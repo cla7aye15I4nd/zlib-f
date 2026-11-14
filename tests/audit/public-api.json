@@ -1171,7 +1171,7 @@
     },
     {
       "goal": "ZlibF.Spec.Public.Goal.deflate_initialisation_domain",
-      "owner": "deflate owner"
+      "owner": "batch 3"
     },
     {
       "goal": "ZlibF.Spec.Public.Goal.gz_initialisation_domain",
