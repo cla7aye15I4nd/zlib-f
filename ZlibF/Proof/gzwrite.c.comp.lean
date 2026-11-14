@@ -687,7 +687,7 @@ theorem upTo_step {h h' : Heap} {s s' : GzState} {src : Region}
     (head : ∃ k d, s'.strm.state = some (.deflate k) ∧ h'.dstates k = some d ∧ d.gzhead = none)
     (reset' : s'.reset = 0 ∨ s'.reset = 1) (output' : OutW5 s')
     (input' : NextInOk s' src)
-    (srcB : src.pointer = s.«in» ∧ src.length = s.size.toNat ∨ ∃ xs, Bytes h' src.pointer src.length xs) :
+    (srcB : src.pointer = s.«in» ∧ src.length ≤ 2 * s.size.toNat ∨ ∃ xs, Bytes h' src.pointer src.length xs) :
     GzInvUpToInput h' i s' src ∧ ∀ b, GzOwned h' i s' b ↔ GzOwned h i s b := by
   have U0 := U
   obtain ⟨hs, invC, hmode, -, hreg⟩ := U
@@ -727,9 +727,9 @@ theorem upTo_step {h h' : Heap} {s s' : GzState} {src : Region}
   have hin : s'.«in» = s.«in» := sh.2.2.1
   have hsz : s'.size = s.size := sh.2.2.2.2.1
   rcases hreg with ⟨hp, hl⟩ | ⟨-, no⟩
-  · exact Or.inl ⟨hp.trans hin.symm, hl.trans (by rw [hsz])⟩
+  · exact Or.inl ⟨hp.trans hin.symm, by rw [hsz]; exact hl⟩
   · rcases srcB with ⟨hp, hl⟩ | hb
-    · exact Or.inl ⟨hp.trans hin.symm, hl.trans (by rw [hsz])⟩
+    · exact Or.inl ⟨hp.trans hin.symm, by rw [hsz]; exact hl⟩
     · exact Or.inr ⟨hb, fun b hr ho => no b hr ((hown b).1 ho)⟩
 
 end step
@@ -1237,7 +1237,7 @@ theorem call_step {h : Heap} {s : GzState} (S : St i src h s) (flush : Int32) :
       simp only [UInt32.toNat_zero] at hu3 ⊢
       omega
     · exact Or.inr ⟨a + used, by rw [hz', hu5, ha, advance_padv], by rw [hz']; omega⟩
-  have srcB : src.pointer = s.«in» ∧ src.length = s.size.toNat ∨ ∃ xs, Bytes after src.pointer src.length xs := by
+  have srcB : src.pointer = s.«in» ∧ src.length ≤ 2 * s.size.toNat ∨ ∃ xs, Bytes after src.pointer src.length xs := by
     rcases S.up.2.2.2.2 with hin | ⟨⟨xs, hb⟩, no⟩
     · exact Or.inl hin
     · exact Or.inr ⟨xs, bytes_after hb no (fun r o hroot => get_of_frame frG hbor r o hroot)⟩
@@ -1365,7 +1365,7 @@ theorem reset_step {h : Heap} {s : GzState} (S : St i src h s) :
       ⟨rfl, rfl⟩ trivial (exec_reset run)
   have globals : LibraryGlobals h2 := by
     unfold LibraryGlobals; rw [← frame.1]; exact F.globals
-  have srcB : src.pointer = s.«in» ∧ src.length = s.size.toNat ∨ ∃ xs, Bytes h2 src.pointer src.length xs := by
+  have srcB : src.pointer = s.«in» ∧ src.length ≤ 2 * s.size.toNat ∨ ∃ xs, Bytes h2 src.pointer src.length xs := by
     rcases S.up.2.2.2.2 with hin | ⟨⟨xs, hb⟩, no⟩
     · exact Or.inl hin
     · exact Or.inr ⟨xs, bytes_after hb no (fun r o hroot => get_of_frame frG hbor r o hroot)⟩
@@ -1427,7 +1427,7 @@ theorem st_record {h : Heap} {s s' : GzState} (S : St i src h s) (sh : SameShape
       cases hb
       exact ⟨⟨oa, oa, hob, hob, rfl⟩, rfl⟩
   obtain ⟨k, d, hk, hdk, hhead⟩ := F.head
-  have srcB : src.pointer = s.«in» ∧ src.length = s.size.toNat ∨
+  have srcB : src.pointer = s.«in» ∧ src.length ≤ 2 * s.size.toNat ∨
       ∃ xs, Bytes (putGz h i s') src.pointer src.length xs := by
     rcases S.up.2.2.2.2 with hin | ⟨⟨xs, hb⟩, -⟩
     · exact Or.inl hin
@@ -1526,7 +1526,7 @@ theorem upTo_direct {h : Heap} {s s' : GzState} (U : GzInvUpToInput h i s src) (
   have hin : s'.«in» = s.«in» := sh.2.2.1
   have hsz : s'.size = s.size := sh.2.2.2.2.1
   rcases hreg with ⟨hp, hl⟩ | ⟨⟨xs, hb⟩, no⟩
-  · exact Or.inl ⟨hp.trans hin.symm, hl.trans (by rw [hsz])⟩
+  · exact Or.inl ⟨hp.trans hin.symm, by rw [hsz]; exact hl⟩
   · exact Or.inr ⟨⟨xs, (bytes_putGz _ _ _ _ _ _).2 hb⟩, fun b hr ho => no b hr ((hown b).1 ho)⟩
 
 /-! ## The bookkeeping of `GzPost` from the start of `gz_comp` -/
@@ -1836,7 +1836,7 @@ theorem err_tail (err : GzErrorSpec) (errOwn : GzErrorOwn) {h0 h : Heap} {s0 s :
           ¬ GzOwned { h with libcErrorBorrow := some (Zlib.GzFs.Proofs.nextErrorEpoch h, fs.errno) } i s b :=
     Or.inr ⟨_, Zlib.GzFs.Proofs.zstrerror_cstring (Zlib.GzFs.Proofs.zstrerror_run h fs),
       fun b hb => by simp [ByteRoot] at hb⟩
-  have hlive : src.pointer = s.«in» ∧ src.length = s.size.toNat ∨
+  have hlive : src.pointer = s.«in» ∧ src.length ≤ 2 * s.size.toNat ∨
       ∀ b, ByteRoot src.pointer b →
         ({ h with libcErrorBorrow := some (Zlib.GzFs.Proofs.nextErrorEpoch h, fs.errno) } : Heap).live b := by
     rcases U.2.2.2.2 with hin | ⟨⟨xs, hb⟩, -⟩

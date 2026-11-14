@@ -41,7 +41,7 @@ def GzInvUpToInput (h : Heap) (i : Nat) (s : GzState) (src : Region) : Prop :=
   h.gzstates i = some s ∧ GzInv (putGz h i (clearIn s)) i (clearIn s) ∧ s.mode = GZ_WRITE ∧
   ((s.strm.next_in = .null ∧ s.strm.avail_in = 0) ∨
     ∃ a, s.strm.next_in = padv src.pointer a ∧ a + s.strm.avail_in.toNat ≤ src.length) ∧
-  (src.pointer = s.«in» ∧ src.length = s.size.toNat ∨
+  (src.pointer = s.«in» ∧ src.length ≤ 2 * s.size.toNat ∨
     (∃ xs, Bytes h src.pointer src.length xs) ∧ ∀ b, ByteRoot src.pointer b → ¬ GzOwned h i s b)
 
 /-- `GzInvUpToInput` without the readability of a caller region: what holds after `gz_comp` fails. A failed write
@@ -51,7 +51,7 @@ def GzInvUpToInputWeak (h : Heap) (i : Nat) (s : GzState) (src : Region) : Prop 
   h.gzstates i = some s ∧ GzInv (putGz h i (clearIn s)) i (clearIn s) ∧ s.mode = GZ_WRITE ∧
   ((s.strm.next_in = .null ∧ s.strm.avail_in = 0) ∨
     ∃ a, s.strm.next_in = padv src.pointer a ∧ a + s.strm.avail_in.toNat ≤ src.length) ∧
-  (src.pointer = s.«in» ∧ src.length = s.size.toNat ∨ ∀ b, ByteRoot src.pointer b → ¬ GzOwned h i s b)
+  (src.pointer = s.«in» ∧ src.length ≤ 2 * s.size.toNat ∨ ∀ b, ByteRoot src.pointer b → ¬ GzOwned h i s b)
 
 /-! ## Replacing the stream of record `i` -/
 
@@ -624,7 +624,7 @@ new message block, which differs from the region's blocks only when they are liv
 theorem gz_error_upToInputWeak (err : GzErrorSpec) (errOwn : GzErrorOwn) {h : Heap} {i : Nat} {s : GzState}
     {src : Region} (inv : GzInvUpToInputWeak h i s src) (e : Int32) (msg : BPtr)
     (hmsg : msg = .null ∨ ∃ t, CString h msg t ∧ ∀ b, ByteRoot msg b → ¬ GzOwned h i s b)
-    (hlive : src.pointer = s.«in» ∧ src.length = s.size.toNat ∨ ∀ b, ByteRoot src.pointer b → h.live b) :
+    (hlive : src.pointer = s.«in» ∧ src.length ≤ 2 * s.size.toNat ∨ ∀ b, ByteRoot src.pointer b → h.live b) :
     ∃ after s', C.run (Zlib.Gzlib.gz_error (gzSt i) e msg) h = .ok ((), after) ∧
       GzInvUpToInputWeak after i s' src ∧
       s' = { s with err := s'.err, msg := s'.msg } ∧ Frame h after (fun b => b = i ∨ blkOf s.msg = some b) ∧

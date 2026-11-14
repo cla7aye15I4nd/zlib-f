@@ -311,7 +311,7 @@ theorem params_step {h : Heap} {s : GzState} (S : St i src h s) (level strategy 
       simp only [UInt32.toNat_zero] at hu3 ⊢
       omega
     · exact Or.inr ⟨a + used, by rw [hz', hu5, ha, advance_padv], by rw [hz']; omega⟩
-  have srcB : src.pointer = s.«in» ∧ src.length = s.size.toNat ∨ ∃ xs, Bytes after src.pointer src.length xs := by
+  have srcB : src.pointer = s.«in» ∧ src.length ≤ 2 * s.size.toNat ∨ ∃ xs, Bytes after src.pointer src.length xs := by
     rcases S.up.2.2.2.2 with hin | ⟨⟨xs, hb⟩, no⟩
     · exact Or.inl hin
     · exact Or.inr ⟨xs, bytes_after hb no (fun r o hroot => get_of_frame frG hbor r o hroot)⟩

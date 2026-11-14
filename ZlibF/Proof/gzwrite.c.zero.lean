@@ -131,7 +131,7 @@ theorem inv_of_clear {h : Heap} {v : GzState} (hs : h.gzstates i = some v)
 /-- `GzInv` of a writer with buffers gives the invariant up to the pending input over its `in` region. -/
 theorem upTo_of_inv {h : Heap} {s : GzState} (inv : GzInv h i s) (hw : s.mode = GZ_WRITE) (hsz : s.size ≠ 0) :
     GzInvUpToInput h i s ⟨s.«in», s.size.toNat⟩ := by
-  refine ⟨inv.common.record, clear_of_inv inv hw, hw, ?_, Or.inl ⟨rfl, rfl⟩⟩
+  refine ⟨inv.common.record, clear_of_inv inv hw, hw, ?_, Or.inl ⟨rfl, by show s.size.toNat ≤ _; omega⟩⟩
   rcases (inv.writer hw).input with hn | ⟨-, a, ha, hle⟩
   · exact Or.inl hn
   · exact Or.inr ⟨a, ha, hle⟩
@@ -168,7 +168,7 @@ theorem upTo_recW {h : Heap} {s : GzState} {src : Region} (hs : h.gzstates i = s
     (p k : Int64)
     (pos : 0 ≤ k.toInt ∧ p.toInt + k.toInt ≤ 9223372036854775807 ∧ 0 ≤ p.toInt + s.x.have.toNat)
     (inp : NextInOk (recW s ni ai p k) src)
-    (reg : src.pointer = s.«in» ∧ src.length = s.size.toNat ∨
+    (reg : src.pointer = s.«in» ∧ src.length ≤ 2 * s.size.toNat ∨
       (∃ xs, Bytes h src.pointer src.length xs) ∧ ∀ b, ByteRoot src.pointer b → ¬ GzOwned h i s b) :
     GzInvUpToInput (putGz h i (recW s ni ai p k)) i (recW s ni ai p k) src ∧
       ∀ b, GzOwned (putGz h i (recW s ni ai p k)) i (recW s ni ai p k) b ↔ GzOwned h i s b := by
@@ -508,7 +508,7 @@ theorem zero_trip (err : GzErrorSpec) (errOwn : GzErrorOwn) {h0 : Heap} {s0 : Gz
   obtain ⟨U1, ho2⟩ := upTo_recW (src := ⟨v.«in», v.size.toNat⟩) hv1 (clear_of_inv inv1 hw) hw v.«in» (zeroN v)
     v.x.pos v.skip ⟨hp, hpk, hlo⟩
     (Or.inr ⟨0, by show v.«in» = padv v.«in» 0; rw [hin]; rfl, by show 0 + (zeroN v).toNat ≤ v.size.toNat; omega⟩)
-    (Or.inl ⟨rfl, rfl⟩)
+    (Or.inl ⟨rfl, by show v.size.toNat ≤ _; omega⟩)
   have U1' : GzInvUpToInput (putGz Hf i (zeroRec1 v)) i (zeroRec1 v) ⟨v.«in», v.size.toNat⟩ := U1
   have ho2' : ∀ b, GzOwned (putGz Hf i (zeroRec1 v)) i (zeroRec1 v) b ↔ GzOwned Hf i v b := ho2
   have E2 : GetcUngetc.EffI (fun h j s => GzInvUpToInput h j s ⟨v.«in», v.size.toNat⟩) i h0 s0 fs0 fs
