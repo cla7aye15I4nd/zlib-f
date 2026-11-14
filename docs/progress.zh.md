@@ -1949,7 +1949,7 @@ zlib.h 文档化的每个函数占一行。每行给出表明该调用不会出�
 和 `safety_goals` 中，在 dev 上仍为 open。`gz_sequence_safety_of (L : GzReadLeaves)`（`gz.sequence-safety.lean`）从六个读取叶子证明它。
 其他调用都直接证明：打开、关闭、写入和查询。`gzread_step` 与 `gzfread_step` 随读取侧的 `gz.read-assembly` 关闭。
 `gzgetc_step`、`gzungetc_step`、`gzgets_step` 与 `gzdirect_step` 属于 batch C。目标的定义域是单个句柄的每条历史（`GzHistory`）在每个 OS 世界中（`GzWorldStep`）。
-一次对抗性审读（2026-11-14）未发现错误的子句，发现三个缺口：`gzgetc` 宏的内联路径、`NULL` 句柄，以及一条未列出的 fd 规则（见下表）。
+一次对抗性审读（2026-11-14）未发现错误的子句，发现三个缺口：`gzgetc` 宏的内联路径、`NULL` 句柄，以及一条未列出的 fd 规则（见下表）。fd 规则已从目标中删除（B1）。
 
 | 函数 | 途径 | 定理 | 已登记？ | 定义域缺口或说明 |
 | --- | --- | --- | --- | --- |
@@ -1961,7 +1961,7 @@ zlib.h 文档化的每个函数占一行。每行给出表明该调用不会出�
 | gzread、gzfread | 读取叶子 | `gzread_step_of_read`、`gzfread_step_of_read`（来自 `GzReadSafe`），在 `gz.read-assembly` 中关闭 | 否 | 在 `gz.read-assembly` 上 dev 之前为 open。 |
 | gzgetc、gzgetc_、gzungetc、gzgets、gzdirect | 读取叶子 | open（batch C） | 否 | **缺口（审读 A1）：**`gzgetc` 宏的内联路径不是一个历史步骤。 |
 | `NULL` 句柄上的所有 gz 函数 | 自身安全目标 | `ZlibF.Spec.Public.GzRefusalProof.gz_refusal`（`Goal.gz_refusal`，`public-gz-refusal.lean`） | 否（checked） | 已关闭（审读 A2）：29 个函数中的每一个都返回其文档化的值，堆和世界不变。C 测试 `tests/goals/gz-refusal`：204 次调用，无违例。`gzgetc` 宏用于 `NULL` 在 C 中是未定义行为；目标陈述的是函数。 |
-| 同一 fd 上的第二个句柄 | 无 | 无 | 否 | **缺口（审读 B1）：**`GzWorldStep` 保持 fd 的打开状态；这条规则不在偏差文档中。 |
+| 同一 fd 上的第二个句柄 | 世界步骤 | `GzHistory.world` | 否 | 已覆盖（审读 B1，已更正）：`GzWorldStep` 是任意良构的世界，另一方可以关闭或重用句柄的 fd（[回归](../tests/verification/regressions/gz-world-closes-fd.lean)）。 |
 
 #### 误计与未完成项
 

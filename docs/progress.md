@@ -2456,7 +2456,7 @@ the close calls, the write calls and the queries. `gzread_step` and `gzfread_ste
 `gz.read-assembly`. `gzgetc_step`, `gzungetc_step`, `gzgets_step` and `gzdirect_step` are batch C's. The goal's
 domain is every history of one handle (`GzHistory`) in every OS world (`GzWorldStep`). An adversarial reading
 (2026-11-14) found no false clause and three gaps: the `gzgetc` macro's inline path, `NULL`
-handles, and an unlisted fd rule (rows below).
+handles, and an unlisted fd rule (rows below). The fd rule is removed from the goal (B1).
 
 | function | route | theorem | registered? | domain gap or note |
 | --- | --- | --- | --- | --- |
@@ -2468,7 +2468,7 @@ handles, and an unlisted fd rule (rows below).
 | gzread, gzfread | read leaf | `gzread_step_of_read`, `gzfread_step_of_read` (from `GzReadSafe`), closing in `gz.read-assembly` | no | Open until `gz.read-assembly` is on dev. |
 | gzgetc, gzgetc_, gzungetc, gzgets, gzdirect | read leaf | open (batch C) | no | **Gap (audit A1):** the `gzgetc` macro's inline path is not a history step. |
 | all gz functions on a `NULL` handle | own safety goal | `ZlibF.Spec.Public.GzRefusalProof.gz_refusal` (`Goal.gz_refusal`, `public-gz-refusal.lean`) | no (checked) | Closed (audit A2): each of the 29 functions returns its documented value with the heap and the world unchanged. C test `tests/goals/gz-refusal`: 204 calls, no violation. The `gzgetc` macro on `NULL` is undefined behaviour in C; the goal states the function. |
-| a second handle on the same fd | none | none | no | **Gap (audit B1):** `GzWorldStep` keeps the fd's open state; that rule is not in deviations. |
+| a second handle on the same fd | world step | `GzHistory.world` | no | Covered (audit B1, corrected): `GzWorldStep` is any well-formed world, so another party may close or reuse the handle's fd ([regression](../tests/verification/regressions/gz-world-closes-fd.lean)). |
 
 #### Miscounts and open items
 

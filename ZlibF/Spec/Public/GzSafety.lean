@@ -7,7 +7,8 @@ The definitions of sections 3 and 4 of the gz safety skeleton (`gz.skeleton-mode
 `skeleton/gz`), stated over the representation invariant `GzInv` and the call shape `GzCallSafe` of
 `gz.inv-model`, and over `GzOperation`, `GzArguments` and `GzCallerFrame` of `GzState`.
 
-1. `GzWorldStep`, `GzHistory`: every actual history of one handle, with an OS-world step between calls.
+1. `GzWorldStep`, `GzHistory`: every actual history of one handle, with an OS-world step between calls. A world
+   step may change any descriptor, the handle's own included.
 2. `GzCloseCall`, `CloseRefuses`, `GzReleased`, `GzCloseSafe`: safety of a close call.
 3. `GzOpenSafe`, `GzDopenSafe`: safety of an open.
 4. `Goal.gz_sequence_safety`: safety of every gz file history.
@@ -27,11 +28,13 @@ set_option autoImplicit false
 
 /-! ## 1. The history -/
 
-/-- An OS-world step between calls: any well-formed file-system state, except that the handle's descriptor
-stays open or stays closed (only the library closes it). It subsumes `GzReachable.append`; with the oracle fields
-in `Fs` it also replaces the oracle arbitrarily. -/
-def GzWorldStep (fs fs' : Fs) (fd : Int32) : Prop :=
-  FileSystem fs' ∧ (0 ≤ fd.toInt → (GzOracle.FdOpen fs' fd.toInt.toNat ↔ GzOracle.FdOpen fs fd.toInt.toNat))
+/-- An OS-world step between calls: any well-formed file-system state. Another party (the application, another
+handle on the same descriptor) may close the handle's descriptor `fd` or open another file under its number: the
+next read or write of the handle then gets an error (`EBADF`) or reaches the other file, as in C. It subsumes
+`GzReachable.append`; with the oracle fields in `Fs` it also replaces the oracle arbitrarily. `fs` and `fd` say
+from which world and for which handle the step is taken; they constrain nothing. -/
+def GzWorldStep (_fs fs' : Fs) (_fd : Int32) : Prop :=
+  FileSystem fs'
 
 /-- **Every actual history of one handle** (safety; replaces `GzReachable`, with `ByteObjectsFit` at every point
 where the caller supplies a heap). The caller may free its own buffers (`caller`), including the last `gzread`
