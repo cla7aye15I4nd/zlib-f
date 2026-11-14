@@ -82,6 +82,14 @@ source includes a local fix, [patch 0004](patches/README.md), approved by the ow
 submitted upstream: the position stays within `z_off64_t`, and an overflowing call fails with
 `Z_DATA_ERROR`.
 
+A gap in that fix: `gz_look`'s transparent COPY branch buffers up to `size` bytes without the room
+bound, so after a gzip member with trailing data, `gzclearerr` and a read near 2^63 − 1, a reader
+returns with `x.pos + x.have` past `GZ_OFF_MAX`, and the `gzgetc()` macro then overflows `x.pos`
+([finding](docs/findings/gz-position-copy-overflow.md)). Confirmed in the model and by reading the
+C; not reproducible in practice (about 2^63 decoded bytes); not confirmed by a sanitizer.
+Confidence is high for the patched source as written. Scope: patch 0004 readers within `size`
+bytes of `GZ_OFF_MAX` after that history.
+
 ## Source fix
 
 `inflateCopy` compares a static fixed table with a separately allocated state
