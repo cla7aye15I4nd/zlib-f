@@ -20,6 +20,13 @@ Two facts of the source shape the statements.
    raises `avail_in` freely); a member decoded from a freshly reset
    stream (inflate mode `HEAD`) to its end takes at least one byte (`GzDecompSpec`, last clause). This is a
    functional fact about `inflate` that the safety of `gz_fetch` needs.
+3. **Termination of `gz_read`.** The read budget never rises (`BudgetAcc s.fd fs fs' 0` in all three statements), and
+   the input left never rises. A `0` from `gz_fetch` with no output and not at the end of the input leaves
+   `how = LOOK` only after a stall of `gz_look`: a non-blocking read delivered 1 to 3 bytes (`again ∧ avail_in < 4`).
+   Those bytes moved from the budget into `avail_in`, so the input left is unchanged, but the budget fell by at least
+   one (`BudgetAcc s.fd fs fs' 1`). With `GzReadInv.againEof` a stall has `eof = 0`, so `gz_avail` did read. Every
+   other `0` in LOOK has `eof ≠ 0` and `avail_in = 0`. So a trip of `gz_read` that copies nothing either ends the
+   call, leaves output or the end of the input for the next trip, or lowers the budget.
 -/
 
 namespace ZlibF.Spec.Public.GzRead
@@ -64,20 +71,23 @@ def FetchKeeps (s s' : GzState) : Prop :=
     (s.size ≠ 0 → s'.size = s.size ∧ s'.out = s.out ∧ s'.«in» = s.«in»)
 
 /-- **`gz_look`** on a reader with no buffered output, in state LOOK (its callers, `gz_fetch` and `gzdirect`, call it
-only there; from COPY with no input left it returns 0 with `how = COPY`). -/
+only there; from COPY with no input left it returns 0 with `how = COPY`). The read budget never rises. A `0` that leaves
+`how = LOOK` is at the end of the input (`eof ≠ 0`, `avail_in = 0`) or a stall that read at least one byte, so the
+budget fell by at least one. -/
 def GzLookSpec : Prop :=
   ∀ (i : Nat) (h : Heap) (fs : Fs) (s : GzState), GzInvUpToOutput h i s → s.x.have = 0 → FileSystem fs →
     s.mode = GZ_READ → s.how = LOOK → MsgLit s →
     RunSafe (Zlib.Gzread.gz_look (gzSt i)) fs h True fun r fs' after =>
       (r = 0 ∨ r = -1) ∧ FdsKept fs fs' ∧ GzPost h i s [] fs' after GzInvOut ∧
       (ReadsFinite fs s.fd → ReadsFinite fs' s.fd) ∧
-      (ReadsBounded fs s.fd → ReadsBounded fs' s.fd) ∧
+      (ReadsBounded fs s.fd → ReadsBounded fs' s.fd) ∧ BudgetAcc s.fd fs fs' 0 ∧
       ∃ s', after.gzstates i = some s' ∧ FetchKeeps s s' ∧ MsgLit s' ∧
         (ReadsFinite fs s.fd → inputLeft fs' s' ≤ inputLeft fs s) ∧
         (s.err ≠ Z_STREAM_END → s'.err ≠ Z_STREAM_END) ∧
         (s'.size = 0 → s'.err ≠ Z_OK ∧ s'.err ≠ Z_BUF_ERROR) ∧
-        (r = 0 → (s'.how = LOOK ∧ s'.x.have = 0) ∨ (s'.how = GZIP ∧ s'.x.have = 0 ∧ InflateAtHead after s') ∨
-          (s'.how = GZ_COPY ∧ s'.x.have ≠ 0))
+        (r = 0 → (s'.how = LOOK ∧ s'.x.have = 0 ∧
+            ((s'.eof ≠ 0 ∧ s'.strm.avail_in = 0) ∨ BudgetAcc s.fd fs fs' 1)) ∨
+          (s'.how = GZIP ∧ s'.x.have = 0 ∧ InflateAtHead after s') ∨ (s'.how = GZ_COPY ∧ s'.x.have ≠ 0))
 
 /-- **`gz_decomp`** into the output region `out` (from the record's `out` in `gz_fetch`, then no caller region is
 written; the caller's buffer in `gz_read`), as the skeleton states it, with the fields kept and the progress clauses `gz_fetch` needs. -/
@@ -91,6 +101,7 @@ def GzDecompSpec : Prop :=
       (r = 0 ∨ r = -1) ∧ FdsKept fs fs' ∧
       GzPost h i s (if out.pointer = s.out then [] else [out]) fs' after GzInvUpToOutput ∧
       (ReadsFinite fs s.fd → ReadsFinite fs' s.fd) ∧ (ReadsBounded fs s.fd → ReadsBounded fs' s.fd) ∧
+      BudgetAcc s.fd fs fs' 0 ∧
       ∃ s', after.gzstates i = some s' ∧ FetchKeeps s s' ∧ MsgLit s' ∧
         (ReadsFinite fs s.fd → inputLeft fs' s' ≤ inputLeft fs s) ∧
         (s.err ≠ Z_STREAM_END → s'.err ≠ Z_STREAM_END) ∧
@@ -105,15 +116,19 @@ fields, and its progress. The premise `err ≠ Z_STREAM_END` holds on every hand
 code); so does `how = GZ_COPY → avail_in = 0` (`gz_look` and `gzseek` zero `avail_in` when they set COPY), and so does
 `MsgLit` (the embedded stream's message is `NULL` or a literal). All three are to be discharged by clauses of the
 invariant (**open**). Its progress (`GzFetchProgress` as it holds: a `0` result leaves output, the end of the input, or
-`how = LOOK` after `gz_look` found too little input). -/
+`how = LOOK` after a stall of `gz_look` that lowered the read budget by at least one). The budget and the input left
+never rise. -/
 def GzFetchSafe : Prop :=
   ∀ (i : Nat) (h : Heap) (fs : Fs) (s : GzState), GzInvUpToOutput h i s → s.x.have = 0 → FileSystem fs →
     s.mode = GZ_READ → s.err ≠ Z_STREAM_END → (s.how = GZ_COPY → s.strm.avail_in = 0) → MsgLit s →
     RunSafe (Zlib.Gzread.gz_fetch (gzSt i)) fs h (ReadsBounded fs s.fd) fun r fs' after =>
       (r = 0 ∨ r = -1) ∧ FdsKept fs fs' ∧ GzPost h i s [] fs' after GzInvOut ∧
       (ReadsFinite fs s.fd → ReadsFinite fs' s.fd) ∧ (ReadsBounded fs s.fd → ReadsBounded fs' s.fd) ∧
+      BudgetAcc s.fd fs fs' 0 ∧
       ∃ s', after.gzstates i = some s' ∧ FetchKeeps s s' ∧ MsgLit s' ∧
+        (ReadsFinite fs s.fd → inputLeft fs' s' ≤ inputLeft fs s) ∧
         (s'.size = 0 → s'.err ≠ Z_OK ∧ s'.err ≠ Z_BUF_ERROR) ∧
-        (r = 0 → s'.x.have ≠ 0 ∨ (s'.eof ≠ 0 ∧ s'.strm.avail_in = 0) ∨ s'.how = LOOK)
+        (r = 0 → s'.x.have ≠ 0 ∨ (s'.eof ≠ 0 ∧ s'.strm.avail_in = 0) ∨
+          (s'.how = LOOK ∧ BudgetAcc s.fd fs fs' 1))
 
 end ZlibF.Spec.Public.GzRead
