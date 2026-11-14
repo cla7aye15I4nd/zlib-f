@@ -132,6 +132,7 @@ ZlibF.Spec.Public.Goal.deflateCopy_safety
 ZlibF.Spec.Public.Goal.inflate_refusal
 ZlibF.Spec.Public.Goal.deflate_refusal
 ZlibF.Spec.Public.Goal.gz_sequence_safety
+ZlibF.Spec.Public.Goal.gz_refusal
 ZlibF.Spec.Public.Goal.gz_sequence
 ZlibF.Spec.Public.Goal.inflate_initialisation_domain
 ZlibF.Spec.Public.Goal.deflate_initialisation_domain
