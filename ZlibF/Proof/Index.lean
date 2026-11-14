@@ -1684,6 +1684,7 @@ import ZlibF.Proof.«gzread.c.skip-have»
 import ZlibF.Proof.«gzread.c.skip-gets»
 import ZlibF.Proof.«gzread.c.skip-fetch»
 import ZlibF.Proof.«gzread.c.getc-ungetc»
+import ZlibF.Proof.«gzread.c.fread»
 import ZlibF.Proof.«gz.inv-queries»
 import ZlibF.Proof.«gz.inv-frame»
 import ZlibF.Proof.«gz.record-free»
