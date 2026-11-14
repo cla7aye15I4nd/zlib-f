@@ -11,7 +11,7 @@ The definitions of sections 3 and 4 of the gz safety skeleton (`gz.skeleton-mode
    step may change any descriptor, the handle's own included.
 2. `GzCloseCall`, `CloseRefuses`, `GzReleased`, `GzCloseSafe`: safety of a close call.
 3. `GzOpenSafe`, `GzDopenSafe`: safety of an open.
-4. `Goal.gz_sequence_safety`: safety of every gz file history.
+4. `Goal.gz_sequence_safety`: safety of every gz file history, and the string `gzerror` returns.
 5. `Goal.gz_sequence_nonvacuity`: its premises hold on concrete reading and writing histories.
 
 The goal is the skeleton's statement with the `GzInv` and `GzArguments` of this branch: `GzInv` with the corrected
@@ -130,7 +130,8 @@ where the C returns at once (a call on a writer, a request of length 0); every o
 first half is partial correctness up to `2^64` iterations of each loop, which no real execution reaches. A call
 that returns keeps the open descriptors, keeps
 `GzInv`, writes only the handle's blocks and the declared caller regions, and changes the live blocks exactly
-by the handle's ledger. Every close returns and either refuses on the wrong mode or frees every owned block and
+by the handle's ledger. The pointer `gzerror` returns is a readable NUL-terminated string in the heap after the
+call: a literal or the handle's message. Every close returns and either refuses on the wrong mode or frees every owned block and
 releases the descriptor. Every open returns; a failed open leaves no block and no open descriptor behind. -/
 def Goal.gz_sequence_safety : Prop :=
   (∀ h fs i, GzHistory h fs i → FileSystem fs ∧ ∃ s, GzInv h i s) ∧
@@ -140,6 +141,11 @@ def Goal.gz_sequence_safety : Prop :=
       ∃ value fs' after, call.execute fs h = .ok ((value, fs'), after)) ∧
     (∀ value fs' after, call.execute fs h = .ok ((value, fs'), after) →
       FdsKept fs fs' ∧ GzStepPost h i s call fs' after)) ∧
+  (∀ h fs i s errnum, GzHistory h fs i → h.gzstates i = some s →
+    GzArguments h i s (.gzerror (some (.in_gzstate_x i)) errnum) →
+    ∀ (value : BPtr) fs' after,
+      (Call.gzerror (some (.in_gzstate_x i)) errnum).execute fs h = .ok ((value, fs'), after) →
+      ∃ t, CString after value t) ∧
   (∀ h fs i s call, GzHistory h fs i → h.gzstates i = some s → GzCloseCall i call →
     ∃ value fs' after, call.execute fs h = .ok ((value, fs'), after) ∧
       ((CloseRefuses s call ∧ after = h ∧ fs' = fs) ∨ (¬ CloseRefuses s call ∧ GzReleased h after fs fs' i s))) ∧

@@ -2326,6 +2326,7 @@ are unchanged.
 | `gzseek64_step`, `gzseek_step` | Seek is safe on `GzInv`. | checked: `gzseek64_step`, `gzseek_step` (`gz.inv-seek`) | 0 | batch 1 |
 | `gztell64_step`, `gztell_step`, `gzeof_step`, `gzbuffer_step` | Tell, eof and buffer; with `post_unchanged`, `safe_of_unchanged`. | checked: same names (`gz.inv-queries`) | 0 | batch 1 |
 | `gzerror_step` | `gzerror` stores the code in the caller's cell. | checked: `gzerror_step` (`gz.inv-frame`) | 0 | batch 1 |
+| `gzerror_string` | The pointer `gzerror` returns is a C string after the call (goal conjunct added by audit C1). | checked: `gzerror_string` (`gz.inv-frame`) | 0 | batch C |
 | `gzclearerr_step` | `gzclearerr` through `gz_error`. | checked: `gzclearerr_step` (`gz.inv-clearerr`) | 0 | batch 1 |
 | `gzoffset64_step`, `gzoffset_step` | One `lseek` (M3); nothing else changes. | checked: same names (`gz.inv-offset-rewind`, `646b1ab6`) | 0 | batch C |
 | `gzrewind_step` | `lseek` (M3) and `gz_reset`. | checked: `gzrewind_step` (`gz.inv-offset-rewind`, `646b1ab6`) | 0 | batch C |
