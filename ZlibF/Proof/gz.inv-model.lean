@@ -11,7 +11,7 @@ over the OS-call oracle of `ZlibF/Zlib/gzfs.lean`:
    C's W1–W10 folded into the write part. Other modules use its interface lemmas, not the definition.
 2. `GzCallSafe`: safety of one public call on a handle in `GzInv`, for every world.
 3. `ReadsFinite`: the M7 premise of the termination half of the reading calls: the descriptor is non-negative and
-   has a finite read budget in the OS-call oracle (`Fs.readBudget`).
+   has a read budget below `2^61` bytes in the OS-call oracle (`Fs.readBudget`).
 
 Corrections against the skeleton at `7d896179` (strengthenings):
 - `GzCommon.next` also excludes the message block (`blkOf s.msg ≠ some b`), as `NextOk` does. Without it `x.next`
@@ -45,11 +45,18 @@ def FdOpen (fs : Fs) (j : Nat) : Prop := ∃ f, fs.fds[j]? = some (some f)
 
 end GzOracle
 
-/-- **M7, the finiteness premise.** The handle's descriptor is non-negative and has a finite read budget, so every
-later read is cut to a bound. A premise of the termination half only, and only for the calls of `NeedsReadBound`;
-`docs/deviations.md`, "Gz reading termination". A negative descriptor is unbudgeted (`readCap` does not cut its
-reads), hence the first conjunct. -/
-def ReadsFinite (fs : Fs) (fd : Int32) : Prop := 0 ≤ fd.toInt ∧ fs.readBudget fd.toInt.toNat ≠ none
+/-- The handle's descriptor is non-negative and has a read budget in the OS-call oracle, so every later read is cut
+to it. A negative descriptor is unbudgeted (`readCap` does not cut its reads), hence the first conjunct. -/
+def HasBudget (fs : Fs) (fd : Int32) : Prop := 0 ≤ fd.toInt ∧ fs.readBudget fd.toInt.toNat ≠ none
+
+/-- **M7, the finiteness premise.** The handle's descriptor has a read budget (`HasBudget`) below `2^61` bytes: the
+total the descriptor can still deliver. A premise of the termination half only, and only for the calls of
+`NeedsReadBound`; `docs/deviations.md`, "Gz reading termination". A finite budget is a real requirement: an endless
+source (an endless `FNAME`, or endless empty gzip members) makes one `gzread` call run forever in C. The figure `2^61`
+is the model's limit, not zlib's: a loop of the model has `2^64` trips of fuel, and each round of the reading loops
+takes input or ends, so a budget below `2^61` keeps them within it. -/
+def ReadsFinite (fs : Fs) (fd : Int32) : Prop :=
+  HasBudget fs fd ∧ (fs.readBudget fd.toInt.toNat).getD 0 < 2 ^ 61
 
 /-- The calls whose termination needs M7: the loops of `gz_fetch` (over empty gzip members), `gz_skip` and
 `gz_read` read until the input ends. `gzread`, `gzfread`, `gzgetc`, `gzgetc_`, `gzgets` reach them, `gzungetc`

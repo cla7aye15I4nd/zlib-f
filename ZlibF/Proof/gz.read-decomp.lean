@@ -15,7 +15,7 @@ ends, the input ends or an error occurs.
    does not own, or the handle's `out` buffer). The record changes only in its stream (`KeepsCall.gz`, the record
    fact of the whole `inflate` run), so the invariant holds after it.
 2. The loop: an invariant over the accumulated post-condition, with the measure `inputLeft + avail_out` under
-   `ReadsBounded`.
+   `ReadsFinite`.
 3. The tail: `x.have` and `x.next` describe the output written into `out`.
 
 `gz_decomp_safe_of` takes one premise, `InflateHeadUsesInput`, a functional fact of `inflate` (a call from mode
@@ -857,8 +857,8 @@ structure Base (i : Nat) (out : Region) (h0 : Heap) (fs0 : Fs) (s0 : GzState) (f
   pos : ∃ d, s.strm.next_out = padv out.pointer d ∧ d + s.strm.avail_out.toNat = out.length
   wr : Writable h out.pointer out.length
   side : (∀ b, ByteRoot out.pointer b → ¬ GzOwned h i s b) ∨ out.pointer = s0.out
-  rf : ReadsFinite fs0 s0.fd → ReadsFinite fs s0.fd ∧ inputLeft fs s ≤ inputLeft fs0 s0
-  rb : ReadsBounded fs0 s0.fd → ReadsBounded fs s0.fd
+  rf : HasBudget fs0 s0.fd → HasBudget fs s0.fd ∧ inputLeft fs s ≤ inputLeft fs0 s0
+  rb : ReadsFinite fs0 s0.fd → ReadsFinite fs s0.fd
   err : s0.err ≠ Z_STREAM_END → s.err ≠ Z_STREAM_END
   ml : MsgLit s
   bud : BudgetAcc s0.fd fs0 fs 0
@@ -924,8 +924,8 @@ theorem Base.step {i : Nat} {out : Region} {h0 : Heap} {fs0 : Fs} {s0 : GzState}
     (keep : s'.mode = s.mode ∧ s'.fd = s.fd ∧ s'.skip = s.skip ∧ s'.x.pos = s.x.pos ∧ s'.size = s.size ∧
       s'.out = s.out ∧ s'.«in» = s.«in»)
     (pos : ∃ d, s'.strm.next_out = padv out.pointer d ∧ d + s'.strm.avail_out.toNat = out.length)
-    (rf : ReadsFinite fs0 s0.fd → ReadsFinite fs' s0.fd ∧ inputLeft fs' s' ≤ inputLeft fs0 s0)
-    (rb : ReadsBounded fs0 s0.fd → ReadsBounded fs' s0.fd)
+    (rf : HasBudget fs0 s0.fd → HasBudget fs' s0.fd ∧ inputLeft fs' s' ≤ inputLeft fs0 s0)
+    (rb : ReadsFinite fs0 s0.fd → ReadsFinite fs' s0.fd)
     (err : s0.err ≠ Z_STREAM_END → s'.err ≠ Z_STREAM_END) (ml : MsgLit s')
     (hlen : out.length ≠ 0) (hm0 : s0.mode = GZ_READ) (hsz0 : s0.size ≠ 0)
     (outLen : out.pointer = s0.out → out.length ≤ 2 * s0.size.toNat)
@@ -1185,7 +1185,7 @@ theorem Base.size (St : Stat i out h0 s0) {fs : Fs} {h : Heap} {s : GzState} (B 
 theorem avail_trans (St : Stat i out h0 s0) {fs : Fs} {h : Heap} {s : GzState} (B : Base i out h0 fs0 s0 fs h s) :
     ∃ r fs' h' s', Zlib.Gzread.gz_avail (gzSt i) fs h = .ok ((r, fs'), h') ∧ (r = 0 ∨ r = -1) ∧
       h'.gzstates i = some s' ∧ Base i out h0 fs0 s0 fs' h' s' ∧ AvailRec s s' ∧ AvailFlags r s s' ∧
-      (∀ k, h'.istates k = h.istates k) ∧ (ReadsFinite fs0 s0.fd → inputLeft fs' s' ≤ inputLeft fs s) := by
+      (∀ k, h'.istates k = h.istates k) ∧ (HasBudget fs0 s0.fd → inputLeft fs' s' ≤ inputLeft fs s) := by
   have hm := B.mode St
   have hsz := B.size St
   have hfs : FileSystem fs := B.post.1
@@ -1320,12 +1320,12 @@ variable (i : Nat) (out : Region) (h0 : Heap) (fs0 : Fs) (s0 : GzState)
 
 /-- At a member start, the first call takes input, or the input left has already dropped. -/
 def Hd (fs : Fs) (h : Heap) (s : GzState) : Prop :=
-  ReadsFinite fs0 s0.fd → InflateAtHead h0 s0 → s0.err ≠ Z_STREAM_END →
+  HasBudget fs0 s0.fd → InflateAtHead h0 s0 → s0.err ≠ Z_STREAM_END →
     InflateAtHead h s ∨ inputLeft fs s < inputLeft fs0 s0
 
 /-- The input left has dropped (when the call started at a member start). -/
 def Strict (fs : Fs) (s : GzState) : Prop :=
-  ReadsFinite fs0 s0.fd → InflateAtHead h0 s0 → s0.err ≠ Z_STREAM_END → inputLeft fs s < inputLeft fs0 s0
+  HasBudget fs0 s0.fd → InflateAtHead h0 s0 → s0.err ≠ Z_STREAM_END → inputLeft fs s < inputLeft fs0 s0
 
 /-- The measure of the loop. -/
 def meas (fs : Fs) (s : GzState) : Nat := inputLeft fs s + s.strm.avail_out.toNat
@@ -1345,7 +1345,7 @@ def LI (k : Nat) (l : Zlib.Gzread.DecompLoop) (fs : Fs) (h : Heap) : Prop :=
 def LJ (k : Nat) (y : Zlib.Gzread.DecompLoop) (fs : Fs) (h : Heap) : Prop :=
   (y.brk = false ∧ ∃ s, Base i out h0 fs0 s0 fs h s ∧ s.how = GZIP ∧ Hd h0 fs0 s0 fs h s ∧
     (y.ret = Z_OK ∨ y.ret = Z_BUF_ERROR ∨ y.ret = Z_STREAM_END) ∧ (y.ret = Z_STREAM_END → Strict h0 fs0 s0 fs s) ∧
-    (y.ret ≠ Z_STREAM_END → ReadsBounded fs0 s0.fd → meas fs s < k)) ∨
+    (y.ret ≠ Z_STREAM_END → ReadsFinite fs0 s0.fd → meas fs s < k)) ∨
   (y.brk = true ∧ LQ i out h0 fs0 s0 y fs h)
 
 end loop
@@ -1362,7 +1362,7 @@ theorem errs_run (St : Stat i out h0 s0) {fs : Fs} {h : Heap} {s : GzState} (B :
     (codes : rc = Z_OK ∨ rc = Z_STREAM_END ∨ rc = Z_NEED_DICT ∨ rc = Z_STREAM_ERROR ∨
       rc = Z_DATA_ERROR ∨ rc = Z_MEM_ERROR ∨ rc = Z_BUF_ERROR)
     (hstr : rc ≠ Z_STREAM_ERROR → Strict h0 fs0 s0 fs s)
-    (hmeas : rc = Z_OK ∨ rc = Z_BUF_ERROR → ReadsBounded fs0 s0.fd → meas fs s < k) :
+    (hmeas : rc = Z_OK ∨ rc = Z_BUF_ERROR → ReadsFinite fs0 s0.fd → meas fs s < k) :
     ∃ y fs' h', decompErrs i l rc fs h = .ok ((y, fs'), h') ∧ LJ i out h0 fs0 s0 k y fs' h' := by
   have hm := B.mode St
   have hsz := B.size St
@@ -1478,7 +1478,7 @@ variable {i : Nat} {out : Region} {h0 : Heap} {fs0 : Fs} {s0 : GzState}
 theorem run_run (head : InflateHeadUsesInput) (St : Stat i out h0 s0) (had : UInt32) (hhad : had.toNat = out.length) {fs : Fs} {h : Heap}
     {s : GzState} (B : Base i out h0 fs0 s0 fs h s) (hgz : s.how = GZIP) (hav : s.strm.avail_in ≠ 0)
     (hao : s.strm.avail_out ≠ 0) (hd : Hd h0 fs0 s0 fs h s) (k : Nat)
-    (hk : ReadsBounded fs0 s0.fd → meas fs s ≤ k) (l : Zlib.Gzread.DecompLoop) (hl : l.brk = false) :
+    (hk : ReadsFinite fs0 s0.fd → meas fs s ≤ k) (l : Zlib.Gzread.DecompLoop) (hl : l.brk = false) :
     ∃ y fs' h', decompRun i had l fs h = .ok ((y, fs'), h') ∧ LJ i out h0 fs0 s0 k y fs' h' := by
   have hm := B.mode St
   have hsz := B.size St
@@ -1501,7 +1501,7 @@ theorem run_run (head : InflateHeadUsesInput) (St : Stat i out h0 s0) (had : UIn
       · omega
       · exact absurd e hne
     · omega
-  have hmeas : rc = Z_OK ∨ rc = Z_BUF_ERROR → ReadsBounded fs0 s0.fd → meas fs s2 < k := by
+  have hmeas : rc = Z_OK ∨ rc = Z_BUF_ERROR → ReadsFinite fs0 s0.fd → meas fs s2 < k := by
     intro hc hb
     have hk' := hk hb
     have p : used ≠ 0 ∨ produced ≠ 0 := by
@@ -1534,7 +1534,7 @@ theorem run_run (head : InflateHeadUsesInput) (St : Stat i out h0 s0) (had : UIn
 theorem mid_run (head : InflateHeadUsesInput) (St : Stat i out h0 s0) (had : UInt32) (hhad : had.toNat = out.length) {fs : Fs} {h : Heap}
     {s : GzState} (B : Base i out h0 fs0 s0 fs h s) (hgz : s.how = GZIP) (hao : s.strm.avail_out ≠ 0)
     (heof : s.strm.avail_in = 0 → s.eof ≠ 0) (hd : Hd h0 fs0 s0 fs h s) (k : Nat)
-    (hk : ReadsBounded fs0 s0.fd → meas fs s ≤ k) (l : Zlib.Gzread.DecompLoop) (hl : l.brk = false)
+    (hk : ReadsFinite fs0 s0.fd → meas fs s ≤ k) (l : Zlib.Gzread.DecompLoop) (hl : l.brk = false)
     (hret : l.ret = Z_OK ∨ l.ret = Z_BUF_ERROR) :
     ∃ y fs' h', decompMid i had l fs h = .ok ((y, fs'), h') ∧ LJ i out h0 fs0 s0 k y fs' h' := by
   have hz : (StateT.lift (ldZ (strmOf (gzSt i))) : G ZStream) fs h = .ok ((s.strm, fs), h) := lift_ok (ldZ_run B.rcd)
@@ -1613,7 +1613,7 @@ theorem body_run (head : InflateHeadUsesInput) (St : Stat i out h0 s0) (had : UI
 theorem cond_run (k : Nat) (y : Zlib.Gzread.DecompLoop) {fs : Fs} {h : Heap}
     (hJ : LJ i out h0 fs0 s0 k y fs h) :
     ∃ c z fs' h', decompCond i y fs h = .ok (((c, z), fs'), h') ∧
-      (c = true → ∃ k', (ReadsBounded fs0 s0.fd → k' < k) ∧ LI i out h0 fs0 s0 k' z fs' h') ∧
+      (c = true → ∃ k', (ReadsFinite fs0 s0.fd → k' < k) ∧ LI i out h0 fs0 s0 k' z fs' h') ∧
       (c = false → LQ i out h0 fs0 s0 z fs' h') := by
   rcases hJ with ⟨hb, s, B, hgz, hd, hret, hse, hmeas⟩ | ⟨hb, hq⟩
   · have hz : (StateT.lift (ldZ (strmOf (gzSt i))) : G ZStream) fs h = .ok ((s.strm, fs), h) :=
@@ -1660,15 +1660,15 @@ def DecompPost (i : Nat) (out : Region) (h : Heap) (fs : Fs) (s : GzState) (r : 
     Prop :=
   (r = 0 ∨ r = -1) ∧ FdsKept fs fs' ∧
       GzPost h i s (if out.pointer = s.out then [] else [out]) fs' after GzInvUpToOutput ∧
-      (ReadsFinite fs s.fd → ReadsFinite fs' s.fd) ∧ (ReadsBounded fs s.fd → ReadsBounded fs' s.fd) ∧
+      (HasBudget fs s.fd → HasBudget fs' s.fd) ∧ (ReadsFinite fs s.fd → ReadsFinite fs' s.fd) ∧
       BudgetAcc s.fd fs fs' 0 ∧
       ∃ s', after.gzstates i = some s' ∧ FetchKeeps s s' ∧ MsgLit s' ∧
-        (ReadsFinite fs s.fd → inputLeft fs' s' ≤ inputLeft fs s) ∧
+        (HasBudget fs s.fd → inputLeft fs' s' ≤ inputLeft fs s) ∧
         (s.err ≠ Z_STREAM_END → s'.err ≠ Z_STREAM_END) ∧
         (s'.x.have ≠ 0 → ∃ c, s'.x.next = padv out.pointer c ∧ c + s'.x.have.toNat ≤ out.length) ∧
         (s'.how = GZIP ∨ s'.how = LOOK) ∧
         (r = 0 → s'.x.have ≠ 0 ∨ (s'.eof ≠ 0 ∧ s'.strm.avail_in = 0) ∨
-          (s'.how = LOOK ∧ (ReadsFinite fs s.fd → InflateAtHead h s → s.err ≠ Z_STREAM_END →
+          (s'.how = LOOK ∧ (HasBudget fs s.fd → InflateAtHead h s → s.err ≠ Z_STREAM_END →
             inputLeft fs' s' < inputLeft fs s)))
 
 section tail
@@ -1854,7 +1854,7 @@ theorem gz_decomp_safe_of (head : InflateHeadUsesInput) : GzDecompSpec := by
       { ret := Z_OK, brk := false } >>= decompTail i s.strm.avail_out) fs h := by
     rw [gz_decomp_source, g_bind_app, hz]
   have loop : RunSafe (gdoWhile (decompBody i s.strm.avail_out) (decompCond i) { ret := Z_OK, brk := false }) fs h
-      (ReadsBounded fs s.fd) (LQ i out h fs s) := by
+      (ReadsFinite fs s.fd) (LQ i out h fs s) := by
     refine RunSafe.doWhile (LI i out h fs s) (LJ i out h fs s) (LQ i out h fs s) ?_ ?_ (k := meas fs s) ?_ I0
     · intro k x fs1 h1 hI
       obtain ⟨y, fs2, h2, e, hJ⟩ := body_run head St s.strm.avail_out hhad k x hI
@@ -1869,7 +1869,7 @@ theorem gz_decomp_safe_of (head : InflateHeadUsesInput) : GzDecompSpec := by
       have b3 := s.strm.avail_out.toNat_lt
       split <;> omega
   have key : RunSafe (gdoWhile (decompBody i s.strm.avail_out) (decompCond i) { ret := Z_OK, brk := false } >>=
-      decompTail i s.strm.avail_out) fs h (ReadsBounded fs s.fd) (DecompPost i out h fs s) := by
+      decompTail i s.strm.avail_out) fs h (ReadsFinite fs s.fd) (DecompPost i out h fs s) := by
     refine RunSafe.bind loop ?_
     intro l fs1 h1 hq
     obtain ⟨r, fs2, h2, e, post⟩ := tail_run St s.strm.avail_out hhad l hq

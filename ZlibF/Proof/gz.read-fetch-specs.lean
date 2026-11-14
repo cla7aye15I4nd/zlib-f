@@ -46,12 +46,6 @@ def GzInvOut (h : Heap) (i : Nat) (s : GzState) : Prop :=
 def inputLeft (fs : Fs) (s : GzState) : Nat :=
   (if 0 ≤ s.fd.toInt then (fs.readBudget s.fd.toInt.toNat).getD 0 else 0) + s.strm.avail_in.toNat
 
-/-- **M7 with a bound**: a finite read budget below `2^61` bytes. A loop of the model has `2^64` trips of fuel;
-each round of `gz_decomp` and `gz_fetch` takes input or ends, so a budget below `2^61` keeps them within it. Without
-the bound a source of about `2^70` bytes of empty gzip members runs `gz_fetch` out of fuel (`docs/progress.md`). -/
-def ReadsBounded (fs : Fs) (fd : Int32) : Prop :=
-  ReadsFinite fs fd ∧ (fs.readBudget fd.toInt.toNat).getD 0 < 2 ^ 61
-
 /-- The embedded inflate stream is freshly reset: mode `HEAD`, no held bits and `last = 0` (`inflateReset` clears
 them). With held bits (`inflatePrime` after `inflateReset2(-15)`), or with `last ≠ 0` and `wrap = 0` (`TYPEDO` then goes
 to `CHECK`), a call from `HEAD` can reach the stream end using no input. -/
@@ -80,10 +74,10 @@ def GzLookSpec : Prop :=
     s.mode = GZ_READ → s.how = LOOK → MsgLit s →
     RunSafe (Zlib.Gzread.gz_look (gzSt i)) fs h True fun r fs' after =>
       (r = 0 ∨ r = -1) ∧ FdsKept fs fs' ∧ GzPost h i s [] fs' after GzInvOut ∧
-      (ReadsFinite fs s.fd → ReadsFinite fs' s.fd) ∧
-      (ReadsBounded fs s.fd → ReadsBounded fs' s.fd) ∧ BudgetAcc s.fd fs fs' 0 ∧
+      (HasBudget fs s.fd → HasBudget fs' s.fd) ∧
+      (ReadsFinite fs s.fd → ReadsFinite fs' s.fd) ∧ BudgetAcc s.fd fs fs' 0 ∧
       ∃ s', after.gzstates i = some s' ∧ FetchKeeps s s' ∧ MsgLit s' ∧
-        (ReadsFinite fs s.fd → inputLeft fs' s' ≤ inputLeft fs s) ∧
+        (HasBudget fs s.fd → inputLeft fs' s' ≤ inputLeft fs s) ∧
         (s.err ≠ Z_STREAM_END → s'.err ≠ Z_STREAM_END) ∧
         (s'.size = 0 → s'.err ≠ Z_OK ∧ s'.err ≠ Z_BUF_ERROR) ∧
         (r = 0 → (s'.how = LOOK ∧ s'.x.have = 0 ∧
@@ -101,18 +95,18 @@ def GzDecompSpec : Prop :=
     (s.strm.next_out = out.pointer ∧ s.strm.avail_out.toNat = out.length ∧ out.length ≠ 0 ∧
       Writable h out.pointer out.length) →
     ((∀ b, ByteRoot out.pointer b → ¬ GzOwned h i s b) ∨ out.pointer = s.out) →
-    RunSafe (Zlib.Gzread.gz_decomp (gzSt i)) fs h (ReadsBounded fs s.fd) fun r fs' after =>
+    RunSafe (Zlib.Gzread.gz_decomp (gzSt i)) fs h (ReadsFinite fs s.fd) fun r fs' after =>
       (r = 0 ∨ r = -1) ∧ FdsKept fs fs' ∧
       GzPost h i s (if out.pointer = s.out then [] else [out]) fs' after GzInvUpToOutput ∧
-      (ReadsFinite fs s.fd → ReadsFinite fs' s.fd) ∧ (ReadsBounded fs s.fd → ReadsBounded fs' s.fd) ∧
+      (HasBudget fs s.fd → HasBudget fs' s.fd) ∧ (ReadsFinite fs s.fd → ReadsFinite fs' s.fd) ∧
       BudgetAcc s.fd fs fs' 0 ∧
       ∃ s', after.gzstates i = some s' ∧ FetchKeeps s s' ∧ MsgLit s' ∧
-        (ReadsFinite fs s.fd → inputLeft fs' s' ≤ inputLeft fs s) ∧
+        (HasBudget fs s.fd → inputLeft fs' s' ≤ inputLeft fs s) ∧
         (s.err ≠ Z_STREAM_END → s'.err ≠ Z_STREAM_END) ∧
         (s'.x.have ≠ 0 → ∃ c, s'.x.next = padv out.pointer c ∧ c + s'.x.have.toNat ≤ out.length) ∧
         (s'.how = GZIP ∨ s'.how = LOOK) ∧
         (r = 0 → s'.x.have ≠ 0 ∨ (s'.eof ≠ 0 ∧ s'.strm.avail_in = 0) ∨
-          (s'.how = LOOK ∧ (ReadsFinite fs s.fd → InflateAtHead h s → s.err ≠ Z_STREAM_END →
+          (s'.how = LOOK ∧ (HasBudget fs s.fd → InflateAtHead h s → s.err ≠ Z_STREAM_END →
             inputLeft fs' s' < inputLeft fs s)))
 
 /-- **`gz_fetch`** on a reader with no buffered output: the skeleton statement with the post `GzInvOut`, the kept
@@ -125,12 +119,12 @@ never rise. -/
 def GzFetchSafe : Prop :=
   ∀ (i : Nat) (h : Heap) (fs : Fs) (s : GzState), GzInvUpToOutput h i s → s.x.have = 0 → FileSystem fs →
     s.mode = GZ_READ → s.err ≠ Z_STREAM_END → (s.how = GZ_COPY → s.strm.avail_in = 0) → MsgLit s →
-    RunSafe (Zlib.Gzread.gz_fetch (gzSt i)) fs h (ReadsBounded fs s.fd) fun r fs' after =>
+    RunSafe (Zlib.Gzread.gz_fetch (gzSt i)) fs h (ReadsFinite fs s.fd) fun r fs' after =>
       (r = 0 ∨ r = -1) ∧ FdsKept fs fs' ∧ GzPost h i s [] fs' after GzInvOut ∧
-      (ReadsFinite fs s.fd → ReadsFinite fs' s.fd) ∧ (ReadsBounded fs s.fd → ReadsBounded fs' s.fd) ∧
+      (HasBudget fs s.fd → HasBudget fs' s.fd) ∧ (ReadsFinite fs s.fd → ReadsFinite fs' s.fd) ∧
       BudgetAcc s.fd fs fs' 0 ∧
       ∃ s', after.gzstates i = some s' ∧ FetchKeeps s s' ∧ MsgLit s' ∧
-        (ReadsFinite fs s.fd → inputLeft fs' s' ≤ inputLeft fs s) ∧
+        (HasBudget fs s.fd → inputLeft fs' s' ≤ inputLeft fs s) ∧
         (s'.size = 0 → s'.err ≠ Z_OK ∧ s'.err ≠ Z_BUF_ERROR) ∧
         (r = 0 → s'.x.have ≠ 0 ∨ (s'.eof ≠ 0 ∧ s'.strm.avail_in = 0) ∨
           (s'.how = LOOK ∧ BudgetAcc s.fd fs fs' 1))

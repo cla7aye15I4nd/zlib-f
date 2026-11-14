@@ -1417,10 +1417,10 @@ theorem lookCopy_run {H : Heap} {i : Nat} {t : GzState} (fs : Fs) (hu : GzInvUpT
 /-- The post-condition of `GzLookSpec` for one result. -/
 def LookPost (h : Heap) (i : Nat) (s : GzState) (fs : Fs) (r : Int32) (fs' : Fs) (after : Heap) : Prop :=
   (r = 0 ∨ r = -1) ∧ FdsKept fs fs' ∧ GzPost h i s [] fs' after GzInvOut ∧
-    (ReadsFinite fs s.fd → ReadsFinite fs' s.fd) ∧
-    (ReadsBounded fs s.fd → ReadsBounded fs' s.fd) ∧ BudgetAcc s.fd fs fs' 0 ∧
+    (HasBudget fs s.fd → HasBudget fs' s.fd) ∧
+    (ReadsFinite fs s.fd → ReadsFinite fs' s.fd) ∧ BudgetAcc s.fd fs fs' 0 ∧
     ∃ s', after.gzstates i = some s' ∧ FetchKeeps s s' ∧ MsgLit s' ∧
-      (ReadsFinite fs s.fd → inputLeft fs' s' ≤ inputLeft fs s) ∧
+      (HasBudget fs s.fd → inputLeft fs' s' ≤ inputLeft fs s) ∧
       (s.err ≠ Z_STREAM_END → s'.err ≠ Z_STREAM_END) ∧
       (s'.size = 0 → s'.err ≠ Z_OK ∧ s'.err ≠ Z_BUF_ERROR) ∧
       (r = 0 → (s'.how = LOOK ∧ s'.x.have = 0 ∧
@@ -1433,9 +1433,9 @@ def LookPost (h : Heap) (i : Nat) (s : GzState) (fs : Fs) (r : Int32) (fs' : Fs)
 theorem lookPost_of {H : Heap} {i : Nat} {t t' : GzState} {fs fs' : Fs} {r : Int32} {after : Heap}
     (hr : r = 0 ∨ r = -1) (hk : FdsKept fs fs') (post : GzPost H i t [] fs' after GzInvUpToOutput)
     (hrec : after.gzstates i = some t') (hout : OutWindow t')
-    (rf : ReadsFinite fs t.fd → ReadsFinite fs' t.fd) (rb : ReadsBounded fs t.fd → ReadsBounded fs' t.fd)
+    (rf : HasBudget fs t.fd → HasBudget fs' t.fd) (rb : ReadsFinite fs t.fd → ReadsFinite fs' t.fd)
     (bud : BudgetAcc t.fd fs fs' 0)
-    (keeps : FetchKeeps t t') (ml : MsgLit t') (il : ReadsFinite fs t.fd → inputLeft fs' t' ≤ inputLeft fs t)
+    (keeps : FetchKeeps t t') (ml : MsgLit t') (il : HasBudget fs t.fd → inputLeft fs' t' ≤ inputLeft fs t)
     (er : t.err ≠ Z_STREAM_END → t'.err ≠ Z_STREAM_END) (sz : t'.size = 0 → t'.err ≠ Z_OK ∧ t'.err ≠ Z_BUF_ERROR)
     (res : r = 0 → (t'.how = LOOK ∧ t'.x.have = 0 ∧
           ((t'.eof ≠ 0 ∧ t'.strm.avail_in = 0) ∨ BudgetAcc t.fd fs fs' 1)) ∨
@@ -1469,8 +1469,8 @@ theorem avail_step {H : Heap} {i : Nat} {t : GzState} (fs : Fs) (hu : GzInvUpToO
     (hm : t.mode = GZ_READ) (hsz : t.size ≠ 0) (hfs : FileSystem fs) :
     ∃ r1 fs1 H1 t1, Zlib.Gzread.gz_avail (some (.tab i)) fs H = .ok ((r1, fs1), H1) ∧ (r1 = 0 ∨ r1 = -1) ∧
       FdsKept fs fs1 ∧ GzPost H i t [] fs1 H1 GzInvUpToOutput ∧ H1.gzstates i = some t1 ∧ AvailRec t t1 ∧
-      (ReadsFinite fs t.fd → ReadsFinite fs1 t.fd ∧ inputLeft fs1 t1 ≤ inputLeft fs t) ∧
-      (ReadsBounded fs t.fd → ReadsBounded fs1 t.fd) ∧ (t.err ≠ Z_STREAM_END → t1.err ≠ Z_STREAM_END) ∧
+      (HasBudget fs t.fd → HasBudget fs1 t.fd ∧ inputLeft fs1 t1 ≤ inputLeft fs t) ∧
+      (ReadsFinite fs t.fd → ReadsFinite fs1 t.fd) ∧ (t.err ≠ Z_STREAM_END → t1.err ≠ Z_STREAM_END) ∧
       AvailFs t t1 fs fs1 ∧ AvailFlags r1 t t1 := by
   obtain ⟨-, hex, hpost⟩ := gz_avail_safe i H fs t hu hm hfs hsz
   obtain ⟨r1, fs1, H1, run⟩ := hex trivial
@@ -1529,8 +1529,8 @@ structure LookPre (H : Heap) (i : Nat) (t : GzState) : Prop where
 theorem lookPost_after_avail {H H1 Hf : Heap} {i : Nat} {t t1 tf : GzState} {fs fs1 : Fs} (P : LookPre H i t)
     (hk1 : FdsKept fs fs1) (post1 : GzPost H i t [] fs1 H1 GzInvUpToOutput) (ht1 : H1.gzstates i = some t1)
     (hrec1 : AvailRec t t1)
-    (bf1 : ReadsFinite fs t.fd → ReadsFinite fs1 t.fd ∧ inputLeft fs1 t1 ≤ inputLeft fs t)
-    (bb1 : ReadsBounded fs t.fd → ReadsBounded fs1 t.fd) (be1 : t.err ≠ Z_STREAM_END → t1.err ≠ Z_STREAM_END)
+    (bf1 : HasBudget fs t.fd → HasBudget fs1 t.fd ∧ inputLeft fs1 t1 ≤ inputLeft fs t)
+    (bb1 : ReadsFinite fs t.fd → ReadsFinite fs1 t.fd) (be1 : t.err ≠ Z_STREAM_END → t1.err ≠ Z_STREAM_END)
     (bud1 : BudgetAcc t.fd fs fs1 0)
     (post2 : GzPost H1 i t1 [] fs1 Hf GzInvUpToOutput) (htf : Hf.gzstates i = some tf) (hout : OutWindow tf)
     (ml : MsgLit tf)

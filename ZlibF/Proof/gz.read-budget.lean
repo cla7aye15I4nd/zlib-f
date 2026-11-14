@@ -18,8 +18,8 @@ theorem gz_avail_budget (i : Nat) (h : Heap) (fs : Fs) (s : GzState)
     {r : Int32} {fs' : Fs} {after : Heap}
     (run : Zlib.Gzread.gz_avail (gzSt i) fs h = .ok ((r, fs'), after)) :
     ∀ s', after.gzstates i = some s' →
-      (ReadsFinite fs s.fd → ReadsFinite fs' s.fd ∧ inputLeft fs' s' ≤ inputLeft fs s) ∧
-      (ReadsBounded fs s.fd → ReadsBounded fs' s.fd) ∧
+      (HasBudget fs s.fd → HasBudget fs' s.fd ∧ inputLeft fs' s' ≤ inputLeft fs s) ∧
+      (ReadsFinite fs s.fd → ReadsFinite fs' s.fd) ∧
       (s.err ≠ Z_STREAM_END → s'.err ≠ Z_STREAM_END) := by
   intro s' hs'
   obtain ⟨-, -, hpost⟩ := gz_avail_safe i h fs s hu hm hfs hsz
@@ -27,7 +27,7 @@ theorem gz_avail_budget (i : Nat) (h : Heap) (fs : Fs) (s : GzState)
   have e : t = s' := Option.some.inj (ht.symm.trans hs')
   subst e
   have hfd : t.fd = s.fd := by rw [hrec]
-  have fin : ReadsFinite fs s.fd → ReadsFinite fs' s.fd ∧ ∃ b b', fs.readBudget s.fd.toInt.toNat = some b ∧
+  have fin : HasBudget fs s.fd → HasBudget fs' s.fd ∧ ∃ b b', fs.readBudget s.fd.toInt.toNat = some b ∧
       fs'.readBudget s.fd.toInt.toNat = some b' ∧ b' + (t.strm.avail_in.toNat - s.strm.avail_in.toNat) ≤ b := by
     rintro ⟨h0, hne⟩
     obtain ⟨b, hb⟩ := Option.ne_none_iff_exists'.mp hne

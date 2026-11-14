@@ -120,7 +120,7 @@ def GzDopenSafe : Prop :=
 /-- **Goal: safety of every gz file history.** Every history keeps the world well formed and the
 handle in `GzInv`; `GzHistory` has no budget premise. For every next public call and every world (every
 oracle): the run's result is not a fault, it is `.ok` or the out-of-fuel outcome, never `Fault.ub` or a memory
-error (no premise); with `ReadsFinite` (only for the reading calls of `NeedsReadBound`) the result is `.ok`. The
+error (no premise); with `ReadsFinite` (a read budget below `2^61` bytes, only for the reading calls of `NeedsReadBound`) the result is `.ok`. The
 first half is partial correctness up to `2^64` iterations of each loop, which no real execution reaches. A call
 that returns keeps the open descriptors, keeps
 `GzInv`, writes only the handle's blocks and the declared caller regions, and changes the live blocks exactly
