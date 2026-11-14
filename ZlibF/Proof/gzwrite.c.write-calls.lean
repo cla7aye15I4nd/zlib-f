@@ -214,9 +214,9 @@ theorem inv_of_cq' {s : GzState} {h : Heap} {flush r : Int32} {h' : Heap} {s' : 
   · exact Or.inl hn
   · exact Or.inr ⟨by rw [hsize]; exact hsz, a, by rw [hin]; exact ha, by rw [hsize]; exact hle⟩
 
-/-- **`gz_comp` on a writer**, with or without buffers, for `0 ≤ flush ≤ 4`: it returns and keeps `GzInv`. -/
+/-- **`gz_comp` on a writer**, with or without buffers, for `0 ≤ flush ≤ 5`: it returns and keeps `GzInv`. -/
 theorem comp_any (err : GzErrorSpec) (errOwn : GzErrorOwn) {h : Heap} {s : GzState} {fs : Fs} (inv : GzInv h i s)
-    (hfs : FileSystem fs) (hw : s.mode = GZ_WRITE) (flush : Int32) (hf : 0 ≤ flush.toInt ∧ flush.toInt ≤ 4) :
+    (hfs : FileSystem fs) (hw : s.mode = GZ_WRITE) (flush : Int32) (hf : 0 ≤ flush.toInt ∧ flush.toInt ≤ 5) :
     ∃ r fs' after, Zlib.Gzwrite.gz_comp (gzSt i) flush fs h = .ok ((r, fs'), after) ∧
       FdsKept fs fs' ∧ GzPost h i s [] fs' after GzInv := by
   have hS : ldS (gzSt i) h = .ok (s, h) := Zlib.Gzlib.Proofs.ldS_run inv.common.record
