@@ -83,6 +83,18 @@ Rows with the same intent and a structural change carry the kernel replay:
 `uncompress2_z-destLen-drop`, a wrong `destLen` count, and the two `initial-room` rows, output
 room beyond what remains.
 
+`Goal.deflateCopy` follows the same rule. Its five rows in `tests/proof-mutants/public-streams.tsv` are all
+structural:
+- a null destination returns `Z_OK`;
+- the state-allocation failure returns `Z_OK`;
+- the buffer-failure path keeps `dest->state`;
+- the buffer-failure path skips the free of `pending_buf`;
+- the copy's back pointer is set to the source.
+Each is rejected by the replay; the replay of `deflate_copy_public` peaks at about 10.4 GB. The refusal
+goals `Goal.inflate_refusal` and `Goal.deflate_refusal` are not public entries. Their rows are in the
+safety list `tests/proof-mutants/stream-refusal.tsv`, which the mutation shards check by
+re-elaboration: each row turns a refusal into `Z_OK`.
+
 ## List format
 
 Lists use one tab-separated row per mutant. Lines starting with `#` are comments.
