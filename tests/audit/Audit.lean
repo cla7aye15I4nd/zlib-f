@@ -8,11 +8,17 @@ Reads the compiled modules of `ZlibF` and reports on **every** declaration, not 
 theorems. It never elaborates source and never runs code from the audited modules (no initialisers,
 no syntax extensions), so the audited code cannot change what it reports.
 
-Usage: `lake env lean --run tests/audit/Audit.lean <theorems.txt> <goals.txt> [--require-complete]`.
+Usage: `lake env lean --run tests/audit/Audit.lean <theorems.txt> <goals.txt> [--require-complete]
+[--proved <proved-goals.txt>]`.
 The `zlibf-audit` executable runs the same source. `--compare-axiom-collectors`
 also checks each result against Lean's per-declaration collector for small fixtures.
 Problems make the exit code 1. Strict mode also rejects every unproved goal.
 Missing, empty and duplicate registries fail in both modes.
+`--proved <file>` names the goals that must be PROVED, and exactly those: a listed goal that is OPEN
+and a PROVED goal that is not listed are both problems. Callers decide on the list, never on the
+report text.
+A declaration whose name contains a control character is rejected: such a name would print across
+lines and could forge report lines.
 
 Report lines:
 - `trusted <name> <hash of type> <hash of value>`: a definition, inductive type or structure that is
@@ -144,6 +150,22 @@ def ppType (env : Environment) (ty : Expr) : IO String := do
   let (fmt, _, _) ← Meta.MetaM.toIO (Meta.ppExpr ty) ctx { env := env }
   return (fmt.pretty 110).replace "\n" " "
 
+/-- A name component with a control character (such as a newline inside `«…»`) prints across lines. -/
+def hasControlChar (n : Name) : Bool :=
+  n.components.any fun part => match part with
+    | .str _ text => text.toList.any (fun c => c.toNat < 32 || c.toNat == 127)
+    | _ => false
+
+/-- Split `--flag value` options from the positional arguments. -/
+def splitOptions (flags : List String) : List String → List String × List (String × String) × List String
+  | [] => ([], [], [])
+  | a :: rest =>
+    if flags.contains a then
+      match rest with
+      | v :: rest' => let (p, o, m) := splitOptions flags rest'; (p, (a, v) :: o, m)
+      | [] => ([], [], [a])
+    else let (p, o, m) := splitOptions flags rest; (a :: p, o, m)
+
 def readNames (path : String) : IO (List Name) := do
   if !(← System.FilePath.pathExists path) then
     throw (IO.userError s!"missing registry: {path}")
@@ -153,7 +175,9 @@ def readNames (path : String) : IO (List Name) := do
 def main (args : List String) : IO UInt32 := do
   let strict := args.contains "--require-complete"
   let compareAxioms := args.contains "--compare-axiom-collectors"
-  let paths := args.filter (fun arg => arg != "--require-complete" && arg != "--compare-axiom-collectors")
+  let (positional, options, missingValue) := splitOptions ["--proved"] args
+  let provedFile := (options.find? (·.1 == "--proved")).map (·.2)
+  let paths := positional.filter (fun arg => arg != "--require-complete" && arg != "--compare-axiom-collectors")
   let thmFile := paths.headD "tests/audit/theorems.txt"
   let goalFile := paths.getD 1 "tests/audit/goals.txt"
   let compilerFile := paths.getD 2 "tests/audit/compiler-helpers.txt"
@@ -163,6 +187,7 @@ def main (args : List String) : IO UInt32 := do
   let listed := (← IO.FS.readFile thmFile).splitOn "\n" |>.map (fun l => l.replace "\r" "")
     |>.filter (fun l => l != "" && !l.startsWith "#") |>.map String.toName
   let mut problems : Array String := #[]
+  for flag in missingValue do problems := problems.push s!"option {flag} needs a value"
   if listed.isEmpty then problems := problems.push "empty theorem registry"
   if listed.eraseDups.length != listed.length then
     problems := problems.push "duplicate theorem registration"
@@ -174,6 +199,8 @@ def main (args : List String) : IO UInt32 := do
     unless isOurs env n do continue
     count := count + 1
     declarations := declarations.push (n, ci)
+    if hasControlChar n then
+      problems := problems.push s!"declaration name with a control character: {repr n.toString}"
     -- 1. forbidden kinds of declaration
     -- Only the independently reviewed compiler auxiliaries are exempt. Private names and
     -- proof namespaces do not authorise unsupported declaration kinds or assumptions.
@@ -246,6 +273,7 @@ def main (args : List String) : IO UInt32 := do
   if goals.eraseDups.length != goals.length then
     problems := problems.push "duplicate goal registration"
   let mut proved := 0
+  let mut provedGoals : Array Name := #[]
   for g in goals do
     match env.find? g with
     | some (.defnInfo di) =>
@@ -257,12 +285,24 @@ def main (args : List String) : IO UInt32 := do
           | some (.thmInfo ti) => ti.type == .const g []
           | _ => false)
         match proof with
-        | some t => proved := proved + 1; lines := lines.push s!"goal {g} PROVED by {t}"
+        | some t =>
+          proved := proved + 1; provedGoals := provedGoals.push g
+          lines := lines.push s!"goal {g} PROVED by {t}"
         | none =>
           lines := lines.push s!"goal {g} OPEN"
           if strict then problems := problems.push s!"unproved goal {g}"
     | some _ => problems := problems.push s!"goal {g} is not a definition"
     | none => problems := problems.push s!"goal {g} does not exist"
+  -- 6. The recorded list of proved goals is exact, so a caller decides on that list alone.
+  if let some file := provedFile then
+    let recorded ← readNames file
+    if recorded.eraseDups.length != recorded.length then
+      problems := problems.push s!"duplicate entry in {file}"
+    for g in recorded do
+      if !goals.contains g then problems := problems.push s!"{file} names {g}, which is not a goal"
+      else if !provedGoals.contains g then problems := problems.push s!"recorded proved goal {g} is OPEN"
+    for g in provedGoals do
+      if !recorded.contains g then problems := problems.push s!"proved goal {g} is not recorded in {file}"
   IO.eprintln s!"{proved} of {goals.length} goals proved"
   for l in lines.qsort (· < ·) do IO.println l
   IO.eprintln s!"audited {count} declarations of ZlibF, {listed.length} listed theorems"

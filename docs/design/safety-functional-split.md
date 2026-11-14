@@ -150,6 +150,16 @@ As implemented (step 3):
   not list as open may not become open. A goal new to the required set may enter the list.
 - `open_safety` may not list a proved goal. `final` also requires it to be empty. The auditor's
   strict mode is no longer used: it would reject every unproved functional goal.
+- No decision reads the report text: a Lean name can hold a newline and forge a line.
+  `tests/audit/proved-goals.txt` lists the proved goals, and the auditor's `--proved` check rejects
+  any difference from the goals it finds PROVED. The required, open and mutant checks use that
+  file. The auditor also rejects a declaration name with a control character.
+- Every proved goal of one function (its functional goal, or its own safety goal) needs function
+  mutants. `MUTANT_COVERAGE_PENDING` in `scripts/verification.py` names, with a reason, the proved
+  safety goals still without rows; a stale entry is rejected.
+- Against the base branch, no name leaves `theorems.txt` or `proved-goals.txt` unless
+  `tests/audit/registry-removals.json` names it with a reason. While the base has no
+  `open_safety`, the list at `ec860375` is the floor.
 
 ## Progress view
 

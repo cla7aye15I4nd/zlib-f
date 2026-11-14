@@ -1102,10 +1102,6 @@
       "owner": "batch B"
     },
     {
-      "goal": "ZlibF.Spec.Public.Goal.gz_sequence_safety",
-      "owner": "batch C"
-    },
-    {
       "goal": "ZlibF.Spec.Public.Goal.inflate_safety",
       "owner": "batch B"
     },
@@ -1166,19 +1162,11 @@
       "owner": "batch B"
     },
     {
-      "goal": "ZlibF.Spec.Public.Goal.gz_refusal",
-      "owner": "batch C"
-    },
-    {
       "goal": "ZlibF.Spec.Public.Goal.deflate_initialisation_domain",
       "owner": "batch 3"
     },
     {
       "goal": "ZlibF.Spec.Public.Goal.gz_initialisation_domain",
-      "owner": "batch C"
-    },
-    {
-      "goal": "ZlibF.Spec.Public.Goal.gz_sequence_nonvacuity",
       "owner": "batch C"
     }
   ]

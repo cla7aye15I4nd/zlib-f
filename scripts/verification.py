@@ -18,6 +18,22 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 AUDITOR_ROOT = ROOT
 MANIFEST = Path("tests/audit/public-api.json")
+THEOREMS = Path("tests/audit/theorems.txt")
+PROVED_GOALS = Path("tests/audit/proved-goals.txt")
+REMOVALS = Path("tests/audit/registry-removals.json")
+# The open list at the commit that introduced it: the floor while the base branch has no open list.
+OPEN_SAFETY_FLOOR = "ec860375"
+# Proved per-function safety goals that have no function mutants of their own yet, each with its
+# reason. The list may only shrink: an entry whose goal is unproved or has mutants is rejected.
+MUTANT_COVERAGE_PENDING = {
+    "ZlibF.Spec.Public.Goal.compress_safety": "wrapper mutants: batch B acceptance batch",
+    "ZlibF.Spec.Public.Goal.compress_z_safety": "wrapper mutants: batch B acceptance batch",
+    "ZlibF.Spec.Public.Goal.compress2_safety": "wrapper mutants: batch B acceptance batch",
+    "ZlibF.Spec.Public.Goal.uncompress_safe": "wrapper mutants: batch B acceptance batch",
+    "ZlibF.Spec.Public.Goal.uncompress_z_safe": "wrapper mutants: batch B acceptance batch",
+    "ZlibF.Spec.Public.Goal.uncompress2_safe": "wrapper mutants: batch B acceptance batch",
+    "ZlibF.Spec.Public.Goal.deflateCopy_safety": "deflateCopy rows keyed to the safety goal: batch B acceptance batch",
+}
 
 
 class Rejected(Exception):
@@ -125,9 +141,14 @@ def check_open_safety_shrinks(manifest: dict) -> None:
         raise Rejected(f"the base branch {base} has no {MANIFEST}")
     previous = json.loads(text)
     if "open_safety" not in previous:
-        # The base predates the open list; it closes no goal, so there is nothing to compare.
-        print(f"open_safety: base {base[:12]} predates the open list")
-        return
+        # The base predates the open list: compare with the list where it was introduced.
+        try:
+            text = subprocess.check_output(["git", "show", f"{OPEN_SAFETY_FLOOR}:{MANIFEST.as_posix()}"],
+                                           cwd=ROOT, text=True, stderr=subprocess.DEVNULL)
+        except subprocess.CalledProcessError:
+            raise Rejected(f"the open_safety floor {OPEN_SAFETY_FLOOR} is not available: fetch it")
+        previous = json.loads(text)
+        print(f"open_safety: base {base[:12]} predates the open list; floor {OPEN_SAFETY_FLOOR}")
     closed = set(required_public_goals(previous)) - set(open_safety(previous))
     reopened = sorted(closed & set(open_safety(manifest)))
     if reopened:
@@ -137,15 +158,76 @@ def check_open_safety_shrinks(manifest: dict) -> None:
           f"{len(open_safety(previous))}")
 
 
-def check_required_proved(report: Path, manifest: dict) -> None:
-    """Every required goal that is not listed as open has a registered theorem of exactly its type."""
-    proved = set(re.findall(r"^goal (\S+) PROVED by ", report.read_text(), re.M))
-    missing = [g for g in required_public_goals(manifest)
-               if g not in proved and g not in set(open_safety(manifest))]
+def proved_goals() -> list[str]:
+    """The goals with a registered theorem of exactly their type. The auditor's `--proved` check
+    rejects any difference from the PROVED set it computes, so this file can be trusted alone."""
+    path = ROOT / PROVED_GOALS
+    if not path.is_file() or path.is_symlink():
+        raise Rejected(f"missing registry: {PROVED_GOALS}")
+    names = [s.strip() for s in path.read_text().splitlines() if s.strip() and not s.lstrip().startswith("#")]
+    if len(names) != len(set(names)):
+        raise Rejected(f"duplicate entry in {PROVED_GOALS}")
+    return names
+
+
+def removals() -> dict[str, set[str]]:
+    """Reviewed removals: a registered theorem or a recorded proved goal that may disappear."""
+    path = ROOT / REMOVALS
+    data = json.loads(path.read_text()) if path.is_file() else {"version": 1, "theorems": [], "proved_goals": []}
+    if set(data) != {"version", "theorems", "proved_goals"} or data["version"] != 1:
+        raise Rejected(f"unknown {REMOVALS}")
+    result = {}
+    for key in ("theorems", "proved_goals"):
+        names = set()
+        for entry in data[key]:
+            if not isinstance(entry, dict) or set(entry) != {"name", "reason"} or \
+                    not str(entry["reason"]).strip() or not str(entry["name"]).strip():
+                raise Rejected(f"{REMOVALS} entries need a name and a reason: {entry}")
+            names.add(entry["name"])
+        result[key] = names
+    return result
+
+
+def check_registries_shrink() -> None:
+    """No registered theorem and no recorded proved goal of the base branch disappears, unless
+    tests/audit/registry-removals.json names it with a reason. So a goal proved on the base cannot
+    become open, required or not."""
+    base = base_revision()
+    allowed = removals()
+    def names_at(path: Path) -> set[str] | None:
+        try:
+            text = subprocess.check_output(["git", "show", f"{base}:{path.as_posix()}"],
+                                           cwd=ROOT, text=True, stderr=subprocess.DEVNULL)
+        except subprocess.CalledProcessError:
+            return None
+        return {s.strip() for s in text.splitlines() if s.strip() and not s.lstrip().startswith("#")}
+    old_theorems = names_at(THEOREMS)
+    if old_theorems is None:
+        raise Rejected(f"the base branch {base} has no {THEOREMS}")
+    lost = sorted(old_theorems - set(read_names(ROOT / THEOREMS)) - allowed["theorems"])
+    if lost:
+        raise Rejected("registered theorems removed without a reviewed entry in "
+                       f"{REMOVALS}: " + ", ".join(lost))
+    old_proved = names_at(PROVED_GOALS)
+    if old_proved is None:
+        print(f"proved goals: base {base[:12]} predates {PROVED_GOALS}; theorems.txt is compared")
+        return
+    lost = sorted(old_proved - set(proved_goals()) - allowed["proved_goals"])
+    if lost:
+        raise Rejected(f"goals proved on the base branch are no longer proved (no reviewed entry in "
+                       f"{REMOVALS}): " + ", ".join(lost))
+
+
+def check_required_proved(manifest: dict) -> None:
+    """Every required goal that is not listed as open is proved, and no listed goal is proved.
+    Decided on tests/audit/proved-goals.txt, which the auditor checks to be exact."""
+    proved = set(proved_goals())
+    opened = set(open_safety(manifest))
+    missing = [g for g in required_public_goals(manifest) if g not in proved and g not in opened]
     if missing:
         raise Rejected("required goals without a registered theorem and not listed in open_safety: " +
                        ", ".join(missing))
-    listed_proved = sorted(set(open_safety(manifest)) & proved)
+    listed_proved = sorted(opened & proved)
     if listed_proved:
         raise Rejected("open_safety lists proved goals; remove them: " + ", ".join(listed_proved))
 
@@ -219,11 +301,19 @@ def public_mutants(manifest: dict) -> dict:
     return targets
 
 
-def check_public_mutant_coverage(report: Path, manifest: dict) -> None:
-    targets = public_mutants(manifest)
-    public = {a["functional_goal"] for a in manifest["apis"] if a["scope"] == "lp64-linux"}
-    proved = set(re.findall(r"^goal (\S+) PROVED by ", report.read_text(), re.M))
-    missing = (proved & public) - set(targets)
+def mutant_public_goals(manifest: dict) -> set[str]:
+    """The goals of one function each: its functional goal and its own (unshared) safety goal."""
+    return set(mutation_apis(manifest))
+
+
+def check_public_mutant_coverage(manifest: dict, proved: set[str]) -> None:
+    """Every proved goal of one public function has function mutants, except the listed pending ones."""
+    targets = set(public_mutants(manifest))
+    public = mutant_public_goals(manifest)
+    for goal, reason in MUTANT_COVERAGE_PENDING.items():
+        if not reason or goal not in public or goal not in proved or goal in targets:
+            raise Rejected(f"stale mutant-coverage exemption, remove it: {goal}")
+    missing = (proved & public) - targets - set(MUTANT_COVERAGE_PENDING)
     if missing:
         raise Rejected("proved public targets have no function mutants: " + ", ".join(sorted(missing)))
 
@@ -606,6 +696,8 @@ def audit(report: Path, *, strict: bool = False, public: bool = False) -> int:
                 "tests/audit/theorems.txt", str(targets)]
         if strict:
             args.append("--require-complete")
+        # The auditor rejects any difference between this list and the goals it finds PROVED.
+        args += ["--proved", str(ROOT / PROVED_GOALS)]
         with report.open("w") as out:
             return subprocess.run(args, cwd=ROOT, text=True, stdout=out).returncode
 
@@ -652,10 +744,13 @@ def main() -> int:
                     if line.startswith(("goal ", "PROBLEM:")):
                         print(line)
                 raise Rejected("audit rejected the requested verification stage")
-            check_public_mutant_coverage(report, manifest)
+            # Decided on the registries, never on the report text: the auditor has checked that
+            # proved-goals.txt is exactly the set of PROVED goals.
+            check_public_mutant_coverage(manifest, set(proved_goals()))
             if args.mode in ("specs", "final"):
-                check_required_proved(report, manifest)
+                check_required_proved(manifest)
                 check_open_safety_shrinks(manifest)
+                check_registries_shrink()
             if args.mode == "final" and open_safety(manifest):
                 raise Rejected("final acceptance requires an empty open_safety: " +
                                ", ".join(open_safety(manifest)))

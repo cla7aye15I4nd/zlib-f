@@ -1,4 +1,4 @@
-<!-- source-sha256: fe7ec6834f0b475fa6ca562ff89987b279266d412c97a36ca7c6129ee0cea622 -->
+<!-- source-sha256: 458b80b8f4083fdbccaf8529e7c6e074fa59f68e440d964b6ecbdce16394f4f4 -->
 # 安全规范与功能规范
 
 状态：设计已于 2026-11-13 批准，按“工作顺序”中的步骤实施。本页说明怎样拆分 `ZlibF/Spec/`，使当前目标（每个公开函数的安全性）能从一个目录读出。这里的任何内容都不改变已证定理的含义。
@@ -87,6 +87,9 @@ flowchart TD
 - `compressBound` 和 `compressBound_z` 指向它们的完整契约，并带 `safety_note`：它们的翻译是不访问堆、不会出错的纯函数，单独的安全目标会按定义成立。
 - `open_safety` 与基线分支比较：先取 `ZLIBF_BASE_REF`，否则取拉取请求的基线分支，否则取 `origin/main`；在 `main` 上则取第一个父提交。基线要求且未列为待完成的目标不得重新列为待完成。新加入必需集合的目标可以进入该列表。
 - `open_safety` 不得列出已证明的目标。`final` 还要求它为空。不再使用审计工具的严格模式：它会拒绝每个未证明的功能目标。
+- 任何判定都不读取报告文本：Lean 名字可以含换行，从而伪造一行。`tests/audit/proved-goals.txt` 列出已证明的目标，审计工具的 `--proved` 检查拒绝它与审计工具得出的 PROVED 集合之间的任何差异。必需、待完成和变异的检查都使用这个文件。审计工具还拒绝含控制字符的声明名。
+- 只属于一个函数的每个已证明目标（它的功能目标或它自己的安全目标）都需要函数变异。`scripts/verification.py` 中的 `MUTANT_COVERAGE_PENDING` 带理由列出尚无变异行的已证明安全目标；过时的条目会被拒绝。
+- 与基线分支相比，除非 `tests/audit/registry-removals.json` 带理由列出，否则任何名字都不得离开 `theorems.txt` 或 `proved-goals.txt`。在基线还没有 `open_safety` 时，以 `ec860375` 的列表为下限。
 
 ## 进度视图
 

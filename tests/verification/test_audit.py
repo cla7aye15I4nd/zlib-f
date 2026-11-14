@@ -70,14 +70,65 @@ class AuditTests(unittest.TestCase):
             verification.check_open_safety(manifest)
 
     def test_required_goals_are_proved_unless_open(self):
-        report = self.root / "report.txt"
-        report.write_text("goal Goal.first_safety PROVED by Fixture.first\ngoal Goal.second_safety OPEN\n"
-                          "goal Goal.first OPEN\n")
-        verification.check_required_proved(report, self.open_manifest("Goal.second_safety"))
-        with self.assertRaises(verification.Rejected):
-            verification.check_required_proved(report, self.open_manifest())
-        with self.assertRaises(verification.Rejected):
-            verification.check_required_proved(report, self.open_manifest("Goal.first_safety", "Goal.second_safety"))
+        # Decided on proved-goals.txt (which the auditor checks to be exact), never on report text.
+        (self.root / "tests/audit").mkdir(parents=True, exist_ok=True)
+        (self.root / "tests/audit/proved-goals.txt").write_text("Goal.first_safety\n")
+        with patch.object(verification, "ROOT", self.root):
+            verification.check_required_proved(self.open_manifest("Goal.second_safety"))
+            with self.assertRaises(verification.Rejected):
+                verification.check_required_proved(self.open_manifest())
+            with self.assertRaises(verification.Rejected):
+                verification.check_required_proved(self.open_manifest("Goal.first_safety", "Goal.second_safety"))
+
+    def test_open_safety_floor_when_the_base_has_no_open_list(self):
+        repo = self.root / "repo"
+        (repo / "tests/audit").mkdir(parents=True)
+        def git(*args):
+            subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *args], cwd=repo, check=True,
+                           stdout=subprocess.DEVNULL)
+        git("init", "-q")
+        manifest = repo / "tests/audit/public-api.json"
+        manifest.write_text(json.dumps(self.open_manifest("Goal.second_safety")))
+        git("add", "-A"); git("commit", "-qm", "floor"); git("tag", "floor")
+        old = self.open_manifest(); del old["open_safety"]
+        manifest.write_text(json.dumps(old))
+        git("add", "-A"); git("commit", "-qm", "old base"); git("tag", "base")
+        with patch.object(verification, "ROOT", repo), patch.object(verification, "OPEN_SAFETY_FLOOR", "floor"), \
+                patch.dict(os.environ, {"ZLIBF_BASE_REF": "base"}):
+            verification.check_open_safety_shrinks(self.open_manifest("Goal.second_safety"))
+            with self.assertRaisesRegex(verification.Rejected, "first_safety"):
+                verification.check_open_safety_shrinks(self.open_manifest("Goal.first_safety", "Goal.second_safety"))
+
+    def test_registered_theorems_and_proved_goals_only_shrink_with_a_reviewed_entry(self):
+        repo = self.root / "repo"
+        audit = repo / "tests/audit"
+        audit.mkdir(parents=True)
+        def git(*args):
+            subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *args], cwd=repo, check=True,
+                           stdout=subprocess.DEVNULL)
+        git("init", "-q")
+        (audit / "theorems.txt").write_text("T.a\nT.b\n")
+        (audit / "proved-goals.txt").write_text("Goal.a\nGoal.b\n")
+        git("add", "-A"); git("commit", "-qm", "base"); git("tag", "base")
+        (repo / "README").write_text("x\n")
+        git("add", "README"); git("commit", "-qm", "head")
+        with patch.object(verification, "ROOT", repo), patch.dict(os.environ, {"ZLIBF_BASE_REF": "base"}):
+            (audit / "theorems.txt").write_text("T.a\nT.b\nT.c\n")
+            (audit / "proved-goals.txt").write_text("Goal.a\nGoal.b\nGoal.c\n")
+            verification.check_registries_shrink()
+            (audit / "theorems.txt").write_text("T.a\n")
+            with self.assertRaisesRegex(verification.Rejected, "T.b"):
+                verification.check_registries_shrink()
+            (audit / "registry-removals.json").write_text(json.dumps({"version": 1, "proved_goals": [],
+                "theorems": [{"name": "T.b", "reason": "merged into T.a"}]}))
+            verification.check_registries_shrink()
+            (audit / "proved-goals.txt").write_text("Goal.a\n")
+            with self.assertRaisesRegex(verification.Rejected, "Goal.b"):
+                verification.check_registries_shrink()
+            (audit / "registry-removals.json").write_text(json.dumps({"version": 1, "theorems": [
+                {"name": "T.b", "reason": ""}], "proved_goals": []}))
+            with self.assertRaises(verification.Rejected):
+                verification.check_registries_shrink()
 
     def test_open_safety_only_shrinks_against_the_base_branch(self):
         repo = self.root / "repo"
@@ -119,19 +170,24 @@ class AuditTests(unittest.TestCase):
         mapping.parent.mkdir(parents=True)
         manifest = {"apis": [{"functional_goal": "Goal.first", "safety_goal": "Goal.first_safe",
                               "function": "first", "source": source, "scope": "lp64-linux"}]}
-        report = self.root / "report.txt"
         def write_targets(targets):
             mapping.write_text(json.dumps({"version": 1, "targets": targets}))
         reference = {"list": "tests/proof-mutants/fixture.tsv", "name": "first-change"}
-        with patch.object(verification, "ROOT", self.root):
+        with patch.object(verification, "ROOT", self.root), \
+                patch.object(verification, "MUTANT_COVERAGE_PENDING", {}):
             write_targets({})
-            report.write_text("goal Goal.first OPEN\n")
-            verification.check_public_mutant_coverage(report, manifest)
-            report.write_text("goal Goal.first PROVED by Fixture.exact\n")
+            verification.check_public_mutant_coverage(manifest, set())
             with self.assertRaises(verification.Rejected):
-                verification.check_public_mutant_coverage(report, manifest)
+                verification.check_public_mutant_coverage(manifest, {"Goal.first"})
+            # A proved per-function safety goal needs mutants of its own too (F2).
+            with self.assertRaisesRegex(verification.Rejected, "first_safe"):
+                verification.check_public_mutant_coverage(manifest, {"Goal.first_safe"})
+            with patch.object(verification, "MUTANT_COVERAGE_PENDING", {"Goal.first_safe": "pending rows"}):
+                verification.check_public_mutant_coverage(manifest, {"Goal.first_safe"})
+                with self.assertRaisesRegex(verification.Rejected, "stale"):
+                    verification.check_public_mutant_coverage(manifest, set())
             write_targets({"Goal.first": [reference]})
-            verification.check_public_mutant_coverage(report, manifest)
+            verification.check_public_mutant_coverage(manifest, {"Goal.first"})
             executed = []
             def record(command):
                 self.assertEqual(command[:-1], ['env', 'PROOFMUT_STRICT=1',
@@ -146,23 +202,23 @@ class AuditTests(unittest.TestCase):
                                       boundary.read_text().splitlines())
             write_targets({"Goal.first": [dict(reference, name="second-change")]})
             with self.assertRaises(verification.Rejected):
-                verification.check_public_mutant_coverage(report, manifest)
+                verification.check_public_mutant_coverage(manifest, {"Goal.first"})
             write_targets({"Goal.first": [reference]})
             original = table.read_text()
             write_targets({"Goal.first": [dict(reference, name="")]})
             table.write_text(original.replace("first-change", "", 1))
             with self.assertRaises(verification.Rejected):
-                verification.check_public_mutant_coverage(report, manifest)
+                verification.check_public_mutant_coverage(manifest, {"Goal.first"})
             write_targets({"Goal.first": [reference]})
             table.write_text(original.replace("def first : Nat := 1", "def renamed : Nat := 1"))
             with self.assertRaises(verification.Rejected):
-                verification.check_public_mutant_coverage(report, manifest)
+                verification.check_public_mutant_coverage(manifest, {"Goal.first"})
             table.write_text(original.replace("\tFixture\n", "\tFixture\tgap:missing proof\n", 1))
             with self.assertRaises(verification.Rejected):
-                verification.check_public_mutant_coverage(report, manifest)
+                verification.check_public_mutant_coverage(manifest, {"Goal.first"})
             table.write_text(original.replace(source, "ZlibF/Spec/Fixture.lean", 1))
             with self.assertRaises(verification.Rejected):
-                verification.check_public_mutant_coverage(report, manifest)
+                verification.check_public_mutant_coverage(manifest, {"Goal.first"})
             # the function's own safety goal keys the same function; another name does not
             table.write_text(original)
             write_targets({"Goal.first_safe": [reference]})
@@ -196,9 +252,13 @@ class AuditTests(unittest.TestCase):
                                 capture_output=True)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
-    def audit(self, strict=False, compare=True):
+    def audit(self, strict=False, compare=True, proved=None):
         args = ["lake", "env", str(self.auditor),
                 str(self.theorems), str(self.goals), str(ROOT / "tests/audit/compiler-helpers.txt")]
+        if proved is not None:
+            path = self.root / "proved-goals.txt"
+            path.write_text("".join(name + "\n" for name in proved))
+            args += ["--proved", str(path)]
         if compare:
             args.append("--compare-axiom-collectors")
         if strict:
@@ -279,6 +339,28 @@ end ZlibF.Fixture
         result = self.audit(strict=True)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("PROVED by ZlibF.Fixture.exact", result.stdout)
+
+    def test_proved_list_is_exact(self):
+        exact = self.audit(proved=["ZlibF.Fixture.Goal.checked"])
+        self.assertEqual(exact.returncode, 0, exact.stdout + exact.stderr)
+        unrecorded = self.audit(proved=[])
+        self.assertNotEqual(unrecorded.returncode, 0)
+        self.assertIn("is not recorded", unrecorded.stderr)
+        self.theorems.write_text("ZlibF.Fixture.stronger\n")
+        forged = self.audit(proved=["ZlibF.Fixture.Goal.checked"])
+        self.assertNotEqual(forged.returncode, 0)
+        self.assertIn("recorded proved goal ZlibF.Fixture.Goal.checked is OPEN", forged.stderr)
+
+    def test_control_character_in_a_name_is_rejected(self):
+        # A newline inside a quoted name would print a forged report line (F1).
+        self.theorems.write_text("ZlibF.Fixture.stronger\n")
+        self.source.write_text(FIXTURE + "\nnamespace ZlibF.Fixture\ndef «x\ngoal ZlibF.Fixture.Goal.checked "
+                               "PROVED by y» : Nat := 1\nend ZlibF.Fixture\n")
+        self.build()
+        result = self.audit(compare=False)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("control character", result.stderr)
+        self.assertNotIn("PROVED", result.stdout)
 
     def test_extra_premise_stays_open(self):
         self.theorems.write_text("ZlibF.Fixture.stronger\n")
