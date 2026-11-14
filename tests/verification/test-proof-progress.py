@@ -117,7 +117,7 @@ class ProgressTests(unittest.TestCase):
         diagram = progress.mermaid(graph)
         for index in [2, 3]:
             self.assertIn(f'n{index}["{"abcde"[index]}<br/>Blocked"]:::unproved', diagram)
-            self.assertIn(f'click n{index} href "https://github.com/example/project/blob/{"a" * 40}/docs/progress.md#address-model"', diagram)
+            self.assertIn(f'click n{index} href "https://github.com/example/project/blob/{"a" * 12}/docs/progress.md#address-model"', diagram)
         for branch in ['dev', 'main']:
             base = f'https://github.com/example/project/blob/{branch}/docs/progress.md'
             url = urlsplit(urljoin(base, progress.target_url(graph, graph['nodes'][2])))
@@ -183,7 +183,7 @@ class ProgressTests(unittest.TestCase):
             links = re.findall(r'click \w+ href "([^"]+)"', diagram)
             self.assertTrue(links)
             self.assertTrue(all(line.endswith('_blank') for line in diagram.splitlines() if line.strip().startswith('click ')))
-            self.assertTrue(all(link.startswith('https://github.com/example/project/blob/' + 'a' * 40) for link in links))
+            self.assertTrue(all(link.startswith('https://github.com/example/project/blob/' + 'a' * 12 + '/') for link in links))
             bases = ['https://viewscreen.githubusercontent.com/markdown/mermaid',
                      'https://github.com/example/project/blob/dev/docs/' + page,
                      'https://github.com/example/project/blob/main/docs/' + page]
@@ -191,7 +191,7 @@ class ProgressTests(unittest.TestCase):
                 for link in links:
                     resolved = urlsplit(urljoin(base, link))
                     self.assertEqual(resolved.netloc, 'github.com')
-                    self.assertEqual(resolved.path, f'/example/project/blob/{"a" * 40}/ZlibF/Spec/Goals.lean')
+                    self.assertEqual(resolved.path, f'/example/project/blob/{"a" * 12}/ZlibF/Spec/Goals.lean')
 
     def test_new_targets_and_groups_link_to_existing_specifications(self):
         self.link_context['progressAnchors'] = []
