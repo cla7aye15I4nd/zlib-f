@@ -1423,7 +1423,8 @@ def LookPost (h : Heap) (i : Nat) (s : GzState) (fs : Fs) (r : Int32) (fs' : Fs)
       (HasBudget fs s.fd → inputLeft fs' s' ≤ inputLeft fs s) ∧
       (s.err ≠ Z_STREAM_END → s'.err ≠ Z_STREAM_END) ∧
       (s'.size = 0 → s'.err ≠ Z_OK ∧ s'.err ≠ Z_BUF_ERROR) ∧
-      (r = -1 → s'.how = LOOK ∧ s'.err ≠ Z_OK ∧ s'.x.have = 0) ∧
+      (r = -1 → s'.how = LOOK ∧ (s'.err ≠ Z_OK ∧ s'.err ≠ Z_BUF_ERROR) ∧ s'.x.have = 0) ∧
+      (s.err ≠ Z_OK → s.err ≠ Z_BUF_ERROR → s'.err ≠ Z_OK ∧ s'.err ≠ Z_BUF_ERROR) ∧
       (r = 0 → (s'.how = LOOK ∧ s'.x.have = 0 ∧
           ((s'.eof ≠ 0 ∧ s'.strm.avail_in = 0) ∨ BudgetAcc s.fd fs fs' 1)) ∨
         (s'.how = GZIP ∧ s'.x.have = 0 ∧ InflateAtHead after s') ∨
@@ -1438,7 +1439,8 @@ theorem lookPost_of {H : Heap} {i : Nat} {t t' : GzState} {fs fs' : Fs} {r : Int
     (bud : BudgetAcc t.fd fs fs' 0)
     (keeps : FetchKeeps t t') (ml : MsgLit t') (il : HasBudget fs t.fd → inputLeft fs' t' ≤ inputLeft fs t)
     (er : t.err ≠ Z_STREAM_END → t'.err ≠ Z_STREAM_END) (sz : t'.size = 0 → t'.err ≠ Z_OK ∧ t'.err ≠ Z_BUF_ERROR)
-    (neg : r = -1 → t'.how = LOOK ∧ t'.err ≠ Z_OK ∧ t'.x.have = 0)
+    (neg : r = -1 → t'.how = LOOK ∧ (t'.err ≠ Z_OK ∧ t'.err ≠ Z_BUF_ERROR) ∧ t'.x.have = 0)
+    (bad : t.err ≠ Z_OK → t.err ≠ Z_BUF_ERROR → t'.err ≠ Z_OK ∧ t'.err ≠ Z_BUF_ERROR)
     (res : r = 0 → (t'.how = LOOK ∧ t'.x.have = 0 ∧
           ((t'.eof ≠ 0 ∧ t'.strm.avail_in = 0) ∨ BudgetAcc t.fd fs fs' 1)) ∨
         (t'.how = GZIP ∧ t'.x.have = 0 ∧ InflateAtHead after t') ∨
@@ -1447,7 +1449,7 @@ theorem lookPost_of {H : Heap} {i : Nat} {t t' : GzState} {fs fs' : Fs} {r : Int
           t'.x.pos.toInt + t'.x.have.toNat ≤ 9223372036854775807)) :
     LookPost H i t fs r fs' after :=
   ⟨hr, hk, post_out post (fun s' hs' => by rw [hrec] at hs'; cases hs'; exact hout), rf, rb, bud, t', hrec, keeps, ml,
-    il, er, sz, neg, res⟩
+    il, er, sz, neg, bad, res⟩
 
 theorem AvailRec.fields {t t1 : GzState} (h : AvailRec t t1) :
     t1.mode = t.mode ∧ t1.fd = t.fd ∧ t1.skip = t.skip ∧ t1.x = t.x ∧ t1.size = t.size ∧ t1.out = t.out ∧
@@ -1539,7 +1541,8 @@ theorem lookPost_after_avail {H H1 Hf : Heap} {i : Nat} {t t1 tf : GzState} {fs 
     (same : tf.mode = t1.mode ∧ tf.fd = t1.fd ∧ tf.skip = t1.skip ∧ tf.x.pos = t1.x.pos ∧ tf.size = t1.size ∧
       tf.out = t1.out ∧ tf.«in» = t1.«in» ∧ (tf.err = t1.err ∨ tf.err = Z_DATA_ERROR ∨ tf.err = Z_MEM_ERROR))
     (hav : tf.strm.avail_in.toNat ≤ t1.strm.avail_in.toNat) {r : Int32} (hr : r = 0 ∨ r = -1)
-    (neg : r = -1 → tf.how = LOOK ∧ tf.err ≠ Z_OK ∧ tf.x.have = 0)
+    (neg : r = -1 → tf.how = LOOK ∧ (tf.err ≠ Z_OK ∧ tf.err ≠ Z_BUF_ERROR) ∧ tf.x.have = 0)
+    (bad1 : t1.err = t.err ∨ t1.err = Z_ERRNO ∨ t1.err = Z_MEM_ERROR)
     (res : r = 0 → (tf.how = LOOK ∧ tf.x.have = 0 ∧
           ((tf.eof ≠ 0 ∧ tf.strm.avail_in = 0) ∨ BudgetAcc t.fd fs fs1 1)) ∨
         (tf.how = GZIP ∧ tf.x.have = 0 ∧ InflateAtHead Hf tf) ∨
@@ -1551,14 +1554,24 @@ theorem lookPost_after_avail {H H1 Hf : Heap} {i : Nat} {t t1 tf : GzState} {fs 
   obtain ⟨sm, sfd, ssk, spos, ssz, sout, sin, serr⟩ := same
   refine lookPost_of hr hk1 (post_trans post1 ht1 post2) htf hout (fun h => (bf1 h).1) bb1 bud1
     ⟨sm.trans fm, sfd.trans ffd, ssk.trans fsk, by rw [spos, fx], fun _ => ⟨ssz.trans fsz, sout.trans fout,
-      sin.trans fin⟩⟩ ml (fun h => Nat.le_trans (inputLeft_le sfd hav) (bf1 h).2) ?_ ?_ neg res
+      sin.trans fin⟩⟩ ml (fun h => Nat.le_trans (inputLeft_le sfd hav) (bf1 h).2) ?_ ?_ neg ?_ res
   · intro h
     rcases serr with e | e | e
     · rw [e]; exact be1 h
     · rw [e]; decide
     · rw [e]; decide
-  intro hz
-  exact absurd (by rw [← fsz, ← ssz]; exact hz) P.size
+  · intro hz
+    exact absurd (by rw [← fsz, ← ssz]; exact hz) P.size
+  · intro a b
+    have b1 : t1.err ≠ Z_OK ∧ t1.err ≠ Z_BUF_ERROR := by
+      rcases bad1 with e | e | e <;> rw [e]
+      · exact ⟨a, b⟩
+      · exact ⟨by decide, by decide⟩
+      · exact ⟨by decide, by decide⟩
+    rcases serr with e | e | e <;> rw [e]
+    · exact b1
+    · exact ⟨by decide, by decide⟩
+    · exact ⟨by decide, by decide⟩
 
 /-- **The auto-detecting path.** -/
 theorem lookAuto_run {H : Heap} {i : Nat} {t : GzState} (fs : Fs) (P : LookPre H i t) (hfs : FileSystem fs)
@@ -1592,7 +1605,7 @@ theorem lookAuto_run {H : Heap} {i : Nat} {t : GzState} (fs : Fs) (P : LookPre H
     simp only [beq_self_eq_true, ite_true]
     exact ⟨-1, fs1, H1, rfl, lookPost_after_avail P hk1 post1 ht1 hrec1 bf1 bb1 be1 bud1 refl1 ht1 out1 ml1 same1
       (Nat.le_refl _) (Or.inr rfl) (fun _ => ⟨by rw [fhow]; exact P.look, afl1.1 rfl, hx1⟩)
-      (fun e => absurd e (by decide))⟩
+      afs1.2.2 (fun e => absurd e (by decide))⟩
   have e0 : r1 = 0 := hr1.resolve_right e1
   subst e0
   have hz1 : (StateT.lift (ldZ (strmOf (some (.tab i)))) : G ZStream) fs1 H1 = .ok ((t1.strm, fs1), H1) := by
@@ -1613,7 +1626,7 @@ theorem lookAuto_run {H : Heap} {i : Nat} {t : GzState} (fs : Fs) (P : LookPre H
         have hlt := afl1.2.2.2 rfl he0
         exact afs1.1.mono (by omega)
     exact ⟨0, fs1, H1, rfl, lookPost_after_avail P hk1 post1 ht1 hrec1 bf1 bb1 be1 bud1 refl1 ht1 out1 ml1 same1
-      (Nat.le_refl _) (Or.inl rfl) (fun e => absurd e (by decide)) (fun _ => Or.inl ⟨by rw [fhow]; exact P.look, hx1, prog⟩)⟩
+      (Nat.le_refl _) (Or.inl rfl) (fun e => absurd e (by decide)) afs1.2.2 (fun _ => Or.inl ⟨by rw [fhow]; exact P.look, hx1, prog⟩)⟩
   rw [if_neg c]
   have hav : t1.strm.avail_in ≠ 0 := by
     intro e; apply c; simp [e]
@@ -1642,7 +1655,7 @@ theorem lookAuto_run {H : Heap} {i : Nat} {t : GzState} (fs : Fs) (P : LookPre H
     have hxf : tf.x.have = 0 := by rw [eqf]; exact hx1
     have hhow : tf.how = GZIP := by rw [eqf]
     exact lookPost_after_avail P hk1 post1 ht1 hrec1 bf1 bb1 be1 bud1 post2 htf (fun hh => absurd hxf hh) (fun _ => Or.inl hmsg) same
-      (by rw [avf]; exact Nat.le_refl _) (Or.inl rfl) (fun e => absurd e (by decide)) (fun _ => Or.inr (Or.inl ⟨hhow, hxf, head⟩))
+      (by rw [avf]; exact Nat.le_refl _) (Or.inl rfl) (fun e => absurd e (by decide)) afs1.2.2 (fun _ => Or.inr (Or.inl ⟨hhow, hxf, head⟩))
   | false =>
     obtain ⟨Hf, tf, room, run2, htf, eqf, herrf, hrle, hpos, hz, post2⟩ :=
       lookCopy_run fs1 hu1 hm1 hsz1 post1.1 hav (by rw [fdir]; exact hd)
@@ -1662,7 +1675,7 @@ theorem lookAuto_run {H : Heap} {i : Nat} {t : GzState} (fs : Fs) (P : LookPre H
       · exact Or.inr (hz h0)
       · exact Or.inl h0
     refine lookPost_after_avail P hk1 post1 ht1 hrec1 bf1 bb1 be1 bud1 post2 htf ?_ hml same hav' (Or.inl rfl)
-      (fun e => absurd e (by decide)) (fun _ => Or.inr (Or.inr hres))
+      (fun e => absurd e (by decide)) afs1.2.2 (fun _ => Or.inr (Or.inr hres))
     intro _
     rw [eqf]
     refine ⟨0, look_padv_zero t1.out |>.symm, ?_⟩
@@ -1703,7 +1716,7 @@ theorem lookMain_run {H : Heap} {i : Nat} {t : GzState} (fs : Fs) (P : LookPre H
     refine lookPost_of (Or.inl rfl) (fun _ => Iff.rfl) post2 htf (fun hh => absurd hxf hh) id id (BudgetAcc.refl _ _)
       keeps (fun _ => Or.inl hmsg)
       (fun _ => inputLeft_le (by rw [eqf]) (by rw [avf]; exact Nat.le_refl _)) (by rw [eqf]; exact id) ?_
-      (fun e => absurd e (by decide)) (fun _ => Or.inr (Or.inl ⟨by rw [eqf], hxf, head⟩))
+      (fun e => absurd e (by decide)) (fun a b => by rw [eqf]; exact ⟨a, b⟩) (fun _ => Or.inr (Or.inl ⟨by rw [eqf], hxf, head⟩))
     intro hz
     exact absurd (by rw [eqf] at hz; exact hz) P.size
   rw [if_pos c2]
@@ -1734,7 +1747,7 @@ theorem lookMain_run {H : Heap} {i : Nat} {t : GzState} (fs : Fs) (P : LookPre H
     simp only [beq_self_eq_true, ite_true]
     exact ⟨-1, fs1, H1, rfl, lookPost_after_avail P hk1 post1 ht1 hrec1 bf1 bb1 be1 bud1 refl1 ht1 out1 ml1 same1
       (Nat.le_refl _) (Or.inr rfl) (fun _ => ⟨by rw [fhow]; exact P.look, afl1.1 rfl, hx1⟩)
-      (fun e => absurd e (by decide))⟩
+      afs1.2.2 (fun e => absurd e (by decide))⟩
   have e0 : r1 = 0 := hr1.resolve_right e1
   subst e0
   have hz1 : (StateT.lift (ldZ (strmOf (some (.tab i)))) : G ZStream) fs1 H1 = .ok ((t1.strm, fs1), H1) := by
@@ -1744,7 +1757,7 @@ theorem lookMain_run {H : Heap} {i : Nat} {t : GzState} (fs : Fs) (P : LookPre H
   · rw [if_pos c3]
     have ha0 : t1.strm.avail_in = 0 := by simpa using c3
     exact ⟨0, fs1, H1, rfl, lookPost_after_avail P hk1 post1 ht1 hrec1 bf1 bb1 be1 bud1 refl1 ht1 out1 ml1 same1
-      (Nat.le_refl _) (Or.inl rfl) (fun e => absurd e (by decide))
+      (Nat.le_refl _) (Or.inl rfl) (fun e => absurd e (by decide)) afs1.2.2
       (fun _ => Or.inl ⟨by rw [fhow]; exact P.look, hx1, Or.inl ⟨afl1.2.2.1 rfl ha0, ha0⟩⟩)⟩
   rw [if_neg c3]
   obtain ⟨Hf, tf, run2, htf, post2, eqf, avf, -, head, hmsg⟩ := lookGzip_run fs1 hu1 hm1 hsz1 post1.1 _ hf
@@ -1754,7 +1767,7 @@ theorem lookMain_run {H : Heap} {i : Nat} {t : GzState} (fs : Fs) (P : LookPre H
     rw [eqf]; exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, Or.inl rfl⟩
   have hxf : tf.x.have = 0 := by rw [eqf]; exact hx1
   exact lookPost_after_avail P hk1 post1 ht1 hrec1 bf1 bb1 be1 bud1 post2 htf (fun hh => absurd hxf hh) (fun _ => Or.inl hmsg) same
-    (by rw [avf]; exact Nat.le_refl _) (Or.inl rfl) (fun e => absurd e (by decide)) (fun _ => Or.inr (Or.inl ⟨by rw [eqf], hxf, head⟩))
+    (by rw [avf]; exact Nat.le_refl _) (Or.inl rfl) (fun e => absurd e (by decide)) afs1.2.2 (fun _ => Or.inr (Or.inl ⟨by rw [eqf], hxf, head⟩))
 
 /-! ## The allocation -/
 
@@ -1869,7 +1882,8 @@ theorem fail_err {H Hq : Heap} {i : Nat} {s sq : GzState} (fs : Fs) (hfs : FileS
   have hl0 : s.how = LOOK := ((inv.reader hmc).unalloc hsz).2.2.1
   refine lookPost_of (Or.inr rfl) (fun _ => Iff.rfl) (post_trans post0 hq post1) hs' ?_ id id (BudgetAcc.refl _ _)
     ?_ ?_ ?_ ?_ ?_
-    (fun _ => ⟨by rw [shape]; exact hl0, by rw [hmem]; decide, by rw [shape]; exact hx0⟩)
+    (fun _ => ⟨by rw [shape]; exact hl0, ⟨by rw [hmem]; decide, by rw [hmem]; decide⟩, by rw [shape]; exact hx0⟩)
+    (fun _ _ => ⟨by rw [hmem]; decide, by rw [hmem]; decide⟩)
     (fun e => absurd e (by decide))
   · intro hh
     exfalso; apply hh
@@ -2225,10 +2239,11 @@ theorem lookPost_transfer {H H6 : Heap} {i : Nat} {s s6 : GzState} {fs fs' : Fs}
       s6.strm.avail_in = s.strm.avail_in ∧ s6.err = s.err)
     (L : LookPost H6 i s6 fs r fs' after) : LookPost H i s fs r fs' after := by
   obtain ⟨m, fd, sk, x, av, er⟩ := same
-  obtain ⟨hr, hk, post, rf, rb, bud, s', hs', ⟨k1, k2, k3, k4, -⟩, ml, il, er', sz, neg, res⟩ := L
+  obtain ⟨hr, hk, post, rf, rb, bud, s', hs', ⟨k1, k2, k3, k4, -⟩, ml, il, er', sz, neg, bad, res⟩ := L
   refine ⟨hr, hk, post_trans p0 hs6 post, by rw [← fd]; exact rf, by rw [← fd]; exact rb,
     by rw [← fd]; exact bud, s', hs', ⟨k1.trans m, k2.trans fd, k3.trans sk, by rw [k4, x], fun h => absurd hsz h⟩, ml, ?_,
-    by rw [← er]; exact er', sz, neg, by rw [← fd]; exact res⟩
+    by rw [← er]; exact er', sz, neg, fun a b => bad (by rw [er]; exact a) (by rw [er]; exact b),
+    by rw [← fd]; exact res⟩
   intro h
   have e : inputLeft fs s6 = inputLeft fs s := by unfold inputLeft; rw [fd, av]
   rw [← e]; exact il (by rw [fd]; exact h)

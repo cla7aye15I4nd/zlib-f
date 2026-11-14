@@ -446,11 +446,11 @@ def AvailFs (s s' : GzState) (fs fs' : Fs) : Prop :=
   BudgetAcc s.fd fs fs' (s'.strm.avail_in.toNat - s.strm.avail_in.toNat) ∧
     s.strm.avail_in.toNat ≤ s'.strm.avail_in.toNat ∧ (s'.err = s.err ∨ s'.err = Z_ERRNO ∨ s'.err = Z_MEM_ERROR)
 
-/-- The result and the flags across `gz_avail`: a `-1` leaves an error that is not `Z_OK`; a `0` keeps the error, and
+/-- The result and the flags across `gz_avail`: a `-1` leaves an error that is neither `Z_OK` nor `Z_BUF_ERROR`; a `0` keeps the error, and
 a `0` with no input left has reached the end of the file (`eof ≠ 0`). A `0` that leaves `eof = 0` read at least one
 byte: `gz_load` ran, and a load of nothing sets `eof`. -/
 def AvailFlags (r : Int32) (s s' : GzState) : Prop :=
-  (r = -1 → s'.err ≠ Z_OK) ∧ (r = 0 → s'.err = s.err) ∧ (r = 0 → s'.strm.avail_in = 0 → s'.eof ≠ 0) ∧
+  (r = -1 → s'.err ≠ Z_OK ∧ s'.err ≠ Z_BUF_ERROR) ∧ (r = 0 → s'.err = s.err) ∧ (r = 0 → s'.strm.avail_in = 0 → s'.eof ≠ 0) ∧
     (r = 0 → s'.eof = 0 → s.strm.avail_in.toNat < s'.strm.avail_in.toNat)
 
 theorem AvailFs.refl (s : GzState) (fs : Fs) : AvailFs s s fs fs :=
@@ -593,7 +593,7 @@ theorem gz_avail_safe (i : Nat) (h : Heap) (fs : Fs) (s : GzState)
     by_cases herr : (s.err != Z_OK && s.err != Z_BUF_ERROR) = true
     · rw [if_pos herr]
       exact ⟨-1, fs, h, rfl, Or.inr rfl, fun _ => Iff.rfl, post_refl hu hfs, s, hs, by unfold AvailRec; rfl, AvailFs.refl s fs,
-        ⟨(fun _ e => by rw [e] at herr; revert herr; decide), (fun h0 => absurd h0 (by decide)),
+        ⟨(fun _ => ⟨fun e => by rw [e] at herr; revert herr; decide, fun e => by rw [e] at herr; revert herr; decide⟩), (fun h0 => absurd h0 (by decide)),
         (fun h0 => absurd h0 (by decide)), (fun h0 => absurd h0 (by decide))⟩, fun _ => rfl⟩
     rw [if_neg herr]
     by_cases heof : ¬ (s.eof == 0) = true

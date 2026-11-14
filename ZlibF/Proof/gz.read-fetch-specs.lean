@@ -86,7 +86,8 @@ only there; from COPY with no input left it returns 0 with `how = COPY`). The re
 `how = LOOK` is at the end of the input (`eof ≠ 0`, `avail_in = 0`) or a stall that read at least one byte, so the
 budget fell by at least one. A `0` in COPY has consumed the pending input and buffered only what fits before
 `GZ_OFF_MAX` (patch 0004): `x.pos + x.have ≤ GZ_OFF_MAX`, and nothing is buffered only at `x.pos = GZ_OFF_MAX`.
-A `-1` leaves `how = LOOK`, no buffered output and an error recorded (`gz_error`, or the error `gz_avail` refused). -/
+A `-1` leaves `how = LOOK`, no buffered output and an error other than `Z_OK` and `Z_BUF_ERROR` (`gz_error`, or the
+error `gz_avail` refused), and such an error stays. -/
 def GzLookSpec : Prop :=
   ∀ (i : Nat) (h : Heap) (fs : Fs) (s : GzState), GzInvUpToOutput h i s → s.x.have = 0 → FileSystem fs →
     s.mode = GZ_READ → s.how = LOOK → MsgLit s →
@@ -98,7 +99,8 @@ def GzLookSpec : Prop :=
         (HasBudget fs s.fd → inputLeft fs' s' ≤ inputLeft fs s) ∧
         (s.err ≠ Z_STREAM_END → s'.err ≠ Z_STREAM_END) ∧
         (s'.size = 0 → s'.err ≠ Z_OK ∧ s'.err ≠ Z_BUF_ERROR) ∧
-        (r = -1 → s'.how = LOOK ∧ s'.err ≠ Z_OK ∧ s'.x.have = 0) ∧
+        (r = -1 → s'.how = LOOK ∧ (s'.err ≠ Z_OK ∧ s'.err ≠ Z_BUF_ERROR) ∧ s'.x.have = 0) ∧
+        (s.err ≠ Z_OK → s.err ≠ Z_BUF_ERROR → s'.err ≠ Z_OK ∧ s'.err ≠ Z_BUF_ERROR) ∧
         (r = 0 → (s'.how = LOOK ∧ s'.x.have = 0 ∧
             ((s'.eof ≠ 0 ∧ s'.strm.avail_in = 0) ∨ BudgetAcc s.fd fs fs' 1)) ∨
           (s'.how = GZIP ∧ s'.x.have = 0 ∧ InflateAtHead after s') ∨
@@ -110,7 +112,10 @@ def GzLookSpec : Prop :=
 written; the caller's buffer in `gz_read`), as the skeleton states it, with the fields kept and the progress clauses `gz_fetch` needs.
 The last two clauses serve `gz_read`: the rank (`fetchRank`) does not rise, and the output region is filled unless the
 call failed, reached the end of the input, or lowered the rank by 2 (a member ended: from the head it took input, past
-the head its flag drops). -/
+the head its flag drops). The four clauses after them serve `gz_skip` (through `GzFetchSafe`): an error other than
+`Z_OK` and `Z_BUF_ERROR` (a bad error) stays; a `-1` leaves a bad error; from a bad error, output fills the region,
+ends the input, lowers the rank by 2, or a stream past its head became `Stuck` in this call; and a `Stuck` stream with
+a bad error gives no output. -/
 def GzDecompSpec : Prop :=
   ∀ (i : Nat) (out : Region) (h : Heap) (fs : Fs) (s : GzState), GzInvUpToOutput h i s → FileSystem fs →
     s.mode = GZ_READ → s.how = GZIP → MsgLit s →
@@ -132,7 +137,15 @@ def GzDecompSpec : Prop :=
             inputLeft fs' s' < inputLeft fs s))) ∧
         (HasBudget fs s.fd → s.err ≠ Z_STREAM_END → fetchRank fs' after s' ≤ fetchRank fs h s) ∧
         (HasBudget fs s.fd → s.err ≠ Z_STREAM_END → s'.x.have.toNat = out.length ∨ r = -1 ∨
-          (s'.eof ≠ 0 ∧ s'.strm.avail_in = 0) ∨ fetchRank fs' after s' + 2 ≤ fetchRank fs h s)
+          (s'.eof ≠ 0 ∧ s'.strm.avail_in = 0) ∨ fetchRank fs' after s' + 2 ≤ fetchRank fs h s) ∧
+        (s.err ≠ Z_OK → s.err ≠ Z_BUF_ERROR → s'.err ≠ Z_OK ∧ s'.err ≠ Z_BUF_ERROR) ∧
+        (r = -1 → s'.err ≠ Z_OK ∧ s'.err ≠ Z_BUF_ERROR) ∧
+        (HasBudget fs s.fd → s.err ≠ Z_STREAM_END → s.err ≠ Z_OK → s.err ≠ Z_BUF_ERROR → s'.x.have ≠ 0 →
+          s'.x.have.toNat = out.length ∨ (s'.eof ≠ 0 ∧ s'.strm.avail_in = 0) ∨
+          fetchRank fs' after s' + 2 ≤ fetchRank fs h s ∨
+          (s'.how = GZIP ∧ Stuck after s' ∧ ¬ Stuck h s ∧ ¬ InflateAtHead h s)) ∧
+        (s.err ≠ Z_OK → s.err ≠ Z_BUF_ERROR → s.err ≠ Z_STREAM_END → Stuck h s →
+          s'.x.have = 0 ∧ (r = -1 ∨ (s'.eof ≠ 0 ∧ s'.strm.avail_in = 0)))
 
 /-- **`gz_fetch`** on a reader with no buffered output: the skeleton statement with the post `GzInvOut`, the kept
 fields, and its progress. The premise `err ≠ Z_STREAM_END` holds on every handle (`gz_error` never records that
