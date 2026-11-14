@@ -39,6 +39,7 @@ import ZlibF.Zlib.«gzlib.c»
 import ZlibF.Zlib.«gzread.c»
 import ZlibF.Zlib.«gzwrite.c»
 import ZlibF.Zlib.«gzclose.c»
+import ZlibF.Zlib.«zlib.h»
 import ZlibF.Zlib.«uncompr.c»
 import ZlibF.Proof.Format.Api
 import ZlibF.Proof.«inflate.c.base»

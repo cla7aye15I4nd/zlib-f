@@ -6,9 +6,10 @@ Lines: "gz OP OP ..." (a scenario on temporary files; the output is one token pe
   put:NAME:HEX  mkdir:NAME  fsize:N (RLIMIT_FSIZE, 0 = none)  dump:NAME
   open:H:NAME:MODE  dopen:H:NAME:K:MODE (K = r w a c bad)  buffer:H:N  close:H closer:H closew:H
   write:H:HEX fwrite:H:SIZE:HEX putc:H:C puts:H:HEX printf:H:K:ARGS.. flush:H:F setparams:H:L:S
-  read:H:N fread:H:SIZE:N gets:H:LEN getc:H ungetc:H:C seek:H:OFF:WHENCE tell:H offset:H rewind:H eof:H
+  read:H:N fread:H:SIZE:N gets:H:LEN getc:H getcm:H ungetc:H:C seek:H:OFF:WHENCE tell:H offset:H rewind:H eof:H
   direct:H error:H clearerr:H
-Handles H are 0..3; a handle that was never opened (or whose open failed) is the NULL gzFile.
+Handles H are 0..3; a handle that was never opened (or whose open failed) is the NULL gzFile. getcm is the gzgetc()
+macro of zlib.h, then g->have; it is never used on a NULL handle, which the macro dereferences.
 Both drivers free the buffer of a read or fread right after the call. A large read on a gzip file decompresses
 straight into that buffer and leaves x.next pointing into it; a later gzseek or gzdirect advanced it by zero, which the
 translation of the C without patch 0005 faults on (R-4). Section 6 has lines for it. The position overflows that patch
@@ -363,6 +364,22 @@ line("put:f:" + hx(gzmember(text(500))), "open:0:f:rb", "open:1:f:rb", "read:0:1
 # --- 15. a failing read() with a chosen errno: the gzerror message carries strerror's text (model: the read oracle)
 for e in (4, 5, 11, 13, 29, 9, 1000, -7):
     line("put:f:" + hx(b"hello world"), "open:0:f:rb", "rfail:0:%d" % e, "read:0:4", "error:0", "read:0:4", "close:0")
+
+# --- 16. the gzgetc() macro of zlib.h (getcm): the inline path with buffered output, the call of the function
+# without. Fixed data (no rnd), so that the rows above and below keep their inputs.
+md = b"macro path\nof zlib.h, " * 60
+for src in [md, gzmember(md), gzmember(md[:100]) + gzmember(md[100:300]), b""]:
+    p = "put:f:" + hx(src)
+    line(p, "open:0:f:rb", *(["getcm:0"] * 12), "tell:0", "close:0")
+    line(p, "open:0:f:rb", "buffer:0:8", *(["getcm:0", "getc:0", "getcm:0"] * 8), "tell:0", "eof:0", "close:0")
+    line(p, "open:0:f:rb", "getc:0", "ungetc:0:90", "getcm:0", "getcm:0", "ungetc:0:91", "ungetc:0:92", "getcm:0",
+         "getcm:0", "getcm:0", "tell:0", "read:0:5", "getcm:0", "gets:0:7", "getcm:0", "close:0")
+    line(p, "open:0:f:rb", "read:0:3", "seek:0:5:1", "getcm:0", "getcm:0", "seek:0:-4:1", "getcm:0", "tell:0",
+         "rewind:0", "getcm:0", "direct:0", "getcm:0", "close:0")
+    line(p, "open:0:f:rb", "read:0:1300", "getcm:0", "eof:0", "getcm:0", "error:0", "clearerr:0", "getcm:0", "close:0")
+line("put:f:" + hx(md), "open:0:f:rb", "rfail:0:5", "getcm:0", "error:0", "getcm:0", "close:0")
+line("put:f:" + hx(md), "open:0:f:rb", "buffer:0:8", "getcm:0", "rfail:0:5", *(["getcm:0"] * 10), "error:0", "close:0")
+line("open:0:f:wb", "getcm:0", "error:0", "write:0:" + hx(md[:20]), "getcm:0", "close:0")
 
 # --- uncompress2
 for n in [0, 1, 10, 100, 1000, 5000, 70000]:
