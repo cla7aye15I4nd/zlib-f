@@ -1,4 +1,4 @@
-<!-- source-sha256: 109b8456ab76fe49f3002807b8b40439e71fae9020f627fdd5861a5fee173f7f -->
+<!-- source-sha256: 8bfbf0c5123f0f857dfa5bb9b77c0cbcdc722bf9c4004f718073ae15a7e6a355 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1859,6 +1859,124 @@ gzip 文件接口的安全（第 5 项结论，所有者 2026-11-12 的决定）
 | 合并 `deflate.c.quiet-*` 中重述的副本 | 清理工作，不在关键路径上：把重述的阶段与循环证明作为原引理的更强结论并回 batch 2 和 batch B 的文件。 | 未完成 | 4 | 以后 |
 | **剩余总计** | batch 1 61–67；读取侧 73（deflate owner 60，batch 3 13）；写入侧 72 | | **206–212** | |
 
+
+### zlib.h 函数的无故障覆盖
+
+zlib.h 文档化的每个函数占一行。每行给出表明该调用不会出错的已检查定理，以及所走的路线：它自己的目标、序列目标（该调用是一个 `StreamOperation`）、`StreamSequenceSafety` 的 End 子句，或 open。这是 `dev` 在 `10bd366a`（2026-11-13）的快照。“已登记”指列入 `tests/audit/theorems.txt`，即验收候选，尚未验收。定理或目标变化时，需重新核对对应行。
+
+每条流路线或工具函数路线共有的模型级前提，不在每行重复：默认分配器（`DefaultOrNull`/`DefAlloc`/`zfree = zcfree`；已声明的目标限制）、堆良构性（`Fresh`、`Uniq`、`LibraryGlobals`），以及对 inflate、工具函数和 inflateBack 而言的 `ByteObjectsFit`（`docs/deviations.md` 中的平台行）。
+
+缩写：
+- **SeqI** = `Goal.inflate_sequence_safety`：`Zlib.Inflate.Proofs.inflate_sequence_safety_public`（`public-inflate-sequence-safety.lean`，已登记）。
+- **SeqD** = `Goal.deflate_sequence_safety`：`Zlib.Deflate.Universal.deflate_sequence_safety`（`public-deflate-goals.lean`，已登记）。
+- 两者都只覆盖 `p = some r` 且 `StreamReachable r`（以及 `StreamArguments`）的情形。两者都不覆盖 NULL 流或不一致的流（zalloc/zfree 为 NULL、state 为 NULL，或检查拒绝的 state）。zlib.h 把这些情形文档化为 `Z_STREAM_ERROR` 拒绝，`docs/spec/safety.md` 的 A1 把文档化的空指针拒绝保留在范围内。“refusal”一列说明是否有定理覆盖该情形。
+
+#### 流：deflate
+
+| 函数 | 路线 | 定理（Lean 名称，文件） | 已登记？ | 定义域缺口或备注 |
+| --- | --- | --- | --- | --- |
+| deflateInit_（宏 deflateInit） | 自身目标 | `ZlibF.Spec.Public.Proofs.DeflateInit.deflateInit_proof`，`public-deflate-init.lean` | 是 | 完整：错误版本（`VersionValue`，NULL 或可读的首字节）、错误的 `stream_size`（任意 `p`）、NULL strm、每个 level、分配失败。 |
+| deflateInit2_（宏 deflateInit2） | 自身目标 | `ZlibF.Spec.Public.Proofs.DeflateInit2.deflateInit2_proof`，`public-deflate-init2.lean` | 是 | 完整，同 deflateInit_，另加每个 method/windowBits/memLevel/strategy。`Goal.deflate_initialisation_domain`（非空性）没有定理。 |
+| deflate | 自身目标 + SeqD | `Zlib.Deflate.Universal.deflate_safety`，`public-deflate-goals.lean` | 是 | 可达 + `DGood` + `StreamBuffers` + `ActiveHeader`（分离行）。Refusal：**无**。`deflate(NULL)` 和不一致的流没有定理。 |
+| deflateEnd | 自身目标 + SeqD 的 End 子句 | `ZlibF.Spec.Public.DeflateEndProof.deflate_end_public`，`public-deflate-end.lean`；SeqD 的第 3 子句 | 是 | 自身目标需要 `DGood`。Refusal：`Zlib.Deflate.Proofs.deflateEnd_reject`（`deflate.c.life.end.lean`，已登记）覆盖 NULL、zalloc/zfree 为 NULL、state 为 NULL，以及被拒绝的活动 state。因此已覆盖：从未初始化（模型指针为 NULL）、NULL、state 为 NULL，以及复制失败之后。它不是类型为目标的定理。 |
+| deflateSetDictionary | SeqD | SeqD | 是 | 自身的 `Goal.deflateSetDictionary`：无定理。Refusal：**无**（NULL 或不一致没有 `_reject`）。 |
+| deflateGetDictionary | 自身目标 + SeqD | `ZlibF.Spec.Public.DeflateDictionaryProof.deflate_getdict_public`，`public-deflate-getdict.lean` | 是 | 自身目标需要 `DGood`，且目标缓冲区与窗口分离。Refusal：`Zlib.Deflate.Proofs.deflateGetDictionary_reject`（`deflate.c.life.getdict.lean`）已检查，但**未登记**。 |
+| deflateCopy | 自身目标（进行中） | `Zlib.Deflate.Universal.deflate_copy_public` / `deflate_copy_safety`（`public-deflate-copy`，计划中；见 deflate 骨架各行） | 否 | open。不是 `StreamOperation`。`StreamReachable.deflateCopy` 只为 SeqD 的第 1 子句提供输入。证明完成后，定义域缺口仍在：`source ≠ dest`（偏差行），以及非 NULL 的不一致源（zlib.h：`Z_STREAM_ERROR`，“如 zalloc 为 Z_NULL”）；只陈述了 NULL 源和 NULL 目标。 |
+| deflateReset | 自身目标 + SeqD | `ZlibF.Spec.Public.DeflateResetProof.deflate_reset_public`，`public-deflate-reset.lean` | 是 | Refusal：`Zlib.Deflate.Proofs.deflateReset_reject`（已登记）。 |
+| deflateParams | SeqD | SeqD | 是 | 自身的 `Goal.deflateParams`：无定理。Refusal：**无**。 |
+| deflateTune | 自身目标 + SeqD | `ZlibF.Spec.Public.DeflateQueryProof.tune_public`，`public-deflate-small-queries.lean` | 是 | 完整（`CheckedDeflate` 包含各 refusal）。 |
+| deflateBound | SeqD | SeqD | 是 | 自身的 `Goal.deflateBound`：无定理。SeqD 需要 `ActiveHeader ∧ DeflateHeaderLive`。Refusal：`deflateBound_nostate`（已登记）。 |
+| deflateBound_z | SeqD | SeqD | 是 | 同 deflateBound（`deflateBound_z_nostate`，已登记）。 |
+| deflatePending | 自身目标 + SeqD | `ZlibF.Spec.Public.DeflateQueryProof.pending_public` | 是 | 完整。 |
+| deflateUsed | 自身目标 + SeqD | `ZlibF.Spec.Public.DeflateQueryProof.used_public` | 是 | 完整。 |
+| deflatePrime | SeqD | SeqD | 是 | 自身的 `Goal.deflatePrime`：无定理。SeqD 需要 `DeflateNotStarted`，这是 zlib.h 自己的次序规则。Refusal：`deflatePrime_refused`（已登记）。 |
+| deflateSetHeader | 自身目标 + SeqD | `ZlibF.Spec.Public.DeflateQueryProof.header_public` | 是 | 完整。SeqD 需要 `DeflateNotStarted`（zlib.h 的次序）。 |
+
+#### 流：inflate
+
+| 函数 | 路线 | 定理（Lean 名称，文件） | 已登记？ | 定义域缺口或备注 |
+| --- | --- | --- | --- | --- |
+| inflateInit_（宏 inflateInit） | 自身目标 | `ZlibF.Spec.Public.Proofs.InflateInit.init15_public`，`public-inflate-init.lean` | 是 | 完整：错误版本或大小、NULL strm、分配失败。 |
+| inflateInit2_（宏 inflateInit2） | 自身目标 | `ZlibF.Spec.Public.Proofs.InflateInit.inflate_init2_public`，`public-inflate-init2.lean` | 是 | 完整，每个 `windowBits`。 |
+| inflate | 自身目标 + SeqI | `Zlib.Inflate.Proofs.inflate_public`，`public-inflate.lean` | 是 | 可达 + `Good` + `ByteObjectsFit` + `StreamBuffers` + `ActiveHeader`。Refusal：`inflate(NULL)` 或不一致的流：**无**。 |
+| inflateEnd | 自身目标 + SeqI 的 End 子句 | `ZlibF.Spec.Public.InflateEndProof.inflate_end_public`，`public-inflate-end.lean`；SeqI 的第 3 子句 | 是 | 自身目标需要 `Good`。Refusal：**无**。NULL、state 为 NULL、从未初始化、初始化失败之后，以及 `inflateCopy` 失败之后的 `inflateEnd(dest)`（zlib.h 明确文档化为安全）都没有定理。`inflateStateCheck_total`（已登记）只是引理。progress.md 将其标为“All stated inputs”，这夸大了对 zlib.h 的覆盖。 |
+| inflateSetDictionary | 自身目标 + SeqI | `ZlibF.Spec.Public.Proofs.inflateSetDictionary_public`，`public-inflate-setdict.lean` | 是 | 自身目标需要 `Good`、`zalloc = zcalloc`，以及与窗口分离的字典（偏差行）。NULL 或不一致 strm 的 refusal：**无**。 |
+| inflateGetDictionary | 自身目标 + SeqI | `ZlibF.Spec.Public.InflateDictionaryProof.inflate_getdict_public` | 是 | 自身目标需要 `Good`，且目标缓冲区与窗口分离。Refusal：**无**。 |
+| inflateSync | SeqI | SeqI | 是 | 自身的 `Goal.inflateSync`：无定理。Refusal：`inflateSync_check`（已登记）。 |
+| inflateCopy | 自身目标 | `Zlib.Inflate.Proofs.inflate_copy_public`，`public-inflate-copy.lean` | 是 | 不是 `StreamOperation`。缺口：`source ≠ dest`（偏差行），以及**非 NULL 的不一致源**（zlib.h `Z_STREAM_ERROR`，C 将 `dest->state` 置为 NULL）：未覆盖；只陈述了 NULL 源和 NULL 目标。 |
+| inflateReset | 自身目标 + SeqI | `ZlibF.Spec.Public.InflateResetProof.reset_public` | 是 | 自身目标需要 `InflateView`。Refusal：**无**。 |
+| inflateReset2 | 自身目标 + SeqI | `ZlibF.Spec.Public.InflateReset2Proof.reset2_public` | 是 | 每个 `windowBits`。Refusal：**无**。 |
+| inflatePrime | 自身目标 + SeqI | `ZlibF.Spec.Public.InflatePrimeProof.prime_public` | 是 | 完整（`CheckedInflate`）。接受分支需要 `s.bits ≤ 39`，这是不变量的一个事实。 |
+| inflateMark | 自身目标 + SeqI | `ZlibF.Spec.Public.InflateMarkProof.mark_public` | 是 | 完整。 |
+| inflateGetHeader | 自身目标 + SeqI | `ZlibF.Spec.Public.InflateHeaderProof.getheader_public` | 是 | 在 `InflateView` 上完整。支持 gzip 的流需要 `head ≠ NULL`：C 会解引用它，而 zlib.h 不提供 NULL。SeqI 还需要 `p ≠ none`。Refusal：`inflateGetHeader_check`（已登记）。 |
+
+#### 回调解码器
+
+| 函数 | 路线 | 定理（Lean 名称，文件） | 已登记？ | 定义域缺口或备注 |
+| --- | --- | --- | --- | --- |
+| inflateBackInit_（宏 inflateBackInit） | 自身目标 | `ZlibF.Spec.Public.InflateBackInitProof.back_init_public`，`public-infback-init.lean` | 是 | 完整：错误版本或大小、NULL strm、NULL 窗口、错误的 `windowBits`、分配失败。成功分支需要一个可写的 `2^wb` 字节窗口（zlib.h 自己的规则）。 |
+| inflateBack | 序列（`Goal.inflate_back_sequence_safety`） | **无无条件定理**。只有 `inflate_back_sequence_safety_of (fast : FastOk)`，`infback.c.safety-reach.lean` | 否 | **open**：`LEN_fast_p` 和 `fast_alias` 未完成（progress.md，约 15 小时）。自身的 `Goal.inflateBack`（功能性）不在计划内。NULL strm 和 state 为 NULL 已覆盖（`inflateBack_nullstream`、`inflateBack_nostate`，已登记）。该目标还有收窄：`inputBound < 2^48`，窗口是堆字节块的一个切片，每个输入块都位于堆字节块内（偏差行）。 |
+| inflateBackEnd | 自身目标 | `ZlibF.Spec.Public.InflateBackEndProof.back_end_public`，`public-infback-end.lean` | 是 | 完整：NULL、state 为 NULL 或 zfree 为 NULL，以及 `BackValid`。inflateBack 序列目标的第 4 子句也只在条件定理内部得到证明。 |
+
+#### 校验和
+
+| 函数 | 路线 | 定理 | 已登记？ | 定义域缺口或备注 |
+| --- | --- | --- | --- | --- |
+| adler32 | 自身目标 | `ZlibF.Spec.Public.AdlerUpdateProof.adler_public`，`public-adler-update.lean` | 是 | **更窄**：NULL `buf` 只在 `len = 0` 时允许（`AdlerBufferBytes`，偏差行）。`len = 1` 时 C 会读 `buf[0]`，这是真实的错误（上游 PR #1364 已关闭，并宣布了 zlib.h 的限制）。`len ≥ 2` 的 NULL 在 C 中安全，但未证明。 |
+| adler32_z | 自身目标 | `...AdlerUpdateProof.adler_z_public` | 是 | 同 adler32。 |
+| adler32_combine / _combine64 | 自身目标 | `...AdlerCombineProof.combine_public` / `combine64_public` | 是 | 完整。 |
+| crc32 / crc32_z | 自身目标 | `ZlibF.Spec.Public.Proofs.crc32` / `crc32_z`，`public-crc-updates.lean` | 是 | 完整（`BufferBytes` 包含任意长度的 NULL）。`CrcGlobals` 是模型静态数据的前提。 |
+| crc32_combine / _combine64 | 自身目标 | `...CrcCombineProof.combine` / `combine64` | 是 | 完整。 |
+| crc32_combine_gen / _gen64 | 自身目标 | `...CrcCombineProof.gen` / `gen64` | 是 | 完整。 |
+| crc32_combine_op | 自身目标 | `...CrcCombineProof.op` | 是 | `op` 必须来自 `crc32_combine_gen`（与 zlib.h 一致）。 |
+| get_crc_table | 自身目标 | `ZlibF.Spec.Public.Proofs.get_crc_table` | 是 | zlib.h 中未文档化（不是必需的）。 |
+
+#### 工具函数
+
+| 函数 | 路线 | 定理 | 已登记？ | 定义域缺口或备注 |
+| --- | --- | --- | --- | --- |
+| compress / compress_z / compress2 / compress2_z | 安全目标 `Goal.compress*_safety` | `ZlibF.Spec.Public.Proofs.Compress.compress_safety`、`compress_z_safety`、`compress2_safety`、`compress2_z_safety`，`public-compress-safe-mid.lean` | 是 | 源与目标缓冲区分离（偏差行）。长度单元建模为 `Option` 标量，所以长度单元与数据别名在模型之外（偏差行）。每个 level。功能性的 `Goal.compress*`（不在计划内）没有定理。 |
+| uncompress / uncompress_z / uncompress2 / uncompress2_z | 安全目标 `Goal.uncompress*_safe` | `ZlibF.Spec.Public.Proofs.Uncompress.uncompress_safe` 等，`public-uncompress-safe.lean` | 是 | `UtilitySeparation`：数据单元与长度单元两两分离（偏差行）。功能性的 `Goal.uncompress*`（不在计划内）没有定理。 |
+| compressBound / compressBound_z | 自身目标 | `ZlibF.Spec.Public.Proofs.compressBound` / `compressBound_z` | 是 | 完整。 |
+| zlibVersion | 自身目标 | `ZlibF.Spec.Public.Proofs.zlibVersion` | 是 | 完整。 |
+| zlibCompileFlags | 自身目标 | `ZlibF.Spec.Public.Proofs.zlibCompileFlags` | 是 | 完整。 |
+| zError | 自身目标 | `ZlibF.Spec.Public.Proofs.zError` | 是 | 未文档化（不是必需的）。 |
+
+#### Gzip 文件接口
+
+**`dev` 上没有 gz 安全目标。** `Goal.gz_sequence_safety` 只作为定义存在于分支 `skeleton/gz` 的一个证明文件中（`gz.skeleton-model.lean`）。它既不在 `goals.txt` 中，也不在 `public-api.json` 的 `safety_goals` 中。`Goal.gz_sequence`（功能性）不在计划内，也没有定理。下面已登记的自身目标定理是针对 `GzValid`、`GzReachable` 或活动 `gzstates` 条目的功能性契约，其中一些还针对 `RegularOs fs`（确定性的常规文件世界，不是每个 OS 调用预言世界）。
+
+| 函数 | 路线 | 定理 | 已登记？ | 定义域缺口或备注 |
+| --- | --- | --- | --- | --- |
+| gzopen, gzopen64 | 打开 | 无（`gzopen_null`、`gzopen*_alloc_failure` 已登记） | 仅部分 | 路径打开分支为 open。 |
+| gzdopen | 自身目标 | `Zlib.Gzlib.Proofs.gzdopen_complete`，`gzlib.c.dopen-complete.lean` | 是 | 每个 `fd`。mode 为 NULL 或 C 字符串。未对每个预言世界证明。 |
+| gzbuffer | 自身目标 | `ZlibF.Spec.Public.Proofs.gzbuffer_public` | 是 | NULL 和任意活动句柄。 |
+| gzeof | 自身目标 | `ZlibF.Spec.Public.Proofs.gzeof_public` | 是 | NULL 和任意活动句柄。 |
+| gzerror | 自身目标 | `ZlibF.Spec.Public.GzErrorProof.gzerror` | 是 | 需要 `GzValid`。该不变量尚未对每个历史推导（只有 gzdopen 建立它）。 |
+| gzclearerr | 自身目标 | `ZlibF.Spec.Public.Proofs.gzclearerr` | 是 | 需要 `GzValid`（同上说明）。 |
+| gzoffset, gzoffset64 | 自身目标 | `ZlibF.Spec.Public.OffsetProof.gzoffset_public_goal` / `gzoffset64_public_goal` | 是 | 需要 `GzReachable`、`GzValid` 和 `RegularOs fs`（偏差行“Gz file data”）。 |
+| gzrewind | 自身目标 | `ZlibF.Spec.Public.GzRewindProof.rewind_public` | 是 | 需要 `GzReachable`、`GzValid` 和 `RegularOs fs`。 |
+| gzseek, gzseek64 | open | 片段：`gzseek64_safe`（需要 `GzGood`、`PosInv` 等）已登记；`gzseek64_step` 已检查（`gz.inv-seek`） | 仅部分 | |
+| gztell, gztell64 | open | `gztell64_spec` 已登记，但需要 `PosInv`，没有历史定理推导它 | 仅部分 | |
+| gzclose | open | `gzclose_null`、`gzclose_dispatch` 已登记 | 仅部分 | |
+| gzclose_r | open | `gzclose_r_step_safe`（`gz.read-close.lean`，针对 `GzInv`），已检查，未登记 | 否 | `GzInv` 未从历史推导。 |
+| gzclose_w | open | 无 | 否 | |
+| gzread, gzfread, gzgetc, gzgetc_, gzungetc, gzgets, gzdirect | open | 公开层面无（内部的 `gz_look_safe`、`gz_fetch_safe_of`、`gzungetc_step_of` 已检查） | 否 | `gzgetc` 宏的内联路径（读取 `have`、`next`、`pos`）尚未翻译。它需要句柄不变量（**待确认**）。 |
+| gzwrite, gzfwrite, gzputc, gzputs, gzprintf, gzflush, gzsetparams | open | 公开层面无 | 否 | |
+
+#### 误计与未完成项
+
+对完整文档化定义域没有已检查无故障定理的已文档化函数：
+
+1. **inflateBack**：open。只有 `inflate_back_sequence_safety_of (FastOk)`；`LEN_fast_p` 和 `fast_alias` 未完成。progress.md 也把该目标行列为“Not proved”。
+2. **deflateCopy**：在 dev 上 open（进行中，见 deflate 骨架各行）。完成之后：非 NULL 的不一致源仍未覆盖，且假设 `source ≠ dest`。
+3. **inflateEnd**：NULL、state 为 NULL、从未初始化、初始化失败之后，以及 `inflateCopy` 失败之后（zlib.h 明确文档化）**没有定理**。自身目标和 End 子句只覆盖 `Good` 或可达的流。progress.md 的“All stated inputs”掩盖了这一点。deflateEnd 有类似的 `deflateEnd_reject`（已登记）。
+4. **inflateCopy**：非 NULL 的不一致源（`Z_STREAM_ERROR`，目标 state 被清除）未覆盖。
+5. **NULL 或不一致流的 refusal，完全没有定理**：`inflate`、`deflate`、`inflateReset`、`inflateReset2`、`inflateGetDictionary`、`inflateSetDictionary`、`deflateSetDictionary`、`deflateParams`。在别处已覆盖：deflate 的各查询、`deflateEnd`、`deflateReset`、`deflatePrime`、`deflateBound*`、`inflateSync`、`inflateGetHeader`，以及 inflate 的各查询。`deflateGetDictionary_reject` 已检查但未登记。
+6. **deflateParams、deflateSetDictionary、deflatePrime、deflateBound、deflateBound_z、inflateSync**：没有自身目标定理。可达流上的无故障只经由 SeqI 或 SeqD 得到。这对计划内的安全性已足够，但逐调用的自身目标仍为 open。
+7. **adler32、adler32_z**：定义域比 zlib.h 更窄（NULL 只在 `len = 0` 时允许）。`len = 1` 是真实的 C 错误（偏差行）。`len ≥ 2` 的 NULL 安全但未证明。
+8. **除 gzdopen、gzbuffer、gzeof、gzerror、gzclearerr、gzoffset(64)、gzrewind 之外的每个 gz 函数**：open（gzopen、gzopen64、gzclose、gzclose_r、gzclose_w、gzread、gzfread、gzgetc、gzgetc_、gzungetc、gzgets、gzdirect、gzwrite、gzfwrite、gzputc、gzputs、gzprintf、gzflush、gzsetparams、gzseek、gzseek64、gztell、gztell64）。已登记的 gz 定理依赖 `GzValid` 或 `GzReachable`（gzoffset 和 gzrewind 还依赖 `RegularOs`），而不是每个历史和每个预言世界。dev 上没有登记 gz 安全目标（`gz_sequence_safety` 只在 `skeleton/gz` 上）。
+9. 相关，但不是函数：`Goal.deflate_initialisation_domain`（非空性）没有定理。
 
 ### 按顺序的下一步工作
 

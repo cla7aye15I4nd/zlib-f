@@ -2261,6 +2261,142 @@ Pending inputs that change the skeleton:
 | **Total remaining** | batch 1 61–67; read side 73 (deflate owner 60, batch 3 13); write side 72 | | **206–212** | |
 
 
+### No-fault coverage of zlib.h functions
+
+One row for each function that zlib.h documents. Each row names the checked theorem that shows the
+call does not fault, and the route: its own goal, a sequence goal (the call is a `StreamOperation`),
+the End clause of `StreamSequenceSafety`, or open. Snapshot of `dev` at `10bd366a`, 2026-11-13.
+"Registered" means listed in `tests/audit/theorems.txt`, so an acceptance candidate, not accepted.
+Re-check a row when its theorem or goal changes.
+
+Model-wide premises that every stream or utility route shares, which are not repeated per row:
+the default allocator (`DefaultOrNull`/`DefAlloc`/`zfree = zcfree`; a declared target
+restriction), heap well-formedness (`Fresh`, `Uniq`, `LibraryGlobals`), and, for inflate, the
+utilities and inflateBack, `ByteObjectsFit` (the platform row in `docs/deviations.md`).
+
+Abbreviations:
+- **SeqI** = `Goal.inflate_sequence_safety`: `Zlib.Inflate.Proofs.inflate_sequence_safety_public`
+  (`public-inflate-sequence-safety.lean`, registered).
+- **SeqD** = `Goal.deflate_sequence_safety`: `Zlib.Deflate.Universal.deflate_sequence_safety`
+  (`public-deflate-goals.lean`, registered).
+- Both cover only `p = some r` with `StreamReachable r` (and `StreamArguments`). Neither covers a
+  NULL stream or an inconsistent stream (zalloc/zfree NULL, state NULL, or a state the check
+  refuses). zlib.h documents those as `Z_STREAM_ERROR` refusals, and `docs/spec/safety.md` A1
+  keeps documented null refusals in scope. The column "refusal" says whether any theorem
+  covers that case.
+
+#### Stream: deflate
+
+| function | route | theorem (Lean name, file) | registered? | domain gap or note |
+| --- | --- | --- | --- | --- |
+| deflateInit_ (macro deflateInit) | own goal | `ZlibF.Spec.Public.Proofs.DeflateInit.deflateInit_proof`, `public-deflate-init.lean` | yes | Full: bad version (`VersionValue`, NULL or a readable first byte), wrong `stream_size` (any `p`), NULL strm, every level, allocation failures. |
+| deflateInit2_ (macro deflateInit2) | own goal | `ZlibF.Spec.Public.Proofs.DeflateInit2.deflateInit2_proof`, `public-deflate-init2.lean` | yes | Full, as for deflateInit_, plus every method/windowBits/memLevel/strategy. `Goal.deflate_initialisation_domain` (nonvacuity) has no theorem. |
+| deflate | own goal + SeqD | `Zlib.Deflate.Universal.deflate_safety`, `public-deflate-goals.lean` | yes | Reachable + `DGood` + `StreamBuffers` + `ActiveHeader` (separation rows). Refusal: **none**. `deflate(NULL)` and an inconsistent stream have no theorem. |
+| deflateEnd | own goal + End clause of SeqD | `ZlibF.Spec.Public.DeflateEndProof.deflate_end_public`, `public-deflate-end.lean`; clause 3 of SeqD | yes | Own goal needs `DGood`. Refusal: `Zlib.Deflate.Proofs.deflateEnd_reject` (`deflate.c.life.end.lean`, registered) covers NULL, zalloc/zfree NULL, state NULL and a refused live state. So it is covered: never initialised (model pointers are NULL), NULL, state NULL, and after a failed copy. It is not a goal-typed theorem. |
+| deflateSetDictionary | SeqD | SeqD | yes | Own `Goal.deflateSetDictionary`: no theorem. Refusal: **none** (no `_reject` for NULL or inconsistent). |
+| deflateGetDictionary | own goal + SeqD | `ZlibF.Spec.Public.DeflateDictionaryProof.deflate_getdict_public`, `public-deflate-getdict.lean` | yes | Own goal needs `DGood` and a destination separate from the window. Refusal: `Zlib.Deflate.Proofs.deflateGetDictionary_reject` (`deflate.c.life.getdict.lean`) is checked but **not registered**. |
+| deflateCopy | own goal (in progress) | `Zlib.Deflate.Universal.deflate_copy_public` / `deflate_copy_safety` (`public-deflate-copy`, planned; see the deflate skeleton rows) | no | Open. Not a `StreamOperation`. `StreamReachable.deflateCopy` only feeds clause 1 of SeqD. Once proved, the domain gaps remain: `source ≠ dest` (deviation row) and a non-NULL inconsistent source (zlib.h: `Z_STREAM_ERROR`, "such as zalloc being Z_NULL"); only NULL source and NULL dest are stated. |
+| deflateReset | own goal + SeqD | `ZlibF.Spec.Public.DeflateResetProof.deflate_reset_public`, `public-deflate-reset.lean` | yes | Refusal: `Zlib.Deflate.Proofs.deflateReset_reject` (registered). |
+| deflateParams | SeqD | SeqD | yes | Own `Goal.deflateParams`: no theorem. Refusal: **none**. |
+| deflateTune | own goal + SeqD | `ZlibF.Spec.Public.DeflateQueryProof.tune_public`, `public-deflate-small-queries.lean` | yes | Full (`CheckedDeflate` includes the refusals). |
+| deflateBound | SeqD | SeqD | yes | Own `Goal.deflateBound`: no theorem. SeqD needs `ActiveHeader ∧ DeflateHeaderLive`. Refusal: `deflateBound_nostate` (registered). |
+| deflateBound_z | SeqD | SeqD | yes | Same as deflateBound (`deflateBound_z_nostate`, registered). |
+| deflatePending | own goal + SeqD | `ZlibF.Spec.Public.DeflateQueryProof.pending_public` | yes | Full. |
+| deflateUsed | own goal + SeqD | `ZlibF.Spec.Public.DeflateQueryProof.used_public` | yes | Full. |
+| deflatePrime | SeqD | SeqD | yes | Own `Goal.deflatePrime`: no theorem. SeqD needs `DeflateNotStarted`, which is zlib.h's own ordering rule. Refusal: `deflatePrime_refused` (registered). |
+| deflateSetHeader | own goal + SeqD | `ZlibF.Spec.Public.DeflateQueryProof.header_public` | yes | Full. SeqD needs `DeflateNotStarted` (zlib.h order). |
+
+#### Stream: inflate
+
+| function | route | theorem (Lean name, file) | registered? | domain gap or note |
+| --- | --- | --- | --- | --- |
+| inflateInit_ (macro inflateInit) | own goal | `ZlibF.Spec.Public.Proofs.InflateInit.init15_public`, `public-inflate-init.lean` | yes | Full: bad version or size, NULL strm, allocation failure. |
+| inflateInit2_ (macro inflateInit2) | own goal | `ZlibF.Spec.Public.Proofs.InflateInit.inflate_init2_public`, `public-inflate-init2.lean` | yes | Full, every `windowBits`. |
+| inflate | own goal + SeqI | `Zlib.Inflate.Proofs.inflate_public`, `public-inflate.lean` | yes | Reachable + `Good` + `ByteObjectsFit` + `StreamBuffers` + `ActiveHeader`. Refusal: **none** for `inflate(NULL)` or an inconsistent stream. |
+| inflateEnd | own goal + End clause of SeqI | `ZlibF.Spec.Public.InflateEndProof.inflate_end_public`, `public-inflate-end.lean`; clause 3 of SeqI | yes | Own goal needs `Good`. Refusal: **none**. NULL, state NULL, never initialised, after a failed init, and `inflateEnd(dest)` after a failed `inflateCopy` (which zlib.h explicitly documents as safe) have no theorem. `inflateStateCheck_total` (registered) is a lemma only. progress.md marks it "All stated inputs", which overstates zlib.h coverage. |
+| inflateSetDictionary | own goal + SeqI | `ZlibF.Spec.Public.Proofs.inflateSetDictionary_public`, `public-inflate-setdict.lean` | yes | Own goal needs `Good`, `zalloc = zcalloc`, and a dictionary separate from the window (deviation row). Refusal for NULL or an inconsistent strm: **none**. |
+| inflateGetDictionary | own goal + SeqI | `ZlibF.Spec.Public.InflateDictionaryProof.inflate_getdict_public` | yes | Own goal needs `Good` and a destination separate from the window. Refusal: **none**. |
+| inflateSync | SeqI | SeqI | yes | Own `Goal.inflateSync`: no theorem. Refusal: `inflateSync_check` (registered). |
+| inflateCopy | own goal | `Zlib.Inflate.Proofs.inflate_copy_public`, `public-inflate-copy.lean` | yes | Not a `StreamOperation`. Gaps: `source ≠ dest` (deviation row) and a **non-NULL inconsistent source** (zlib.h `Z_STREAM_ERROR`, C sets `dest->state = NULL`): not covered; only NULL source and NULL dest are stated. |
+| inflateReset | own goal + SeqI | `ZlibF.Spec.Public.InflateResetProof.reset_public` | yes | Own goal needs `InflateView`. Refusal: **none**. |
+| inflateReset2 | own goal + SeqI | `ZlibF.Spec.Public.InflateReset2Proof.reset2_public` | yes | Every `windowBits`. Refusal: **none**. |
+| inflatePrime | own goal + SeqI | `ZlibF.Spec.Public.InflatePrimeProof.prime_public` | yes | Full (`CheckedInflate`). The accepted branch needs `s.bits ≤ 39`, a fact of the invariant. |
+| inflateMark | own goal + SeqI | `ZlibF.Spec.Public.InflateMarkProof.mark_public` | yes | Full. |
+| inflateGetHeader | own goal + SeqI | `ZlibF.Spec.Public.InflateHeaderProof.getheader_public` | yes | Full on `InflateView`. A gzip-capable stream needs `head ≠ NULL`: C dereferences it, and zlib.h does not offer NULL. SeqI also needs `p ≠ none`. Refusal: `inflateGetHeader_check` (registered). |
+
+#### Callback decoder
+
+| function | route | theorem (Lean name, file) | registered? | domain gap or note |
+| --- | --- | --- | --- | --- |
+| inflateBackInit_ (macro inflateBackInit) | own goal | `ZlibF.Spec.Public.InflateBackInitProof.back_init_public`, `public-infback-init.lean` | yes | Full: bad version or size, NULL strm, NULL window, bad `windowBits`, allocation failure. The success branch needs a writable window of `2^wb` bytes (zlib.h's own rule). |
+| inflateBack | sequence (`Goal.inflate_back_sequence_safety`) | **none unconditional**. Only `inflate_back_sequence_safety_of (fast : FastOk)`, `infback.c.safety-reach.lean` | no | **Open**: `LEN_fast_p` and `fast_alias` are open (progress.md, about 15 h). Own `Goal.inflateBack` (functional) is not planned. NULL strm and state NULL are covered (`inflateBack_nullstream`, `inflateBack_nostate`, registered). The goal also narrows: `inputBound < 2^48`, the window is a slice of a heap byte block, every input chunk lies in a heap byte block (deviation rows). |
+| inflateBackEnd | own goal | `ZlibF.Spec.Public.InflateBackEndProof.back_end_public`, `public-infback-end.lean` | yes | Full: NULL, state NULL or zfree NULL, and `BackValid`. Clause 4 of the inflateBack sequence goal is also proved inside the conditional theorem only. |
+
+#### Checksums
+
+| function | route | theorem | registered? | domain gap or note |
+| --- | --- | --- | --- | --- |
+| adler32 | own goal | `ZlibF.Spec.Public.AdlerUpdateProof.adler_public`, `public-adler-update.lean` | yes | **Narrower**: NULL `buf` only with `len = 0` (`AdlerBufferBytes`, deviation row). With `len = 1`, C reads `buf[0]`, a real fault (upstream PR #1364 was closed and a zlib.h restriction was announced). NULL with `len ≥ 2` is safe in C but unproved. |
+| adler32_z | own goal | `...AdlerUpdateProof.adler_z_public` | yes | Same as adler32. |
+| adler32_combine / _combine64 | own goal | `...AdlerCombineProof.combine_public` / `combine64_public` | yes | Full. |
+| crc32 / crc32_z | own goal | `ZlibF.Spec.Public.Proofs.crc32` / `crc32_z`, `public-crc-updates.lean` | yes | Full (`BufferBytes` includes NULL with any length). `CrcGlobals` is a premise of the model's static data. |
+| crc32_combine / _combine64 | own goal | `...CrcCombineProof.combine` / `combine64` | yes | Full. |
+| crc32_combine_gen / _gen64 | own goal | `...CrcCombineProof.gen` / `gen64` | yes | Full. |
+| crc32_combine_op | own goal | `...CrcCombineProof.op` | yes | `op` must come from `crc32_combine_gen` (matches zlib.h). |
+| get_crc_table | own goal | `ZlibF.Spec.Public.Proofs.get_crc_table` | yes | Undocumented in zlib.h (not required). |
+
+#### Utilities
+
+| function | route | theorem | registered? | domain gap or note |
+| --- | --- | --- | --- | --- |
+| compress / compress_z / compress2 / compress2_z | safety goals `Goal.compress*_safety` | `ZlibF.Spec.Public.Proofs.Compress.compress_safety`, `compress_z_safety`, `compress2_safety`, `compress2_z_safety`, `public-compress-safe-mid.lean` | yes | Source separate from dest (deviation row). The length cell is modelled as an `Option` scalar, so aliasing the cell with data is outside the model (deviation row). Every level. The functional `Goal.compress*` (not planned) have no theorem. |
+| uncompress / uncompress_z / uncompress2 / uncompress2_z | safety goals `Goal.uncompress*_safe` | `ZlibF.Spec.Public.Proofs.Uncompress.uncompress_safe` etc., `public-uncompress-safe.lean` | yes | `UtilitySeparation`: data and length cells pairwise separate (deviation row). The functional `Goal.uncompress*` (not planned) have no theorem. |
+| compressBound / compressBound_z | own goal | `ZlibF.Spec.Public.Proofs.compressBound` / `compressBound_z` | yes | Full. |
+| zlibVersion | own goal | `ZlibF.Spec.Public.Proofs.zlibVersion` | yes | Full. |
+| zlibCompileFlags | own goal | `ZlibF.Spec.Public.Proofs.zlibCompileFlags` | yes | Full. |
+| zError | own goal | `ZlibF.Spec.Public.Proofs.zError` | yes | Undocumented (not required). |
+
+#### Gzip file interface
+
+There is **no gz safety goal on dev**. `Goal.gz_sequence_safety` exists only as a definition in a
+proof file on branch `skeleton/gz` (`gz.skeleton-model.lean`). It is in neither `goals.txt` nor
+`public-api.json` `safety_goals`. `Goal.gz_sequence` (functional) is not planned and has no
+theorem. The registered own-goal theorems below are functional contracts over `GzValid`,
+`GzReachable` or a live `gzstates` entry, and some over `RegularOs fs` (the deterministic
+regular-file world, not every OS-call oracle world).
+
+| function | route | theorem | registered? | domain gap or note |
+| --- | --- | --- | --- | --- |
+| gzopen, gzopen64 | open | none (`gzopen_null`, `gzopen*_alloc_failure` registered) | partial only | Path-open branch is open. |
+| gzdopen | own goal | `Zlib.Gzlib.Proofs.gzdopen_complete`, `gzlib.c.dopen-complete.lean` | yes | Every `fd`. Mode is NULL or a C string. Not shown for every oracle world. |
+| gzbuffer | own goal | `ZlibF.Spec.Public.Proofs.gzbuffer_public` | yes | NULL and any live handle. |
+| gzeof | own goal | `ZlibF.Spec.Public.Proofs.gzeof_public` | yes | NULL and any live handle. |
+| gzerror | own goal | `ZlibF.Spec.Public.GzErrorProof.gzerror` | yes | Needs `GzValid`. That invariant is not yet derived for every history (only gzdopen establishes it). |
+| gzclearerr | own goal | `ZlibF.Spec.Public.Proofs.gzclearerr` | yes | Needs `GzValid` (same remark). |
+| gzoffset, gzoffset64 | own goal | `ZlibF.Spec.Public.OffsetProof.gzoffset_public_goal` / `gzoffset64_public_goal` | yes | Needs `GzReachable`, `GzValid` and `RegularOs fs` (deviation row "Gz file data"). |
+| gzrewind | own goal | `ZlibF.Spec.Public.GzRewindProof.rewind_public` | yes | Needs `GzReachable`, `GzValid` and `RegularOs fs`. |
+| gzseek, gzseek64 | open | pieces: `gzseek64_safe` (needs `GzGood`, `PosInv`, ...) registered; `gzseek64_step` checked (`gz.inv-seek`) | partial only | |
+| gztell, gztell64 | open | `gztell64_spec` registered, but needs `PosInv`, which no history theorem derives | partial only | |
+| gzclose | open | `gzclose_null`, `gzclose_dispatch` registered | partial only | |
+| gzclose_r | open | `gzclose_r_step_safe` (`gz.read-close.lean`, over `GzInv`), checked, unregistered | no | `GzInv` is not derived from histories. |
+| gzclose_w | open | none | no | |
+| gzread, gzfread, gzgetc, gzgetc_, gzungetc, gzgets, gzdirect | open | none at public level (internal `gz_look_safe`, `gz_fetch_safe_of`, `gzungetc_step_of` checked) | no | The `gzgetc` macro's inline path (reads `have`, `next`, `pos`) is not translated. It needs a handle invariant (**to confirm**). |
+| gzwrite, gzfwrite, gzputc, gzputs, gzprintf, gzflush, gzsetparams | open | none at public level | no | |
+
+#### Miscounts and open items
+
+Documented functions with no checked no-fault theorem for their full documented domain:
+
+1. **inflateBack**: open. Only `inflate_back_sequence_safety_of (FastOk)`; `LEN_fast_p` and `fast_alias` are open. progress.md also lists the target row as "Not proved".
+2. **deflateCopy**: open on dev (in progress, the deflate skeleton rows). After it lands: a non-NULL inconsistent source is still not covered, and `source ≠ dest` is assumed.
+3. **inflateEnd**: NULL, state NULL, never initialised, after a failed init, and after a failed `inflateCopy` (explicitly documented by zlib.h) have **no theorem**. The own goal and the End clause cover only `Good` or reachable streams. progress.md's "All stated inputs" hides this. deflateEnd has the analogous `deflateEnd_reject` (registered).
+4. **inflateCopy**: a non-NULL inconsistent source (`Z_STREAM_ERROR`, dest state cleared) is not covered.
+5. **NULL or inconsistent stream refusal, no theorem at all**: `inflate`, `deflate`, `inflateReset`, `inflateReset2`, `inflateGetDictionary`, `inflateSetDictionary`, `deflateSetDictionary`, `deflateParams`. Covered elsewhere: the deflate queries, `deflateEnd`, `deflateReset`, `deflatePrime`, `deflateBound*`, `inflateSync`, `inflateGetHeader`, and the inflate queries. `deflateGetDictionary_reject` is checked but not registered.
+6. **deflateParams, deflateSetDictionary, deflatePrime, deflateBound, deflateBound_z, inflateSync**: no own-goal theorem. No-fault on reachable streams comes only through SeqI or SeqD. That suffices for planned safety, but per-call own goals stay open.
+7. **adler32, adler32_z**: domain narrower than zlib.h (NULL only with `len = 0`). `len = 1` is a real C fault (deviation row). NULL with `len ≥ 2` is safe but unproved.
+8. **Every gz function except** gzdopen, gzbuffer, gzeof, gzerror, gzclearerr, gzoffset(64), gzrewind: open (gzopen, gzopen64, gzclose, gzclose_r, gzclose_w, gzread, gzfread, gzgetc, gzgetc_, gzungetc, gzgets, gzdirect, gzwrite, gzfwrite, gzputc, gzputs, gzprintf, gzflush, gzsetparams, gzseek, gzseek64, gztell, gztell64). The registered gz theorems rest on `GzValid` or `GzReachable` (and `RegularOs` for gzoffset and gzrewind), not on every history and every oracle world. No gz safety goal is registered on dev (`gz_sequence_safety` is only on `skeleton/gz`).
+9. Related, not a function: `Goal.deflate_initialisation_domain` (nonvacuity) has no theorem.
+
 ### Ordered next work
 
 Rows 9 to 12 are planned work: see [Scope](#scope). Start with row 11, then rows 9 and 12.
