@@ -55,6 +55,11 @@ def InflateAtHead (h : Heap) (s : GzState) : Prop :=
   ∃ k st, s.strm.state = some (.inflate k) ∧ h.istates k = some st ∧ st.mode = HEAD ∧ st.bits = 0 ∧
     st.last = 0
 
+/-- The embedded inflate stream is stuck: its mode is `BAD` (a data error) or `MEM`. `inflate` then returns at once
+with no output; only `inflateReset` (in `gz_look`, from LOOK) leaves it. -/
+def Stuck (h : Heap) (s : GzState) : Prop :=
+  ∃ k st, s.strm.state = some (.inflate k) ∧ h.istates k = some st ∧ (st.mode = BAD ∨ st.mode = MEM)
+
 open Classical in
 /-- **The rank of a reader** for the termination of `gz_read`: 4 per byte of input left, 1 per byte of read budget,
 2 while a gzip member is under way past its head (`how = GZIP` and the stream not `InflateAtHead`), and 2 until the
@@ -139,7 +144,10 @@ never rise. The last clauses serve `gz_read`'s termination and its return to `Gz
 premises; a `-1` records an error; the buffered output passes `GZ_OFF_MAX` only by the one byte loaded at
 `x.pos = GZ_OFF_MAX` (patch 0004); the rank does not rise; a `0` with no output is at the end of the input or lowers
 the rank; and output is a full buffer (`2·size`) unless the call failed, the output reaches `GZ_OFF_MAX`, the input
-ended, or the rank fell by 2. -/
+ended, or the rank fell by 2. The four clauses after it serve `gz_skip`, which goes on after a `-1` that left
+output: an error outside `Z_OK` and `Z_BUF_ERROR` stays; a `-1` leaves such an error or the end of the input; from
+such an error, output is paid for as above or by the stream becoming `Stuck` (a pending literal, then a data error in
+held bits); and a `Stuck` stream with such an error gives no output. -/
 def GzFetchSafe : Prop :=
   ∀ (i : Nat) (h : Heap) (fs : Fs) (s : GzState), GzInvUpToOutput h i s → s.x.have = 0 → FileSystem fs →
     s.mode = GZ_READ → s.err ≠ Z_STREAM_END → (s.how = GZ_COPY → s.strm.avail_in = 0) → MsgLit s →
@@ -160,6 +168,14 @@ def GzFetchSafe : Prop :=
           (s'.eof ≠ 0 ∧ s'.strm.avail_in = 0) ∨ fetchRank fs' after s' < fetchRank fs h s) ∧
         (HasBudget fs s.fd → s'.x.have ≠ 0 → s'.x.have.toNat = 2 * s'.size.toNat ∨ r = -1 ∨
           9223372036854775807 ≤ s'.x.pos.toInt + s'.x.have.toNat ∨ (s'.eof ≠ 0 ∧ s'.strm.avail_in = 0) ∨
-          fetchRank fs' after s' + 2 ≤ fetchRank fs h s)
+          fetchRank fs' after s' + 2 ≤ fetchRank fs h s) ∧
+        (s.err ≠ Z_OK → s.err ≠ Z_BUF_ERROR → s'.err ≠ Z_OK ∧ s'.err ≠ Z_BUF_ERROR) ∧
+        (r = -1 → (s'.err ≠ Z_OK ∧ s'.err ≠ Z_BUF_ERROR) ∨ (s'.eof ≠ 0 ∧ s'.strm.avail_in = 0)) ∧
+        (HasBudget fs s.fd → s.err ≠ Z_OK → s.err ≠ Z_BUF_ERROR → s'.x.have ≠ 0 →
+          s'.x.have.toNat = 2 * s'.size.toNat ∨ 9223372036854775807 ≤ s'.x.pos.toInt + s'.x.have.toNat ∨
+          (s'.eof ≠ 0 ∧ s'.strm.avail_in = 0) ∨ fetchRank fs' after s' + 2 ≤ fetchRank fs h s ∨
+          (s'.how = GZIP ∧ Stuck after s' ∧ ¬ Stuck h s)) ∧
+        (s.err ≠ Z_OK → s.err ≠ Z_BUF_ERROR → s.how = GZIP → Stuck h s →
+          s'.x.have = 0 ∧ (r = -1 ∨ (s'.eof ≠ 0 ∧ s'.strm.avail_in = 0)))
 
 end ZlibF.Spec.Public.GzRead
