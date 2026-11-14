@@ -59,7 +59,7 @@ records and in `docs/history/` describe the state when they were written.
 <!-- proof-progress:start -->
 ## Proof progress graph
 
-**195 fixed targets: 117 public and 78 supporting.**
+**196 fixed targets: 118 public and 78 supporting.**
 Exact proofs: 143 registered and 5 local only.
 These counts are not a percentage of verification effort or a final CI result.
 
@@ -107,15 +107,15 @@ flowchart LR
   end
   style checksums fill:#f9fafb,stroke:#9ca3af,color:#111827
   subgraph addresses["Byte-address model"]
-    n137["ByteAddress<br/>address_read_is_pure"]:::all
-    n138["ByteAddress<br/>raw_block_unchanged"]:::all
-    n139["ByteAddress<br/>every_layout_is_<br/>representable"]:::all
-    n140["ByteAddress<br/>every_existing_heap_<br/>accepts_layout"]:::all
-    n141["ByteAddress<br/>mask_refines_base_plus_<br/>offset"]:::all
-    n142["ByteAddress<br/>pointer_advance_<br/>preserves_low_bits"]:::all
-    n143["ByteAddress<br/>first_aligned_offset"]:::all
-    n144["ByteAddress<br/>byte_stores_preserve_<br/>bases"]:::all
-    n145["ByteAddress<br/>byte_modifies_preserve_<br/>bases"]:::all
+    n138["ByteAddress<br/>address_read_is_pure"]:::all
+    n139["ByteAddress<br/>raw_block_unchanged"]:::all
+    n140["ByteAddress<br/>every_layout_is_<br/>representable"]:::all
+    n141["ByteAddress<br/>every_existing_heap_<br/>accepts_layout"]:::all
+    n142["ByteAddress<br/>mask_refines_base_plus_<br/>offset"]:::all
+    n143["ByteAddress<br/>pointer_advance_<br/>preserves_low_bits"]:::all
+    n144["ByteAddress<br/>first_aligned_offset"]:::all
+    n145["ByteAddress<br/>byte_stores_preserve_<br/>bases"]:::all
+    n146["ByteAddress<br/>byte_modifies_preserve_<br/>bases"]:::all
   end
   style addresses fill:#f9fafb,stroke:#9ca3af,color:#111827
   subgraph inflate["Inflate streams"]
@@ -143,56 +143,56 @@ flowchart LR
   end
   style inflate fill:#f9fafb,stroke:#9ca3af,color:#111827
   subgraph fast["Fast decoder obligations"]
-    n148["InflateFastBodyOrigin<br/>actual_body_preserves_<br/>origin"]:::all
-    n149["InflateFastBodyToken<br/>actual_body_refines_token"]:::all
-    n150["InflateFastCallOrigin<br/>actual_fast_preserves_<br/>origin"]:::all
-    n151["InflateFastDistanceOrigin<br/>actual_distance_block_<br/>preserves_origin"]:::all
-    n152["InflateFastDistanceResult<br/>actual_distance_refines_<br/>lz77"]:::all
-    n153["InflateFastDistance<br/>Semantics<br/>distance_lookup_matches_<br/>format"]:::all
-    n154["InflateFast<br/>fast_safe"]:::all
-    n155["InflateFast<br/>step_safe"]:::all
-    n156["InflateFastLength<br/>Semantics<br/>length_lookup_matches_<br/>format"]:::all
-    n157["InflateFastLengthTrace<br/>actual_body_retains_<br/>selected_length"]:::all
-    n158["InflateFastMatchHistory<br/>actual_copy_match_<br/>refines_lz77"]:::all
-    n159["InflateFastMatchHistory<br/>match_array_refines_lz77"]:::all
-    n160["InflateFastOrigin<br/>actual_drop_preserves_<br/>origin"]:::all
-    n161["InflateFastOrigin<br/>actual_pull_preserves_<br/>origin"]:::all
-    n162["InflateFastOrigin<br/>actual_rollback_<br/>preserves_origin"]:::all
-    n163["InflateFastOrigin<br/>drop_preserves_origin"]:::all
-    n164["InflateFastOrigin<br/>initial_origin"]:::all
-    n165["InflateFastOrigin<br/>pull_preserves_origin"]:::all
-    n166["InflateFastOrigin<br/>rollback_preserves_origin"]:::all
+    n149["InflateFastBodyOrigin<br/>actual_body_preserves_<br/>origin"]:::all
+    n150["InflateFastBodyToken<br/>actual_body_refines_token"]:::all
+    n151["InflateFastCallOrigin<br/>actual_fast_preserves_<br/>origin"]:::all
+    n152["InflateFastDistanceOrigin<br/>actual_distance_block_<br/>preserves_origin"]:::all
+    n153["InflateFastDistanceResult<br/>actual_distance_refines_<br/>lz77"]:::all
+    n154["InflateFastDistance<br/>Semantics<br/>distance_lookup_matches_<br/>format"]:::all
+    n155["InflateFast<br/>fast_safe"]:::all
+    n156["InflateFast<br/>step_safe"]:::all
+    n157["InflateFastLength<br/>Semantics<br/>length_lookup_matches_<br/>format"]:::all
+    n158["InflateFastLengthTrace<br/>actual_body_retains_<br/>selected_length"]:::all
+    n159["InflateFastMatchHistory<br/>actual_copy_match_<br/>refines_lz77"]:::all
+    n160["InflateFastMatchHistory<br/>match_array_refines_lz77"]:::all
+    n161["InflateFastOrigin<br/>actual_drop_preserves_<br/>origin"]:::all
+    n162["InflateFastOrigin<br/>actual_pull_preserves_<br/>origin"]:::all
+    n163["InflateFastOrigin<br/>actual_rollback_<br/>preserves_origin"]:::all
+    n164["InflateFastOrigin<br/>drop_preserves_origin"]:::all
+    n165["InflateFastOrigin<br/>initial_origin"]:::all
+    n166["InflateFastOrigin<br/>pull_preserves_origin"]:::all
+    n167["InflateFastOrigin<br/>rollback_preserves_origin"]:::all
   end
   style fast fill:#f9fafb,stroke:#9ca3af,color:#111827
   subgraph tables["Decode-table obligations"]
-    n167["InflateDecodeTable<br/>Rejection<br/>decode_table_classifies_<br/>input"]:::all
-    n168["InflateDecodeTable<br/>Semantics<br/>decode_table_matches_<br/>format"]:::all
-    n169["InflateDecodeTableShort<br/>short_decode_table_leaf_<br/>sound"]:::all
-    n170["InflateDecodeTable<br/>Soundness<br/>decode_table_leaf_sound"]:::all
-    n171["InflateDecodeTableFrame<br/>decode_table_read_<br/>preserved"]:::all
-    n172["InflateDecodeTable<br/>Invariant<br/>constructor_establishes_<br/>decode_table_invariant"]:::all
-    n173["InflateDecodeTable<br/>Invariant<br/>decode_table_invariant_<br/>of_prefix"]:::all
-    n174["InflateDecodeTable<br/>Stability<br/>constructor_establishes_<br/>query_stability"]:::all
-    n175["InflateDecodeTable<br/>Stability<br/>query_stability_of_prefix"]:::all
-    n176["InflateDecodeTable<br/>Stability<br/>short_rejected_leaf_<br/>stays_invalid"]:::all
-    n177["InflateFastTableFlags<br/>constructor_establishes_<br/>fast_leaf_flags"]:::all
-    n178["InflateFastTableFlags<br/>fast_leaf_flags_of_prefix"]:::all
-    n179["InflateFastTableFlags<br/>fixed_tables_have_fast_<br/>leaf_flags"]:::all
-    n180["InflateFastTableFlags<br/>leaf_classification_<br/>agrees"]:::all
-    n181["InflateTableContent<br/>inflate_table_content"]:::all
-    n182["InflateTableSafety<br/>inflate_table_decoder_<br/>safe"]:::all
-    n183["InflateTableExtent<br/>inflate_table_read_extent"]:::all
-    n184["InflateRootTable<br/>constructor_root_bits"]:::all
-    n185["InflateSubtable<br/>constructor_subtable_bits"]:::all
+    n168["InflateDecodeTable<br/>Rejection<br/>decode_table_classifies_<br/>input"]:::all
+    n169["InflateDecodeTable<br/>Semantics<br/>decode_table_matches_<br/>format"]:::all
+    n170["InflateDecodeTableShort<br/>short_decode_table_leaf_<br/>sound"]:::all
+    n171["InflateDecodeTable<br/>Soundness<br/>decode_table_leaf_sound"]:::all
+    n172["InflateDecodeTableFrame<br/>decode_table_read_<br/>preserved"]:::all
+    n173["InflateDecodeTable<br/>Invariant<br/>constructor_establishes_<br/>decode_table_invariant"]:::all
+    n174["InflateDecodeTable<br/>Invariant<br/>decode_table_invariant_<br/>of_prefix"]:::all
+    n175["InflateDecodeTable<br/>Stability<br/>constructor_establishes_<br/>query_stability"]:::all
+    n176["InflateDecodeTable<br/>Stability<br/>query_stability_of_prefix"]:::all
+    n177["InflateDecodeTable<br/>Stability<br/>short_rejected_leaf_<br/>stays_invalid"]:::all
+    n178["InflateFastTableFlags<br/>constructor_establishes_<br/>fast_leaf_flags"]:::all
+    n179["InflateFastTableFlags<br/>fast_leaf_flags_of_prefix"]:::all
+    n180["InflateFastTableFlags<br/>fixed_tables_have_fast_<br/>leaf_flags"]:::all
+    n181["InflateFastTableFlags<br/>leaf_classification_<br/>agrees"]:::all
+    n182["InflateTableContent<br/>inflate_table_content"]:::all
+    n183["InflateTableSafety<br/>inflate_table_decoder_<br/>safe"]:::all
+    n184["InflateTableExtent<br/>inflate_table_read_extent"]:::all
+    n185["InflateRootTable<br/>constructor_root_bits"]:::all
+    n186["InflateSubtable<br/>constructor_subtable_bits"]:::all
   end
   style tables fill:#f9fafb,stroke:#9ca3af,color:#111827
   subgraph copy["Match-copy mathematics"]
-    n186["LZ77CopySpec<br/>output_copy_refines_lz77"]:::all
-    n187["LZ77CopySpec<br/>window_copy_refines_lz77"]:::all
-    n188["LZ77HistorySpec<br/>copy_back_compose"]:::all
-    n189["LZ77HistorySpec<br/>copy_back_extends_history"]:::all
-    n190["LZ77HistorySpec<br/>retained_history_agrees"]:::all
-    n191["LZ77HistorySpec<br/>window_distance_check_<br/>agrees"]:::all
+    n187["LZ77CopySpec<br/>output_copy_refines_lz77"]:::all
+    n188["LZ77CopySpec<br/>window_copy_refines_lz77"]:::all
+    n189["LZ77HistorySpec<br/>copy_back_compose"]:::all
+    n190["LZ77HistorySpec<br/>copy_back_extends_history"]:::all
+    n191["LZ77HistorySpec<br/>retained_history_agrees"]:::all
+    n192["LZ77HistorySpec<br/>window_distance_check_<br/>agrees"]:::all
   end
   style copy fill:#f9fafb,stroke:#9ca3af,color:#111827
   subgraph deflate["Deflate streams"]
@@ -257,6 +257,7 @@ flowchart LR
     n70["gzprintf"]:::unproved
     n71["gzflush"]:::unproved
     n72["gzsetparams"]:::unproved
+    n131["gz_sequence_safety"]:::unproved
   end
   style gzip fill:#f9fafb,stroke:#9ca3af,color:#111827
   subgraph buffers["Whole-buffer operations"]
@@ -298,82 +299,82 @@ flowchart LR
     n16["Goals<br/>gz_seek_read<br/>Local exact proof"]:::all
     n17["Concrete<br/>compress_bound_value"]:::all
     n18["Concrete<br/>compress2_z_first_alloc_<br/>failure"]:::all
-    n136["Inflate<br/>inflate_deferred_distance"]:::all
+    n137["Inflate<br/>inflate_deferred_distance"]:::all
   end
   style models fill:#f9fafb,stroke:#9ca3af,color:#111827
   subgraph lifecycle["Lifecycles and call sequences"]
     n122["inflate_sequence"]:::unproved
     n124["deflate_sequence"]:::unproved
     n126["inflate_back_sequence"]:::unproved
-    n131["gz_sequence"]:::unproved
-    n132["inflate_initialisation_<br/>domain"]:::all
-    n133["deflate_initialisation_<br/>domain"]:::unproved
-    n134["inflate_back_<br/>initialisation_domain"]:::all
-    n135["gz_initialisation_domain"]:::unproved
+    n132["gz_sequence"]:::unproved
+    n133["inflate_initialisation_<br/>domain"]:::all
+    n134["deflate_initialisation_<br/>domain"]:::unproved
+    n135["inflate_back_<br/>initialisation_domain"]:::all
+    n136["gz_initialisation_domain"]:::unproved
   end
   style lifecycle fill:#f9fafb,stroke:#9ca3af,color:#111827
   subgraph internal["Internal proof obligations"]
-    n146["Crc32ByteViews<br/>crc32_z_all_byte_views"]:::all
-    n147["Crc32ByteViews<br/>crc32_all_byte_views"]:::all
-    n192["Token<br/>rejected_has_no_symbols"]:::all
-    n193["Token<br/>step_composes_symbols"]:::all
-    n194["Token<br/>symbols_exposes_step"]:::all
+    n147["Crc32ByteViews<br/>crc32_z_all_byte_views"]:::all
+    n148["Crc32ByteViews<br/>crc32_all_byte_views"]:::all
+    n193["Token<br/>rejected_has_no_symbols"]:::all
+    n194["Token<br/>step_composes_symbols"]:::all
+    n195["Token<br/>symbols_exposes_step"]:::all
   end
   style internal fill:#f9fafb,stroke:#9ca3af,color:#111827
-  n142 --> n143
-  n147 --> n28
-  n147 --> n99
-  n147 --> n39
-  n147 --> n123
-  n146 --> n29
-  n148 --> n150
-  n150 --> n99
-  n150 --> n39
-  n150 --> n123
-  n151 --> n148
+  n143 --> n144
+  n148 --> n28
+  n148 --> n99
+  n148 --> n39
+  n148 --> n123
+  n147 --> n29
+  n149 --> n151
+  n151 --> n99
+  n151 --> n39
+  n151 --> n123
   n152 --> n149
-  n153 --> n152
-  n154 --> n150
-  n155 --> n149
-  n155 --> n157
-  n156 --> n149
-  n158 --> n152
-  n159 --> n158
-  n160 --> n148
-  n162 --> n150
+  n153 --> n150
+  n154 --> n153
+  n155 --> n151
+  n156 --> n150
+  n156 --> n158
+  n157 --> n150
+  n159 --> n153
+  n160 --> n159
+  n161 --> n149
   n163 --> n151
-  n163 --> n160
-  n164 --> n150
+  n164 --> n152
+  n164 --> n161
   n165 --> n151
-  n165 --> n161
+  n166 --> n152
   n166 --> n162
-  n167 --> n172
-  n168 --> n167
-  n169 --> n172
-  n170 --> n167
-  n170 --> n169
-  n171 --> n173
-  n171 --> n175
-  n171 --> n178
-  n172 --> n99
-  n172 --> n39
-  n172 --> n123
+  n167 --> n163
+  n168 --> n173
+  n169 --> n168
+  n170 --> n173
+  n171 --> n168
+  n171 --> n170
+  n172 --> n174
+  n172 --> n176
+  n172 --> n179
   n173 --> n99
   n173 --> n39
   n173 --> n123
-  n176 --> n153
-  n176 --> n156
-  n181 --> n182
+  n174 --> n99
+  n174 --> n39
+  n174 --> n123
+  n177 --> n154
+  n177 --> n157
   n182 --> n183
-  n182 --> n184
-  n183 --> n172
-  n185 --> n172
-  n185 --> n184
-  n186 --> n159
-  n187 --> n159
-  n188 --> n159
-  n190 --> n8
-  n190 --> n9
+  n183 --> n184
+  n183 --> n185
+  n184 --> n173
+  n186 --> n173
+  n186 --> n185
+  n187 --> n160
+  n188 --> n160
+  n189 --> n160
+  n191 --> n8
+  n191 --> n9
   n5 --> n10
   n5 --> n11
   n5 --> n8
@@ -398,7 +399,7 @@ flowchart LR
   n99 --> n114
   n99 --> n117
   n99 --> n116
-  n36 --> n134
+  n36 --> n135
   n80 --> n123
   n73 --> n99
   n73 --> n39
@@ -481,201 +482,202 @@ flowchart LR
   n23 -.-> n100
   n23 -.-> n75
   n21 -.-> n106
-  click n0 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Api/Goals.lean#L42" _blank
-  click n1 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Api/Goals.lean#L47" _blank
-  click n2 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Api/Goals.lean#L58" _blank
-  click n3 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Api/Goals.lean#L69" _blank
-  click n4 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Api/Goals.lean#L84" _blank
-  click n5 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Api/Goals.lean#L99" _blank
-  click n6 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Api/Goals.lean#L106" _blank
-  click n7 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Api/Goals.lean#L116" _blank
-  click n8 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Api/Goals.lean#L134" _blank
-  click n9 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Api/Goals.lean#L143" _blank
-  click n10 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Api/Goals.lean#L162" _blank
-  click n11 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Api/Goals.lean#L180" _blank
-  click n12 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Api/Goals.lean#L189" _blank
-  click n13 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Api/Goals.lean#L196" _blank
-  click n14 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Api/Goals.lean#L203" _blank
-  click n15 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Api/Goals.lean#L214" _blank
-  click n16 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Api/Goals.lean#L221" _blank
-  click n17 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Api/Concrete.lean#L57" _blank
-  click n18 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Api/Concrete.lean#L67" _blank
-  click n19 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Queries.lean#L35" _blank
-  click n20 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Queries.lean#L40" _blank
-  click n21 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Queries.lean#L46" _blank
-  click n22 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Queries.lean#L53" _blank
-  click n23 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Queries.lean#L59" _blank
-  click n24 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Checksums.lean#L66" _blank
-  click n25 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Checksums.lean#L61" _blank
-  click n26 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Checksums.lean#L86" _blank
-  click n27 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Checksums.lean#L90" _blank
-  click n28 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Checksums.lean#L117" _blank
-  click n29 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Checksums.lean#L109" _blank
-  click n30 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Checksums.lean#L126" _blank
-  click n31 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Checksums.lean#L140" _blank
-  click n32 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Checksums.lean#L143" _blank
-  click n33 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Checksums.lean#L150" _blank
-  click n34 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Checksums.lean#L162" _blank
-  click n35 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Checksums.lean#L165" _blank
-  click n36 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Back.lean#L22" _blank
-  click n37 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Back.lean#L118" _blank
-  click n38 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Back.lean#L145" _blank
-  click n39 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Copy.lean#L27" _blank
-  click n40 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Copy.lean#L67" _blank
-  click n41 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/GzClose.lean#L35" _blank
-  click n42 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/GzClose.lean#L40" _blank
-  click n43 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/GzClose.lean#L44" _blank
-  click n44 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/GzControl.lean#L12" _blank
-  click n45 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/GzControl.lean#L22" _blank
-  click n46 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/GzControl.lean#L36" _blank
-  click n47 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/GzControl.lean#L39" _blank
-  click n48 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/GzControl.lean#L53" _blank
-  click n49 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/GzControl.lean#L56" _blank
-  click n50 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/GzControl.lean#L63" _blank
-  click n51 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/GzControl.lean#L74" _blank
-  click n52 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/GzControl.lean#L91" _blank
-  click n53 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/GzControl.lean#L116" _blank
-  click n54 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/GzControl.lean#L119" _blank
-  click n55 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/GzOpen.lean#L65" _blank
-  click n56 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/GzOpen.lean#L70" _blank
-  click n57 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/GzOpen.lean#L75" _blank
-  click n58 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/GzRead.lean#L22" _blank
-  click n59 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/GzRead.lean#L37" _blank
-  click n60 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/GzRead.lean#L58" _blank
-  click n61 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/GzRead.lean#L61" _blank
-  click n62 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/GzRead.lean#L66" _blank
-  click n63 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/GzRead.lean#L80" _blank
-  click n64 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/GzRead.lean#L103" _blank
-  click n65 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/GzWrite.lean#L28" _blank
-  click n66 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/GzWrite.lean#L43" _blank
-  click n67 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/GzWrite.lean#L59" _blank
-  click n68 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/GzWrite.lean#L71" _blank
-  click n69 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/GzWrite.lean#L108" _blank
-  click n70 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/GzWrite.lean#L112" _blank
-  click n71 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/GzWrite.lean#L117" _blank
-  click n72 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/GzWrite.lean#L134" _blank
-  click n73 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Initialisation.lean#L92" _blank
-  click n74 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Initialisation.lean#L97" _blank
-  click n75 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Initialisation.lean#L140" _blank
-  click n76 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Initialisation.lean#L147" _blank
-  click n77 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Lifecycle.lean#L20" _blank
-  click n78 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Lifecycle.lean#L32" _blank
-  click n79 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Lifecycle.lean#L43" _blank
-  click n80 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Lifecycle.lean#L60" _blank
-  click n81 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Lifecycle.lean#L77" _blank
-  click n82 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Lifecycle.lean#L87" _blank
-  click n83 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Lifecycle.lean#L105" _blank
-  click n84 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Lifecycle.lean#L115" _blank
-  click n85 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Lifecycle.lean#L146" _blank
-  click n86 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Lifecycle.lean#L149" _blank
-  click n87 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Lifecycle.lean#L153" _blank
-  click n88 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Lifecycle.lean#L175" _blank
-  click n89 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/StreamQueries.lean#L53" _blank
-  click n90 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/StreamQueries.lean#L62" _blank
-  click n91 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/StreamQueries.lean#L73" _blank
-  click n92 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/StreamQueries.lean#L81" _blank
-  click n93 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/StreamQueries.lean#L89" _blank
-  click n94 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/StreamQueries.lean#L100" _blank
-  click n95 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/StreamQueries.lean#L113" _blank
-  click n96 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/StreamQueries.lean#L124" _blank
-  click n97 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/StreamQueries.lean#L132" _blank
-  click n98 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/StreamQueries.lean#L145" _blank
-  click n99 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Streams.lean#L35" _blank
-  click n100 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Streams.lean#L87" _blank
-  click n101 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Streams.lean#L154" _blank
-  click n102 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Streams.lean#L158" _blank
-  click n103 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Streams.lean#L168" _blank
-  click n104 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Streams.lean#L186" _blank
-  click n105 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Streams.lean#L209" _blank
-  click n106 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Utilities.lean#L84" _blank
-  click n107 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Utilities.lean#L89" _blank
-  click n108 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Utilities.lean#L96" _blank
-  click n109 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Utilities.lean#L101" _blank
-  click n110 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Utilities.lean#L156" _blank
-  click n111 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Utilities.lean#L160" _blank
-  click n112 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Utilities.lean#L188" _blank
-  click n113 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Utilities.lean#L192" _blank
-  click n114 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Utilities.lean#L231" _blank
-  click n115 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Utilities.lean#L234" _blank
-  click n116 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Utilities.lean#L260" _blank
-  click n117 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Utilities.lean#L263" _blank
-  click n118 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Utilities.lean#L68" _blank
-  click n119 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Utilities.lean#L72" _blank
-  click n120 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Utilities.lean#L78" _blank
-  click n121 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Utilities.lean#L107" _blank
-  click n122 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Sequences.lean#L241" _blank
-  click n123 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Sequences.lean#L268" _blank
-  click n124 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Sequences.lean#L278" _blank
-  click n125 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Sequences.lean#L259" _blank
-  click n126 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Sequences.lean#L375" _blank
-  click n127 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Sequences.lean#L396" _blank
-  click n128 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Copy.lean#L106" _blank
-  click n129 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Refusals.lean#L25" _blank
-  click n130 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Refusals.lean#L45" _blank
-  click n131 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Sequences.lean#L425" _blank
-  click n132 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Domains.lean#L24" _blank
-  click n133 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Domains.lean#L37" _blank
-  click n134 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Domains.lean#L53" _blank
-  click n135 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Public/Domains.lean#L79" _blank
-  click n136 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Api/Inflate.lean#L267" _blank
-  click n137 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/ByteAddress.lean#L39" _blank
-  click n138 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/ByteAddress.lean#L43" _blank
-  click n139 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/ByteAddress.lean#L50" _blank
-  click n140 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/ByteAddress.lean#L57" _blank
-  click n141 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/ByteAddress.lean#L65" _blank
-  click n142 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/ByteAddress.lean#L70" _blank
-  click n143 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/ByteAddress.lean#L77" _blank
-  click n144 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/ByteAddress.lean#L83" _blank
-  click n145 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/ByteAddress.lean#L87" _blank
-  click n146 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Crc32ByteViews.lean#L17" _blank
-  click n147 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Crc32ByteViews.lean#L28" _blank
-  click n148 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/InflateFastBodyOrigin.lean#L18" _blank
-  click n149 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/InflateFastBodyToken.lean#L73" _blank
-  click n150 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/InflateFastCallOrigin.lean#L24" _blank
-  click n151 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/InflateFastDistanceOrigin.lean#L18" _blank
-  click n152 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/InflateFastDistanceResult.lean#L101" _blank
-  click n153 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/InflateFastDistanceSemantics.lean#L20" _blank
-  click n154 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/InflateFast.lean#L70" _blank
-  click n155 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/InflateFast.lean#L42" _blank
-  click n156 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/InflateFastLengthSemantics.lean#L34" _blank
-  click n157 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/InflateFastLengthTrace.lean#L51" _blank
-  click n158 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/InflateFastMatchHistory.lean#L39" _blank
-  click n159 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/InflateFastMatchHistory.lean#L25" _blank
-  click n160 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/InflateFastOrigin.lean#L68" _blank
-  click n161 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/InflateFastOrigin.lean#L57" _blank
-  click n162 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/InflateFastOrigin.lean#L81" _blank
-  click n163 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/InflateFastOrigin.lean#L38" _blank
-  click n164 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/InflateFastOrigin.lean#L27" _blank
-  click n165 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/InflateFastOrigin.lean#L32" _blank
-  click n166 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/InflateFastOrigin.lean#L46" _blank
-  click n167 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/InflateDecodeTableRejection.lean#L19" _blank
-  click n168 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/InflateDecodeTableSemantics.lean#L51" _blank
-  click n169 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/InflateDecodeTableShort.lean#L26" _blank
-  click n170 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/InflateDecodeTableSoundness.lean#L31" _blank
-  click n171 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/InflateDecodeTableFrame.lean#L20" _blank
-  click n172 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/InflateDecodeTableInvariant.lean#L51" _blank
-  click n173 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/InflateDecodeTableInvariant.lean#L68" _blank
-  click n174 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/InflateDecodeTableStability.lean#L30" _blank
-  click n175 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/InflateDecodeTableStability.lean#L43" _blank
-  click n176 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/InflateDecodeTableStability.lean#L54" _blank
-  click n177 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/InflateFastTableFlags.lean#L52" _blank
-  click n178 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/InflateFastTableFlags.lean#L66" _blank
-  click n179 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/InflateFastTableFlags.lean#L76" _blank
-  click n180 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/InflateFastTableFlags.lean#L42" _blank
-  click n181 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/InflateTableContent.lean#L32" _blank
-  click n182 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/InflateTableSafety.lean#L28" _blank
-  click n183 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/InflateTableExtent.lean#L28" _blank
-  click n184 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/InflateRootTable.lean#L21" _blank
-  click n185 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/InflateSubtable.lean#L26" _blank
-  click n186 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Math/LZ77CopySpec.lean#L22" _blank
-  click n187 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Math/LZ77CopySpec.lean#L32" _blank
-  click n188 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Math/LZ77HistorySpec.lean#L21" _blank
-  click n189 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Math/LZ77HistorySpec.lean#L15" _blank
-  click n190 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Math/LZ77HistorySpec.lean#L29" _blank
-  click n191 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Math/LZ77HistorySpec.lean#L39" _blank
-  click n192 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Format/Token.lean#L84" _blank
-  click n193 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Format/Token.lean#L62" _blank
-  click n194 href "https://github.com/cla7aye15I4nd/zlib-f/blob/c965ac594994a2abd3841a1cca27eedfcc968204/ZlibF/Spec/Format/Token.lean#L73" _blank
+  click n0 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Api/Goals.lean#L42" _blank
+  click n1 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Api/Goals.lean#L47" _blank
+  click n2 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Api/Goals.lean#L58" _blank
+  click n3 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Api/Goals.lean#L69" _blank
+  click n4 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Api/Goals.lean#L84" _blank
+  click n5 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Api/Goals.lean#L99" _blank
+  click n6 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Api/Goals.lean#L106" _blank
+  click n7 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Api/Goals.lean#L116" _blank
+  click n8 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Api/Goals.lean#L134" _blank
+  click n9 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Api/Goals.lean#L143" _blank
+  click n10 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Api/Goals.lean#L162" _blank
+  click n11 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Api/Goals.lean#L180" _blank
+  click n12 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Api/Goals.lean#L189" _blank
+  click n13 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Api/Goals.lean#L196" _blank
+  click n14 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Api/Goals.lean#L203" _blank
+  click n15 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Api/Goals.lean#L214" _blank
+  click n16 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Api/Goals.lean#L221" _blank
+  click n17 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Api/Concrete.lean#L57" _blank
+  click n18 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Api/Concrete.lean#L67" _blank
+  click n19 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Queries.lean#L35" _blank
+  click n20 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Queries.lean#L40" _blank
+  click n21 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Queries.lean#L46" _blank
+  click n22 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Queries.lean#L53" _blank
+  click n23 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Queries.lean#L59" _blank
+  click n24 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Checksums.lean#L66" _blank
+  click n25 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Checksums.lean#L61" _blank
+  click n26 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Checksums.lean#L86" _blank
+  click n27 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Checksums.lean#L90" _blank
+  click n28 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Checksums.lean#L117" _blank
+  click n29 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Checksums.lean#L109" _blank
+  click n30 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Checksums.lean#L126" _blank
+  click n31 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Checksums.lean#L140" _blank
+  click n32 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Checksums.lean#L143" _blank
+  click n33 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Checksums.lean#L150" _blank
+  click n34 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Checksums.lean#L162" _blank
+  click n35 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Checksums.lean#L165" _blank
+  click n36 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Back.lean#L22" _blank
+  click n37 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Back.lean#L118" _blank
+  click n38 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Back.lean#L145" _blank
+  click n39 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Copy.lean#L27" _blank
+  click n40 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Copy.lean#L67" _blank
+  click n41 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzClose.lean#L35" _blank
+  click n42 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzClose.lean#L40" _blank
+  click n43 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzClose.lean#L44" _blank
+  click n44 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzControl.lean#L12" _blank
+  click n45 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzControl.lean#L22" _blank
+  click n46 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzControl.lean#L36" _blank
+  click n47 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzControl.lean#L39" _blank
+  click n48 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzControl.lean#L53" _blank
+  click n49 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzControl.lean#L56" _blank
+  click n50 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzControl.lean#L63" _blank
+  click n51 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzControl.lean#L74" _blank
+  click n52 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzControl.lean#L91" _blank
+  click n53 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzControl.lean#L116" _blank
+  click n54 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzControl.lean#L119" _blank
+  click n55 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzOpen.lean#L65" _blank
+  click n56 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzOpen.lean#L70" _blank
+  click n57 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzOpen.lean#L75" _blank
+  click n58 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzRead.lean#L22" _blank
+  click n59 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzRead.lean#L37" _blank
+  click n60 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzRead.lean#L58" _blank
+  click n61 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzRead.lean#L61" _blank
+  click n62 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzRead.lean#L66" _blank
+  click n63 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzRead.lean#L80" _blank
+  click n64 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzRead.lean#L103" _blank
+  click n65 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzWrite.lean#L28" _blank
+  click n66 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzWrite.lean#L43" _blank
+  click n67 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzWrite.lean#L59" _blank
+  click n68 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzWrite.lean#L71" _blank
+  click n69 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzWrite.lean#L108" _blank
+  click n70 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzWrite.lean#L112" _blank
+  click n71 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzWrite.lean#L117" _blank
+  click n72 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzWrite.lean#L134" _blank
+  click n73 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Initialisation.lean#L92" _blank
+  click n74 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Initialisation.lean#L97" _blank
+  click n75 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Initialisation.lean#L140" _blank
+  click n76 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Initialisation.lean#L147" _blank
+  click n77 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Lifecycle.lean#L20" _blank
+  click n78 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Lifecycle.lean#L32" _blank
+  click n79 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Lifecycle.lean#L43" _blank
+  click n80 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Lifecycle.lean#L60" _blank
+  click n81 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Lifecycle.lean#L77" _blank
+  click n82 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Lifecycle.lean#L87" _blank
+  click n83 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Lifecycle.lean#L105" _blank
+  click n84 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Lifecycle.lean#L115" _blank
+  click n85 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Lifecycle.lean#L146" _blank
+  click n86 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Lifecycle.lean#L149" _blank
+  click n87 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Lifecycle.lean#L153" _blank
+  click n88 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Lifecycle.lean#L175" _blank
+  click n89 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/StreamQueries.lean#L53" _blank
+  click n90 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/StreamQueries.lean#L62" _blank
+  click n91 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/StreamQueries.lean#L73" _blank
+  click n92 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/StreamQueries.lean#L81" _blank
+  click n93 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/StreamQueries.lean#L89" _blank
+  click n94 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/StreamQueries.lean#L100" _blank
+  click n95 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/StreamQueries.lean#L113" _blank
+  click n96 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/StreamQueries.lean#L124" _blank
+  click n97 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/StreamQueries.lean#L132" _blank
+  click n98 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/StreamQueries.lean#L145" _blank
+  click n99 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Streams.lean#L35" _blank
+  click n100 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Streams.lean#L87" _blank
+  click n101 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Streams.lean#L154" _blank
+  click n102 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Streams.lean#L158" _blank
+  click n103 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Streams.lean#L168" _blank
+  click n104 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Streams.lean#L186" _blank
+  click n105 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Streams.lean#L209" _blank
+  click n106 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Utilities.lean#L84" _blank
+  click n107 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Utilities.lean#L89" _blank
+  click n108 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Utilities.lean#L96" _blank
+  click n109 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Utilities.lean#L101" _blank
+  click n110 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Utilities.lean#L156" _blank
+  click n111 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Utilities.lean#L160" _blank
+  click n112 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Utilities.lean#L188" _blank
+  click n113 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Utilities.lean#L192" _blank
+  click n114 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Utilities.lean#L231" _blank
+  click n115 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Utilities.lean#L234" _blank
+  click n116 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Utilities.lean#L260" _blank
+  click n117 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Utilities.lean#L263" _blank
+  click n118 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Utilities.lean#L68" _blank
+  click n119 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Utilities.lean#L72" _blank
+  click n120 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Utilities.lean#L78" _blank
+  click n121 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Utilities.lean#L107" _blank
+  click n122 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Sequences.lean#L241" _blank
+  click n123 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Sequences.lean#L268" _blank
+  click n124 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Sequences.lean#L278" _blank
+  click n125 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Sequences.lean#L259" _blank
+  click n126 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Sequences.lean#L375" _blank
+  click n127 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Sequences.lean#L396" _blank
+  click n128 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Copy.lean#L106" _blank
+  click n129 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Refusals.lean#L25" _blank
+  click n130 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Refusals.lean#L45" _blank
+  click n131 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/GzSafety.lean#L129" _blank
+  click n132 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Sequences.lean#L425" _blank
+  click n133 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Domains.lean#L24" _blank
+  click n134 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Domains.lean#L37" _blank
+  click n135 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Domains.lean#L53" _blank
+  click n136 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Public/Domains.lean#L79" _blank
+  click n137 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Api/Inflate.lean#L267" _blank
+  click n138 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/ByteAddress.lean#L39" _blank
+  click n139 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/ByteAddress.lean#L43" _blank
+  click n140 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/ByteAddress.lean#L50" _blank
+  click n141 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/ByteAddress.lean#L57" _blank
+  click n142 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/ByteAddress.lean#L65" _blank
+  click n143 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/ByteAddress.lean#L70" _blank
+  click n144 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/ByteAddress.lean#L77" _blank
+  click n145 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/ByteAddress.lean#L83" _blank
+  click n146 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/ByteAddress.lean#L87" _blank
+  click n147 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Crc32ByteViews.lean#L17" _blank
+  click n148 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Crc32ByteViews.lean#L28" _blank
+  click n149 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateFastBodyOrigin.lean#L18" _blank
+  click n150 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateFastBodyToken.lean#L73" _blank
+  click n151 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateFastCallOrigin.lean#L24" _blank
+  click n152 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateFastDistanceOrigin.lean#L18" _blank
+  click n153 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateFastDistanceResult.lean#L101" _blank
+  click n154 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateFastDistanceSemantics.lean#L20" _blank
+  click n155 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateFast.lean#L70" _blank
+  click n156 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateFast.lean#L42" _blank
+  click n157 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateFastLengthSemantics.lean#L34" _blank
+  click n158 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateFastLengthTrace.lean#L51" _blank
+  click n159 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateFastMatchHistory.lean#L39" _blank
+  click n160 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateFastMatchHistory.lean#L25" _blank
+  click n161 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateFastOrigin.lean#L68" _blank
+  click n162 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateFastOrigin.lean#L57" _blank
+  click n163 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateFastOrigin.lean#L81" _blank
+  click n164 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateFastOrigin.lean#L38" _blank
+  click n165 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateFastOrigin.lean#L27" _blank
+  click n166 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateFastOrigin.lean#L32" _blank
+  click n167 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateFastOrigin.lean#L46" _blank
+  click n168 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateDecodeTableRejection.lean#L19" _blank
+  click n169 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateDecodeTableSemantics.lean#L51" _blank
+  click n170 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateDecodeTableShort.lean#L26" _blank
+  click n171 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateDecodeTableSoundness.lean#L31" _blank
+  click n172 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateDecodeTableFrame.lean#L20" _blank
+  click n173 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateDecodeTableInvariant.lean#L51" _blank
+  click n174 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateDecodeTableInvariant.lean#L68" _blank
+  click n175 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateDecodeTableStability.lean#L30" _blank
+  click n176 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateDecodeTableStability.lean#L43" _blank
+  click n177 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateDecodeTableStability.lean#L54" _blank
+  click n178 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateFastTableFlags.lean#L52" _blank
+  click n179 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateFastTableFlags.lean#L66" _blank
+  click n180 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateFastTableFlags.lean#L76" _blank
+  click n181 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateFastTableFlags.lean#L42" _blank
+  click n182 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateTableContent.lean#L32" _blank
+  click n183 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateTableSafety.lean#L28" _blank
+  click n184 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateTableExtent.lean#L28" _blank
+  click n185 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateRootTable.lean#L21" _blank
+  click n186 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/InflateSubtable.lean#L26" _blank
+  click n187 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Math/LZ77CopySpec.lean#L22" _blank
+  click n188 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Math/LZ77CopySpec.lean#L32" _blank
+  click n189 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Math/LZ77HistorySpec.lean#L21" _blank
+  click n190 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Math/LZ77HistorySpec.lean#L15" _blank
+  click n191 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Math/LZ77HistorySpec.lean#L29" _blank
+  click n192 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Math/LZ77HistorySpec.lean#L39" _blank
+  click n193 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Format/Token.lean#L84" _blank
+  click n194 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Format/Token.lean#L62" _blank
+  click n195 href "https://github.com/cla7aye15I4nd/zlib-f/blob/dd539a50c8a20b7591d0e8bcd801b682e232c544/ZlibF/Spec/Format/Token.lean#L73" _blank
   classDef unproved fill:#e5e7eb,color:#374151,stroke:#374151
   classDef default fill:#dbeafe,color:#1d4ed8,stroke:#1d4ed8
   classDef common fill:#fef3c7,color:#92400e,stroke:#92400e
@@ -684,7 +686,7 @@ flowchart LR
 ```
 
 Each node opens its exact target or blocker at the fixed source snapshot
-`c965ac5`. Some viewers disable diagram links; the
+`dd539a5`. Some viewers disable diagram links; the
 [evidence index](progress.md) provides ordinary links and all proof references.
 
 No documented blockers in this snapshot.
@@ -692,11 +694,11 @@ No documented blockers in this snapshot.
 
 ## Target evidence
 
-<!-- proof-link-revision: c965ac594994a2abd3841a1cca27eedfcc968204 -->
+<!-- proof-link-revision: dd539a50c8a20b7591d0e8bcd801b682e232c544 -->
 
 [Proof narrative](overview.md) · [All-target graph](#proof-progress-graph) · [Input configurations](spec/input-configurations.md)
 
-This index contains **195 fixed targets**: public execution,
+This index contains **196 fixed targets**: public execution,
 sequence and initialization targets, internal obligations and abstract models.
 There is one status graph, in progress. A model result is not implementation refinement.
 Input coverage and proof registration are separate. An exact local proof can
@@ -933,6 +935,7 @@ allows: [No-fault coverage of zlib.h functions](#no-fault-coverage-of-zlibh-func
 | <a id="target-zlibf-spec-public-goal-gzprintf"></a>[gzprintf](../ZlibF/Spec/Public/GzWrite.lean#L112) | Not proved / Not proved | [Contract](../docs/spec/api/gz-file.md#gzprintf); [input range](spec/input-configurations.md#entry-inputs) | — | [Needs: writer path proofs](progress.md#readiness-gzwrite) |
 | <a id="target-zlibf-spec-public-goal-gzflush"></a>[gzflush](../ZlibF/Spec/Public/GzWrite.lean#L117) | Not proved / Not proved | [Contract](../docs/spec/api/gz-file.md#gzflush); [input range](spec/input-configurations.md#entry-inputs) | — | [Needs: writer path proofs](progress.md#readiness-gzwrite) |
 | <a id="target-zlibf-spec-public-goal-gzsetparams"></a>[gzsetparams](../ZlibF/Spec/Public/GzWrite.lean#L134) | Not proved / Not proved | [Contract](../docs/spec/api/gz-file.md#gzsetparams); [input range](spec/input-configurations.md#entry-inputs) | — | [Needs: writer path proofs](progress.md#readiness-gzwrite) |
+| <a id="target-zlibf-spec-public-goal-gz-sequence-safety"></a>[gz_sequence_safety](../ZlibF/Spec/Public/GzSafety.lean#L129) | Not proved / Not proved | Exact target statement; [input range](spec/input-configurations.md#entry-inputs) | — | Prerequisites unreviewed |
 
 <a id="group-buffers"></a>
 
@@ -1277,6 +1280,8 @@ The destination target definition references the source target or implementation
 | [gzgetc](#target-zlibf-spec-public-goal-gzgetc) | [gz_sequence](#target-zlibf-spec-public-goal-gz-sequence) |
 | [gzgets](#target-zlibf-spec-public-goal-gzgets) | [gz_sequence](#target-zlibf-spec-public-goal-gz-sequence) |
 | [gzopen](#target-zlibf-spec-public-goal-gzopen) | [gz_initialisation_domain](#target-zlibf-spec-public-goal-gz-initialisation-domain) |
+| [gzopen](#target-zlibf-spec-public-goal-gzopen) | [gz_sequence_safety](#target-zlibf-spec-public-goal-gz-sequence-safety) |
+| [gzopen64](#target-zlibf-spec-public-goal-gzopen64) | [gz_sequence_safety](#target-zlibf-spec-public-goal-gz-sequence-safety) |
 | [gzread](#target-zlibf-spec-public-goal-gzread) | [gz_sequence](#target-zlibf-spec-public-goal-gz-sequence) |
 | [gzwrite](#target-zlibf-spec-public-goal-gzwrite) | [gz_sequence](#target-zlibf-spec-public-goal-gz-sequence) |
 | [inflate](#target-zlibf-spec-public-goal-inflate) | [inflate_refusal](#target-zlibf-spec-public-goal-inflate-refusal) |
