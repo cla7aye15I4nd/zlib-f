@@ -5,12 +5,23 @@ faithful C translation. Functional correctness is not planned since 2026-11-11, 
 functional fact that a planned safety proof depends on; what is already proved of it stays.
 
 **Work in progress. The project is not finished.**
-It is finished when two results are accepted, in this order: `inflate` is safe on every
-input; `deflate` is safe on every input, both with their call sequences. The safety of
-`compress` and `uncompress` follows as compositions. The target is
-the default x86_64 Linux build. The gzip file interface, the callback decoder and other
-build configurations are not planned. The [status page](https://www.dataisland.org/zlib-f/status.html)
+It is finished when the safety results are accepted, in this order: `inflate` is safe on every
+input; `deflate` is safe on every input, both with their call sequences; then every other
+public function, including the gzip file interface and the callback decoder `inflateBack`. The
+safety of `compress` and `uncompress` follows as compositions. The target is the default x86_64
+Linux build; other build configurations are not planned. The [status page](https://www.dataisland.org/zlib-f/status.html)
 shows each result as open, checked or registered, from the proof records.
+
+## Targets
+
+Each public function has two goals, both in the Lean namespace `ZlibF.Spec.Public.Goal`. Its
+**safety goal**, in `ZlibF/Spec/Safety/`, says the call returns without undefined behaviour, writes
+only its frame and leaks nothing. Its **functional goal**, in `ZlibF/Spec/Functional/`, says what the
+result is. `tests/audit/public-api.json` names both for every function (`safety_goal`,
+`functional_goal`). CI requires the safety goals and the non-vacuity goals: each must have a
+theorem of exactly its type in `tests/audit/theorems.txt`, unless `open_safety` lists it with an
+owner, and that list may only shrink. A proved functional goal is audited in full; an unproved one
+fails nothing. See [the split](docs/design/safety-functional-split.md).
 
 ## Documentation
 
@@ -35,7 +46,8 @@ shows each result as open, checked or registered, from the proof records.
 
 - `zlib/`: pinned upstream source, never edited in place; fixes are in `patches/`.
 - `ZlibF/Zlib/`: statement-by-statement C translation.
-- `ZlibF/Spec/`: format models and concrete verification targets.
+- `ZlibF/Spec/Safety/`: the required safety goals. `ZlibF/Spec/Functional/`: functional contracts,
+  the format and API models. `ZlibF/Spec/Public/`: definitions both use.
 - `ZlibF/Proof/` and `ZlibF/Math/`: implementation proofs and heap-free reasoning.
 - `ZlibF/Runtime/`: memory, pointer, arithmetic and execution semantics.
 - `tests/`: differential, mutation and proof-audit checks.

@@ -1,4 +1,4 @@
-<!-- source-sha256: 24c64251d09694180dde6d563cfbfef4e025fc4c6b9cde740aaa6766ee5576f4 -->
+<!-- source-sha256: d7d1e3c16c8acb5dd5f3e7da61ac0959b6f3b4352884f2bf6db6270382070520 -->
 # 理解并证明 zlib
 
 先跟随一次完整任务，再逐层展开需要的机制。每章都把实际操作、例子和由此产生的证明义务放在一起讲。
@@ -137,7 +137,9 @@
 [文档](README.md) · [API](spec/api/README.md) · [检查](checking/README.md)
 
 **工作进行中。项目尚未完成。**
-两项结论被验收时项目完成：`inflate` 对每个输入都安全；`deflate` 对每个输入都安全，两者都包括各自的调用序列。`compress` 与 `uncompress` 的安全作为组合随后完成。功能正确性（`inflate` 的输出等于格式所定义的字节，`deflate` 的输出解码后得到原输入）自 2026-11-11 起不在计划内，但计划内的安全证明所依赖的功能性事实在范围内；已经证明的部分保留。目标是默认的 x86_64 Linux 构建，使用默认分配器。gzip 文件接口、回调解码器、仅针对模型的陈述和其他构建配置同样不在计划内，见[范围](progress.md#scope)。zlib.h 声明为未文档化、不属于 zlib API 的函数不是必需的公开目标。编译器与操作系统的正确性及性能不在证明范围内。
+安全结论按以下顺序被验收时项目完成：`inflate` 对每个输入都安全；`deflate` 对每个输入都安全，两者都包括各自的调用序列；然后是其他每个公开函数，包括 gzip 文件接口和 `inflateBack`。`compress` 与 `uncompress` 的安全作为组合随后完成。功能正确性（`inflate` 的输出等于格式所定义的字节，`deflate` 的输出解码后得到原输入）自 2026-11-11 起不在计划内，但计划内的安全证明所依赖的功能性事实在范围内；已经证明的部分保留。目标是默认的 x86_64 Linux 构建，使用默认分配器。仅针对模型的陈述和其他构建配置同样不在计划内，见[范围](progress.md#scope)。zlib.h 声明为未文档化、不属于 zlib API 的函数不是必需的公开目标。编译器与操作系统的正确性及性能不在证明范围内。
+
+每个公开函数在 `ZlibF/Spec/Safety/` 中有一个安全目标，在 `ZlibF/Spec/Functional/` 中有一个功能目标；`tests/audit/public-api.json` 写出两者。验收审计要求安全目标和非空性目标，`open_safety` 带负责人列出的除外；已证明的功能目标接受完整审计。[拆分说明](design/safety-functional-split.zh.md)给出规则，[安全](spec/safety.zh.md#where-the-goals-are)给出目录布局。
 
 当前状态、数字和按顺序排列的剩余工作只在[进度](progress.zh.md)中。
 早先的叙述性检查点原样保存在[概览变更记录](history/overview-changelog.zh.md)中，属于历史记录。

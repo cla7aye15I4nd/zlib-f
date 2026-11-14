@@ -1,4 +1,4 @@
-<!-- source-sha256: f89cb34af0cb1f663c741462929861883e9191d20a667d862872e753be9cf795 -->
+<!-- source-sha256: b7064c2fe16f1f9e2b70e4e7e620c987789e376ed5c163922b10cf68e941877d -->
 
 # 安全性主张与调用者义务
 
@@ -9,6 +9,23 @@
 
 已接受的[平台假设](platform.md)，包括每个字节对象的大小上界，属于环境前提。
 执行证明建立这些前提在执行中的保持性。
+
+## 目标所在位置
+
+每个安全目标都是 `ZlibF/Spec/Safety/` 中的一个 Lean 定义 `ZlibF.Spec.Public.Goal.<name>`。读这个目录及其导入的内容，就得到完整的必需目标：快速门禁中的 `scripts/check-spec-layers.py` 拒绝它导入任何功能规范。
+
+| 函数 | 安全目标 | 文件 |
+| --- | --- | --- |
+| inflate 与 deflate 的流函数 | `Goal.<function>_safety`：对可达的流再调用一次（第 2 节） | `Safety/Streams.lean` |
+| `inflateEnd`、`deflateEnd` | `Goal.<function>_safety`：流释放它拥有的一切 | `Safety/Streams.lean` |
+| 初始化函数 | 在新记录上的 `Goal.<function>_safety` | `Safety/Initialisation.lean` |
+| `inflateCopy`、`deflateCopy` | `Goal.<function>_safety` | `Safety/Copy.lean` |
+| 校验和、`zlibVersion`、`zlibCompileFlags` | `Goal.<function>_safety`：调用返回，堆不变 | `Safety/Checksums.lean`、`Safety/Queries.lean` |
+| `compress*`、`uncompress*` | `Goal.compress*_safety`、`Goal.uncompress*_safe` | `Safety/Utilities.lean` |
+| `compressBound`、`compressBound_z` | 完整契约（纯函数） | `Functional/Queries.lean` |
+| gzip 文件接口、`inflateBack` | 序列目标 `Goal.gz_sequence_safety`、`Goal.inflate_back_sequence_safety` | `Public/GzSafety.lean`、`Public/Sequences.lean` |
+
+`tests/audit/public-api.json` 给出每个函数的 `safety_goal` 和 `functional_goal`。`NULL` 或不一致的流属于 `Goal.inflate_refusal`、`Goal.deflate_refusal` 和 `Goal.gz_refusal` 的定义域。非空性目标（`Goal.*_initialisation_domain`）表明每个定义域都有成员。审计要求以上全部目标；`open_safety` 带负责人列出尚无已登记定理的那些。
 
 ## 术语与阅读指南
 

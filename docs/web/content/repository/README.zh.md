@@ -1,9 +1,13 @@
-<!-- source-sha256: 6a583610f7276ffd0a1cc7568239a93b58186a0fc2c846303da34d11dac84ab2 -->
+<!-- source-sha256: 5e9444247b1cd1ec61d0ca87cc784e48f5ae4d17fde34f50bd79dc6138d3f6a1 -->
 # zlib-f
 
 用 Lean 4 形式化验证 zlib：对 C 源码作忠实翻译，再证明其安全性、终止性和资源所有权。自 2026-11-11 起功能正确性不在计划内，但计划内的安全证明所依赖的功能性事实除外；已经证明的部分保留。
 
-**项目尚未完成。** 两项结论按顺序被验收时项目完成：`inflate` 对每个输入都安全；`deflate` 对每个输入都安全，两者都包括各自的调用序列。`compress` 与 `uncompress` 的安全性作为组合随后完成。目标是默认的 x86_64 Linux 构建。gzip 文件接口、回调解码器和其他构建配置都不在计划内。[状态页](https://www.dataisland.org/zlib-f/status.zh.html)根据证明记录，把每项结论显示为未完成、已检查或已登记。
+**项目尚未完成。** 安全结论按以下顺序被验收时项目完成：`inflate` 对每个输入都安全；`deflate` 对每个输入都安全，两者都包括各自的调用序列；然后是其他每个公开函数，包括 gzip 文件接口和回调解码器 `inflateBack`。`compress` 与 `uncompress` 的安全性作为组合随后完成。目标是默认的 x86_64 Linux 构建；其他构建配置不在计划内。[状态页](https://www.dataisland.org/zlib-f/status.zh.html)根据证明记录，把每项结论显示为未完成、已检查或已登记。
+
+## 目标
+
+每个公开函数有两个目标，都在 Lean 命名空间 `ZlibF.Spec.Public.Goal` 中。它的**安全目标**在 `ZlibF/Spec/Safety/` 中，陈述调用返回、没有未定义行为、只写自己的帧、不泄漏。它的**功能目标**在 `ZlibF/Spec/Functional/` 中，陈述结果是什么。`tests/audit/public-api.json` 为每个函数写出两者（`safety_goal`、`functional_goal`）。CI 要求安全目标和非空性目标：每个都必须在 `tests/audit/theorems.txt` 中有一个类型恰好相同的定理，除非 `open_safety` 带负责人列出了它，而该列表只能缩短。已证明的功能目标接受完整审计；未证明的不使任何检查失败。见[拆分说明](docs/design/safety-functional-split.md)。
 
 ## 文档
 
@@ -28,7 +32,7 @@
 
 - `zlib/`：固定版本的上游源码；不直接修改，修复补丁放在 `patches/`。
 - `ZlibF/Zlib/`：逐条语句翻译的 C 实现。
-- `ZlibF/Spec/`：格式模型和具体的验证目标。
+- `ZlibF/Spec/Safety/`：必需的安全目标。`ZlibF/Spec/Functional/`：功能契约、格式模型和 API 模型。`ZlibF/Spec/Public/`：两者共用的定义。
 - `ZlibF/Proof/` 和 `ZlibF/Math/`：实现证明和不涉及堆的数学推导。
 - `ZlibF/Runtime/`：内存、指针、算术和执行语义。
 - `tests/`：差分测试、变异测试和证明审计。
