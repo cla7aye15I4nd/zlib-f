@@ -7,6 +7,7 @@ import ZlibF.Proof.«inflate.c.completes-blocked»
 import ZlibF.Proof.«inflate.c.leave-ret-codes»
 import ZlibF.Proof.«inflate.c.completes-gzip-fields»
 import ZlibF.Proof.«inflate.c.public-need-dict-sourcecut»
+import ZlibF.Proof.«inflate.c.head-uses-input»
 
 /-!
 # gz read side: `gz_decomp` is safe
@@ -22,9 +23,10 @@ ends, the input ends or an error occurs.
    `ReadsFinite`.
 3. The tail: `x.have` and `x.next` describe the output written into `out`.
 
-`gz_decomp_safe_of` takes two premises, facts of `inflate` that are open: `InflateHeadUsesInput` (a call from mode
-`HEAD` with no held bits and `last = 0` and pending input uses input) and `InflateStuckNoOutput` (a call from `BAD` or
-`MEM` moves neither buffer and returns `Z_DATA_ERROR` or `Z_MEM_ERROR`). Two proved facts of `inflate` serve the
+`gz_decomp_safe_of` takes one premise, a fact of `inflate` that is open: `InflateStuckNoOutput` (a call from `BAD` or
+`MEM` moves neither buffer and returns `Z_DATA_ERROR`, `Z_MEM_ERROR` or `Z_STREAM_ERROR`). The fact that a call from
+mode `HEAD` with no held bits, `last = 0` and pending input uses input is `inflateHeadUsesInputR_holds`
+(`inflate.c.head-uses-input`), on reachable streams. Two proved facts of `inflate` serve the
 clauses on a bad error: a `Z_OK` call with input left has filled the output (`blocked_leave`), and a `Z_NEED_DICT`
 call makes no output (`public_need_dictionary_zero`). The message of the embedded stream (`MsgLit`) is kept by the
 `Keeps` clause on stream messages (`inflate.c.completes-keep`).
@@ -35,18 +37,6 @@ open C Zlib.GzFs Zlib.Gzguts Zlib.Gzlib.Spec Zlib.Gzlib.Proofs ZlibF.Spec.Public
 set_option autoImplicit false
 
 /-! ## The open functional fact -/
-
-/-- **The HEAD fact, a premise** (a functional fact of `inflate`, open). An `inflate` call from mode `HEAD` with no
-held bits, `last = 0` and pending input takes input or refuses the stream. From `HEAD` every path pulls a byte
-(`NEEDBITS(16)` of the header with `wrap ≠ 0`, or, with `wrap = 0`, `TYPEDO` and then `NEEDBITS(3)` since `last = 0`)
-before the mode can change; no later step of the call gives input back, and `inf_leave` writes the remaining input
-back before `updatewindow`. -/
-def InflateHeadUsesInput : Prop :=
-  ∀ {h : Heap} {r : ZStreamRef} {k : Nat} {z : ZStream} {st : InflateState},
-    Zlib.Inflate.Spec.Good h r k z st → st.mode = HEAD → st.bits = 0 → st.last = 0 → z.avail_in ≠ 0 →
-    ∀ {rc : Int32} {after : Heap} {z' : ZStream},
-      C.run (Zlib.Inflate.inflate (some r) Z_NO_FLUSH) h = .ok (rc, after) → r.get after = some z' →
-      z'.avail_in.toNat < z.avail_in.toNat ∨ rc = Z_STREAM_ERROR
 
 /-- **The stuck fact, a premise** (a fact of `inflate`, **open**). An `inflate` call from mode `BAD` or `MEM` returns
 `Z_DATA_ERROR` or `Z_MEM_ERROR` and leaves `avail_in` and `avail_out` unchanged. `inflate.c`, `inflate()`:
@@ -178,7 +168,7 @@ theorem ne_nil_length {α : Type} {l : List α} (hl : l ≠ []) : l.length ≠ 0
 /-- **One `inflate(strm, Z_NO_FLUSH)` call on the embedded stream** of a reader with buffers and pending input,
 into a writable output window. It returns, the record changes only in its stream, the invariant up to the
 buffered output holds after it, and the post-condition holds over the output written. -/
-theorem inflate_step (head : InflateHeadUsesInput) (stuck : InflateStuckNoOutput) {h : Heap} {i : Nat} {s : GzState} (fs : Fs) (hfs : FileSystem fs)
+theorem inflate_step (head : InflateHeadUsesInputR) (stuck : InflateStuckNoOutput) {h : Heap} {i : Nat} {s : GzState} (fs : Fs) (hfs : FileSystem fs)
     (hu : GzInvUpToOutput h i s) (hm : s.mode = GZ_READ)
     (hsz : s.size ≠ 0) (hav : s.strm.avail_in ≠ 0)
     (hw : Writable h s.strm.next_out s.strm.avail_out.toNat) (hside : OutSide h i s s.strm.next_out) :
@@ -592,7 +582,7 @@ theorem inflate_step (head : InflateHeadUsesInput) (stuck : InflateStuckNoOutput
     cases hk2
     rw [hk] at hst2
     cases hst2
-    rcases head good1 hmode hbits hlast hav run good'.live.hz with lt | e
+    rcases head reach good1 fitH iinv.alloc bufs act hmode hbits hlast hav run good'.live.hz with lt | e
     · have := acct.2.2.1
       omega
     · exfalso
@@ -1342,7 +1332,7 @@ theorem avail_trans (St : Stat i out h0 s0) {fs : Fs} {h : Heap} {s : GzState} (
   · exact fun he => bud3 (B.err he)
 
 /-- **One `inflate` call** as a transition. -/
-theorem inflate_trans (head : InflateHeadUsesInput) (stuck : InflateStuckNoOutput) (St : Stat i out h0 s0) {fs : Fs} {h : Heap} {s : GzState} (B : Base i out h0 fs0 s0 fs h s)
+theorem inflate_trans (head : InflateHeadUsesInputR) (stuck : InflateStuckNoOutput) (St : Stat i out h0 s0) {fs : Fs} {h : Heap} {s : GzState} (B : Base i out h0 fs0 s0 fs h s)
     (hav : s.strm.avail_in ≠ 0) (hao : s.strm.avail_out ≠ 0) :
     ∃ rc after z' used produced,
       C.run (Zlib.Inflate.inflate (some (gzStrm i)) Z_NO_FLUSH) h = .ok (rc, after) ∧
@@ -1686,7 +1676,7 @@ section body2
 variable {i : Nat} {out : Region} {h0 : Heap} {fs0 : Fs} {s0 : GzState}
 
 /-- The `inflate` call, the `junk` update and the error checks. -/
-theorem run_run (head : InflateHeadUsesInput) (stuck : InflateStuckNoOutput) (St : Stat i out h0 s0) (had : UInt32)
+theorem run_run (head : InflateHeadUsesInputR) (stuck : InflateStuckNoOutput) (St : Stat i out h0 s0) (had : UInt32)
     (hhad : had.toNat = out.length) {fs : Fs} {h : Heap}
     {s : GzState} (B : Base i out h0 fs0 s0 fs h s) (hgz : s.how = GZIP) (hav : s.strm.avail_in ≠ 0)
     (hao : s.strm.avail_out ≠ 0) (hd : Hd h0 fs0 s0 fs h s) (k : Nat)
@@ -1768,7 +1758,7 @@ theorem run_run (head : InflateHeadUsesInput) (stuck : InflateStuckNoOutput) (St
     exact errs_run St B2 hgz k l hl rc codes pBUF hstr hmeas r1 e2 e3 e4 pStuck'
 
 /-- The second input check. -/
-theorem mid_run (head : InflateHeadUsesInput) (stuck : InflateStuckNoOutput) (St : Stat i out h0 s0) (had : UInt32)
+theorem mid_run (head : InflateHeadUsesInputR) (stuck : InflateStuckNoOutput) (St : Stat i out h0 s0) (had : UInt32)
     (hhad : had.toNat = out.length) {fs : Fs} {h : Heap}
     {s : GzState} (B : Base i out h0 fs0 s0 fs h s) (hgz : s.how = GZIP) (hao : s.strm.avail_out ≠ 0)
     (heof : s.strm.avail_in = 0 → s.eof ≠ 0) (hd : Hd h0 fs0 s0 fs h s) (k : Nat)
@@ -1816,7 +1806,7 @@ theorem mid_run (head : InflateHeadUsesInput) (stuck : InflateStuckNoOutput) (St
     exact run_run head stuck St had hhad B hgz hav hao hd k hk l hl r1 r2 r3
 
 /-- **The body of the loop.** -/
-theorem body_run (head : InflateHeadUsesInput) (stuck : InflateStuckNoOutput) (St : Stat i out h0 s0) (had : UInt32)
+theorem body_run (head : InflateHeadUsesInputR) (stuck : InflateStuckNoOutput) (St : Stat i out h0 s0) (had : UInt32)
     (hhad : had.toNat = out.length) (k : Nat)
     (l : Zlib.Gzread.DecompLoop) {fs : Fs} {h : Heap} (hI : LI i out h0 fs0 s0 k l fs h) :
     ∃ y fs' h', decompBody i had l fs h = .ok ((y, fs'), h') ∧ LJ i out h0 fs0 s0 k y fs' h' := by
@@ -2192,7 +2182,8 @@ end tail
 /-! ## `gz_decomp` -/
 
 /-- **`gz_decomp` is safe** (`GzDecompSpec`), given the HEAD fact of `inflate`. -/
-theorem gz_decomp_safe_of (head : InflateHeadUsesInput) (stuck : InflateStuckNoOutput) : GzDecompSpec := by
+theorem gz_decomp_safe_of (stuck : InflateStuckNoOutput) : GzDecompSpec := by
+  have head : InflateHeadUsesInputR := @inflateHeadUsesInputR_holds
   intro i out h fs s hu hfs hm hgz hml ⟨hno, hao, hlen, hw⟩ hside
   have rd := hu.2.reader hm
   have hsz : s.size ≠ 0 := fun hz => by
