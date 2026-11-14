@@ -2396,30 +2396,26 @@ Abbreviations:
 
 #### Gzip file interface
 
-There is **no registered gz safety goal on dev**. `Goal.gz_sequence_safety` is defined on `dev` in
-`ZlibF/Spec/Public/GzSafety.lean` (`61fc2678`) and proved only on branch `skeleton/gz`, from open
-lemmas. It is in neither `goals.txt` nor `public-api.json` `safety_goals`. `Goal.gz_sequence` (functional) is not planned and has no
-theorem. The registered own-goal theorems below are functional contracts over `GzValid`,
-`GzReachable` or a live `gzstates` entry, and some over `RegularOs fs` (the deterministic
-regular-file world, not every OS-call oracle world).
+`Goal.gz_sequence_safety` (`ZlibF/Spec/Public/GzSafety.lean`) is the safety goal of the gzip interface. It is
+registered in `goals.txt` and in `safety_goals`, and open on dev. `gz_sequence_safety_of (L : GzReadLeaves)`
+(`gz.sequence-safety.lean`) proves it from six read leaves. Every other call is proved directly: the open calls,
+the close calls, the write calls and the queries. `gzread_step` and `gzfread_step` close with the read side's
+`gz.read-assembly`. `gzgetc_step`, `gzungetc_step`, `gzgets_step` and `gzdirect_step` are batch C's. The goal's
+domain is every history of one handle (`GzHistory`) in every OS world (`GzWorldStep`). An adversarial reading
+(2026-11-14) found no false clause and three gaps: the `gzgetc` macro's inline path, `NULL`
+handles, and an unlisted fd rule (rows below).
 
 | function | route | theorem | registered? | domain gap or note |
 | --- | --- | --- | --- | --- |
-| gzopen, gzopen64 | open | none (`gzopen_null`, `gzopen*_alloc_failure` registered) | partial only | Path-open branch is open. |
-| gzdopen | own goal | `Zlib.Gzlib.Proofs.gzdopen_complete`, `gzlib.c.dopen-complete.lean` | yes | Every `fd`. Mode is NULL or a C string. Not shown for every oracle world. |
-| gzbuffer | own goal | `ZlibF.Spec.Public.Proofs.gzbuffer_public` | yes | NULL and any live handle. |
-| gzeof | own goal | `ZlibF.Spec.Public.Proofs.gzeof_public` | yes | NULL and any live handle. |
-| gzerror | own goal | `ZlibF.Spec.Public.GzErrorProof.gzerror` | yes | Needs `GzValid`. That invariant is not yet derived for every history (only gzdopen establishes it). |
-| gzclearerr | own goal | `ZlibF.Spec.Public.Proofs.gzclearerr` | yes | Needs `GzValid` (same remark). |
-| gzoffset, gzoffset64 | own goal | `ZlibF.Spec.Public.OffsetProof.gzoffset_public_goal` / `gzoffset64_public_goal` | yes | Needs `GzReachable`, `GzValid` and `RegularOs fs` (deviation row "Gz file data"). |
-| gzrewind | own goal | `ZlibF.Spec.Public.GzRewindProof.rewind_public` | yes | Needs `GzReachable`, `GzValid` and `RegularOs fs`. |
-| gzseek, gzseek64 | open | pieces: `gzseek64_safe` (needs `GzGood`, `PosInv`, ...) registered; `gzseek64_step` checked (`gz.inv-seek`) | partial only | |
-| gztell, gztell64 | open | `gztell64_spec` registered, but needs `PosInv`, which no history theorem derives | partial only | |
-| gzclose | open | `gzclose_null`, `gzclose_dispatch` registered | partial only | |
-| gzclose_r | open | `gzclose_r_step_safe` (`gz.read-close.lean`, over `GzInv`), checked, unregistered | no | `GzInv` is not derived from histories. |
-| gzclose_w | open | none | no | |
-| gzread, gzfread, gzgetc, gzgetc_, gzungetc, gzgets, gzdirect | open | none at public level (internal `gz_look_safe`, `gz_fetch_safe_of`, `gzungetc_step_of` checked) | no | The `gzgetc` macro's inline path (reads `have`, `next`, `pos`) is not translated. It needs a handle invariant (**to confirm**). |
-| gzwrite, gzfwrite, gzputc, gzputs, gzprintf, gzflush, gzsetparams | open | none at public level | no | |
+| gzopen, gzopen64 | open leaf | `gzopen_safe` (`gz.inv-open-fresh`), `gzopen64_safe` | no (checked) | Every path, mode and world. |
+| gzdopen | open leaf + own goal | `gzdopen_safe` (`gz.inv-open`); `gzdopen_complete` (`Goal.gzdopen`) | yes (own goal) | Every `fd`. |
+| gzbuffer, gzeof, gzerror, gzclearerr, gztell, gztell64, gzoffset, gzoffset64, gzrewind, gzseek, gzseek64 | sequence leaf | `gzbuffer_step`, `gzeof_step`, `gzerror_step`, `gzclearerr_step`, `gztell*_step`, `gzoffset*_step`, `gzrewind_step`, `gzseek*_step` (`gz.inv-*`) | no (checked) | Own functional goals of gzbuffer, gzeof, gzerror, gzclearerr, gzoffset and gzrewind are registered separately. |
+| gzwrite, gzfwrite, gzputc, gzputs, gzprintf, gzvprintf, gzflush, gzsetparams | sequence leaf | `gzwrite.c.safety` (`gzwrite_step` …) | no (checked) | `gzprintf`/`gzvprintf`: `GzArguments` asks for a representable format on every call, even on a reader (audit B3). |
+| gzclose, gzclose_w, gzclose_r | close leaf | `gzclose_step`, `gzclose_w_step`, `gzclose_r_step_safe` | no (checked) | |
+| gzread, gzfread | read leaf | `gzread_step_of_read`, `gzfread_step_of_read` (from `GzReadSafe`), closing in `gz.read-assembly` | no | Open until `gz.read-assembly` is on dev. |
+| gzgetc, gzgetc_, gzungetc, gzgets, gzdirect | read leaf | open (batch C) | no | **Gap (audit A1):** the `gzgetc` macro's inline path is not a history step. |
+| all gz functions on a `NULL` handle | none | none | no | **Gap (audit A2):** no planned theorem covers the refusal. |
+| a second handle on the same fd | none | none | no | **Gap (audit B1):** `GzWorldStep` keeps the fd's open state; that rule is not in deviations. |
 
 #### Miscounts and open items
 
@@ -2432,7 +2428,7 @@ Documented functions with no checked no-fault theorem for their full documented 
 5. **NULL or inconsistent stream refusal**: closed. `Goal.inflate_refusal` and `Goal.deflate_refusal` (checked) cover `inflate`, `deflate`, `inflateEnd`, `inflateReset`, `inflateReset2`, `inflateGetDictionary`, `inflateSetDictionary`, `inflateCopy`, `deflateSetDictionary`, `deflateParams`, `deflateGetDictionary` and `deflateCopy`. These goals and `deflateGetDictionary_reject` are registered.
 6. **deflateParams, deflateSetDictionary, deflatePrime, deflateBound, deflateBound_z, inflateSync**: no own-goal theorem. No-fault on reachable streams comes only through SeqI or SeqD. That suffices for planned safety, but per-call own goals stay open.
 7. **adler32, adler32_z**: domain narrower than zlib.h (NULL only with `len = 0`). `len = 1` is a real C fault (deviation row). NULL with `len ≥ 2` is safe but unproved.
-8. **Every gz function except** gzdopen, gzbuffer, gzeof, gzerror, gzclearerr, gzoffset(64), gzrewind: open (gzopen, gzopen64, gzclose, gzclose_r, gzclose_w, gzread, gzfread, gzgetc, gzgetc_, gzungetc, gzgets, gzdirect, gzwrite, gzfwrite, gzputc, gzputs, gzprintf, gzflush, gzsetparams, gzseek, gzseek64, gztell, gztell64). The registered gz theorems rest on `GzValid` or `GzReachable` (and `RegularOs` for gzoffset and gzrewind), not on every history and every oracle world. No gz safety goal is registered on dev (`Goal.gz_sequence_safety` is defined in `GzSafety.lean` and proved only on `skeleton/gz`).
+8. **gz functions**: `Goal.gz_sequence_safety` is registered and open; it follows from `gz_sequence_safety_of` once the six read leaves close (gzread and gzfread with `gz.read-assembly`; gzgetc, gzungetc, gzgets and gzdirect with batch C). Three gaps from the adversarial reading are not covered by any planned theorem: the `gzgetc` macro path, `NULL` handles, and a second handle on one fd (adversarial reading of 2026-11-14).
 9. Related, not a function: `Goal.deflate_initialisation_domain` (nonvacuity) has no theorem.
 
 ### Ordered next work

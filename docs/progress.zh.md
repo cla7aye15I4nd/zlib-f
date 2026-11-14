@@ -1,4 +1,4 @@
-<!-- source-sha256: 55072c5bef807fcea6bdc58e09e35249db409711e7e17bbc13566088313d17c5 -->
+<!-- source-sha256: d1136e47014bb232a5906e599b34a3dd32824ca6d2e62287f7ad9c9bae0ef6dc -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1945,25 +1945,23 @@ zlib.h 文档化的每个函数占一行。每行给出表明该调用不会出�
 
 #### Gzip 文件接口
 
-**`dev` 上没有 gz 安全目标。** `Goal.gz_sequence_safety` 只作为定义存在于分支 `skeleton/gz` 的一个证明文件中（`gz.skeleton-model.lean`）。它既不在 `goals.txt` 中，也不在 `public-api.json` 的 `safety_goals` 中。`Goal.gz_sequence`（功能性）不在计划内，也没有定理。下面已登记的自身目标定理是针对 `GzValid`、`GzReachable` 或活动 `gzstates` 条目的功能性契约，其中一些还针对 `RegularOs fs`（确定性的常规文件世界，不是每个 OS 调用预言世界）。
+`Goal.gz_sequence_safety`（`ZlibF/Spec/Public/GzSafety.lean`）是 gzip 接口的安全目标。它已登记在 `goals.txt`
+和 `safety_goals` 中，在 dev 上仍为 open。`gz_sequence_safety_of (L : GzReadLeaves)`（`gz.sequence-safety.lean`）从六个读取叶子证明它。
+其他调用都直接证明：打开、关闭、写入和查询。`gzread_step` 与 `gzfread_step` 随读取侧的 `gz.read-assembly` 关闭。
+`gzgetc_step`、`gzungetc_step`、`gzgets_step` 与 `gzdirect_step` 属于 batch C。目标的定义域是单个句柄的每条历史（`GzHistory`）在每个 OS 世界中（`GzWorldStep`）。
+一次对抗性审读（2026-11-14）未发现错误的子句，发现三个缺口：`gzgetc` 宏的内联路径、`NULL` 句柄，以及一条未列出的 fd 规则（见下表）。
 
-| 函数 | 路线 | 定理 | 已登记？ | 定义域缺口或备注 |
+| 函数 | 途径 | 定理 | 已登记？ | 定义域缺口或说明 |
 | --- | --- | --- | --- | --- |
-| gzopen, gzopen64 | 打开 | 无（`gzopen_null`、`gzopen*_alloc_failure` 已登记） | 仅部分 | 路径打开分支为 open。 |
-| gzdopen | 自身目标 | `Zlib.Gzlib.Proofs.gzdopen_complete`，`gzlib.c.dopen-complete.lean` | 是 | 每个 `fd`。mode 为 NULL 或 C 字符串。未对每个预言世界证明。 |
-| gzbuffer | 自身目标 | `ZlibF.Spec.Public.Proofs.gzbuffer_public` | 是 | NULL 和任意活动句柄。 |
-| gzeof | 自身目标 | `ZlibF.Spec.Public.Proofs.gzeof_public` | 是 | NULL 和任意活动句柄。 |
-| gzerror | 自身目标 | `ZlibF.Spec.Public.GzErrorProof.gzerror` | 是 | 需要 `GzValid`。该不变量尚未对每个历史推导（只有 gzdopen 建立它）。 |
-| gzclearerr | 自身目标 | `ZlibF.Spec.Public.Proofs.gzclearerr` | 是 | 需要 `GzValid`（同上说明）。 |
-| gzoffset, gzoffset64 | 自身目标 | `ZlibF.Spec.Public.OffsetProof.gzoffset_public_goal` / `gzoffset64_public_goal` | 是 | 需要 `GzReachable`、`GzValid` 和 `RegularOs fs`（偏差行“Gz file data”）。 |
-| gzrewind | 自身目标 | `ZlibF.Spec.Public.GzRewindProof.rewind_public` | 是 | 需要 `GzReachable`、`GzValid` 和 `RegularOs fs`。 |
-| gzseek, gzseek64 | open | 片段：`gzseek64_safe`（需要 `GzGood`、`PosInv` 等）已登记；`gzseek64_step` 已检查（`gz.inv-seek`） | 仅部分 | |
-| gztell, gztell64 | open | `gztell64_spec` 已登记，但需要 `PosInv`，没有历史定理推导它 | 仅部分 | |
-| gzclose | open | `gzclose_null`、`gzclose_dispatch` 已登记 | 仅部分 | |
-| gzclose_r | open | `gzclose_r_step_safe`（`gz.read-close.lean`，针对 `GzInv`），已检查，未登记 | 否 | `GzInv` 未从历史推导。 |
-| gzclose_w | open | 无 | 否 | |
-| gzread, gzfread, gzgetc, gzgetc_, gzungetc, gzgets, gzdirect | open | 公开层面无（内部的 `gz_look_safe`、`gz_fetch_safe_of`、`gzungetc_step_of` 已检查） | 否 | `gzgetc` 宏的内联路径（读取 `have`、`next`、`pos`）尚未翻译。它需要句柄不变量（**待确认**）。 |
-| gzwrite, gzfwrite, gzputc, gzputs, gzprintf, gzflush, gzsetparams | open | 公开层面无 | 否 | |
+| gzopen、gzopen64 | 打开叶子 | `gzopen_safe`（`gz.inv-open-fresh`）、`gzopen64_safe` | 否（checked） | 每个路径、模式与世界。 |
+| gzdopen | 打开叶子 + 自身目标 | `gzdopen_safe`（`gz.inv-open`）；`gzdopen_complete`（`Goal.gzdopen`） | 是（自身目标） | 每个 `fd`。 |
+| gzbuffer、gzeof、gzerror、gzclearerr、gztell、gztell64、gzoffset、gzoffset64、gzrewind、gzseek、gzseek64 | 序列叶子 | `gzbuffer_step`、`gzeof_step`、`gzerror_step`、`gzclearerr_step`、`gztell*_step`、`gzoffset*_step`、`gzrewind_step`、`gzseek*_step`（`gz.inv-*`） | 否（checked） | gzbuffer、gzeof、gzerror、gzclearerr、gzoffset 与 gzrewind 的自身功能目标另行登记。 |
+| gzwrite、gzfwrite、gzputc、gzputs、gzprintf、gzvprintf、gzflush、gzsetparams | 序列叶子 | `gzwrite.c.safety`（`gzwrite_step` …） | 否（checked） | `gzprintf`/`gzvprintf`：`GzArguments` 在每次调用时都要求可表示的格式，读取者也不例外（审读 B3）。 |
+| gzclose、gzclose_w、gzclose_r | 关闭叶子 | `gzclose_step`、`gzclose_w_step`、`gzclose_r_step_safe` | 否（checked） | |
+| gzread、gzfread | 读取叶子 | `gzread_step_of_read`、`gzfread_step_of_read`（来自 `GzReadSafe`），在 `gz.read-assembly` 中关闭 | 否 | 在 `gz.read-assembly` 上 dev 之前为 open。 |
+| gzgetc、gzgetc_、gzungetc、gzgets、gzdirect | 读取叶子 | open（batch C） | 否 | **缺口（审读 A1）：**`gzgetc` 宏的内联路径不是一个历史步骤。 |
+| `NULL` 句柄上的所有 gz 函数 | 无 | 无 | 否 | **缺口（审读 A2）：**没有计划中的定理覆盖这种拒绝。 |
+| 同一 fd 上的第二个句柄 | 无 | 无 | 否 | **缺口（审读 B1）：**`GzWorldStep` 保持 fd 的打开状态；这条规则不在偏差文档中。 |
 
 #### 误计与未完成项
 
@@ -1976,7 +1974,7 @@ zlib.h 文档化的每个函数占一行。每行给出表明该调用不会出�
 5. **NULL 或不一致流的 refusal**：已关闭。`Goal.inflate_refusal` 与 `Goal.deflate_refusal`（checked）覆盖 `inflate`、`deflate`、`inflateEnd`、`inflateReset`、`inflateReset2`、`inflateGetDictionary`、`inflateSetDictionary`、`inflateCopy`、`deflateSetDictionary`、`deflateParams`、`deflateGetDictionary` 与 `deflateCopy`。这些目标与 `deflateGetDictionary_reject` 已登记。
 6. **deflateParams、deflateSetDictionary、deflatePrime、deflateBound、deflateBound_z、inflateSync**：没有自身目标定理。可达流上的无故障只经由 SeqI 或 SeqD 得到。这对计划内的安全性已足够，但逐调用的自身目标仍为 open。
 7. **adler32、adler32_z**：定义域比 zlib.h 更窄（NULL 只在 `len = 0` 时允许）。`len = 1` 是真实的 C 错误（偏差行）。`len ≥ 2` 的 NULL 安全但未证明。
-8. **除 gzdopen、gzbuffer、gzeof、gzerror、gzclearerr、gzoffset(64)、gzrewind 之外的每个 gz 函数**：open（gzopen、gzopen64、gzclose、gzclose_r、gzclose_w、gzread、gzfread、gzgetc、gzgetc_、gzungetc、gzgets、gzdirect、gzwrite、gzfwrite、gzputc、gzputs、gzprintf、gzflush、gzsetparams、gzseek、gzseek64、gztell、gztell64）。已登记的 gz 定理依赖 `GzValid` 或 `GzReachable`（gzoffset 和 gzrewind 还依赖 `RegularOs`），而不是每个历史和每个预言世界。dev 上没有登记 gz 安全目标（`gz_sequence_safety` 只在 `skeleton/gz` 上）。
+8. **gz 函数**：`Goal.gz_sequence_safety` 已登记，仍为 open；六个读取叶子关闭后（gzread 与 gzfread 随 `gz.read-assembly`；gzgetc、gzungetc、gzgets 与 gzdirect 随 batch C），它由 `gz_sequence_safety_of` 得出。对抗性审读发现的三个缺口不在任何计划中的定理内：`gzgetc` 宏路径、`NULL` 句柄，以及同一 fd 上的第二个句柄（2026-11-14 的对抗性审读）。
 9. 相关，但不是函数：`Goal.deflate_initialisation_domain`（非空性）没有定理。
 
 ### 按顺序的下一步工作
