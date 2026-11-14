@@ -1,4 +1,4 @@
-<!-- source-sha256: aa70a2857af59d6502d45429280f33c2d22acc38bd833ed70dfc4c93ad9508ee -->
+<!-- source-sha256: d6ee15e7b2bf5ccb966ea45ead451ea02da2e5b17c300696b4994f41dcfdd504 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -15,7 +15,7 @@
 | 2 | `deflate` 对任何输入和任意缓冲区切分都安全，也包括它的调用序列。 | `deflateInit2_`、`deflate`、`deflate_sequence_safety` |
 | 3 | 第 1、2 项在完整缓冲区上的组合。 | `compress*`、`uncompress*` 的安全 |
 | 4 | 回调解码器对任何输入和任何调用者协议都安全，也包括它的调用序列（所有者 2026-11-12 的要求）。 | `inflate_back_sequence_safety` |
-| 5 | gzip 文件接口在一个句柄的每条调用历史上、对每个文件系统世界都安全（所有者 2026-11-12 的决定）。只证安全，不证功能正确性。 | `gzopen`、`gzopen64`、`gzdopen`、`gzbuffer`、`gzclose`、`gzclose_r`、`gzclose_w`、`gzread`、`gzfread`、`gzgetc`、`gzgetc_`、`gzungetc`、`gzgets`、`gzdirect`、`gzwrite`、`gzfwrite`、`gzputc`、`gzputs`、`gzprintf`、`gzvprintf`、`gzflush`、`gzsetparams`、`gzseek`、`gzseek64`、`gztell`、`gztell64`、`gzoffset`、`gzoffset64`、`gzrewind`、`gzeof`、`gzerror`、`gzclearerr`，经由 `gz_sequence_safety`。终止：每个调用在每个世界中都终止，但 `gzread`、`gzfread`、`gzgetc`、`gzgetc_`、`gzgets` 与 `gzungetc` 需要小于 `2^61` 的读取额度（`ReadsFinite`），即使 C 会立即返回也是如此 |
+| 5 | gzip 文件接口在一个句柄的每条调用历史上、对每个文件系统世界都安全（所有者 2026-11-12 的决定）。只证安全，不证功能正确性。 | `gzopen`、`gzopen64`、`gzdopen`、`gzbuffer`、`gzclose`、`gzclose_r`、`gzclose_w`、`gzread`、`gzfread`、`gzgetc`、`gzgetc_`、`gzungetc`、`gzgets`、`gzdirect`、`gzwrite`、`gzfwrite`、`gzputc`、`gzputs`、`gzprintf`、`gzvprintf`、`gzflush`、`gzsetparams`、`gzseek`、`gzseek64`、`gztell`、`gztell64`、`gzoffset`、`gzoffset64`、`gzrewind`、`gzeof`、`gzerror`、`gzclearerr`，经由 `gz_sequence_safety`；`NULL` 句柄经由 `gz_refusal`。终止：每个调用在每个世界中都终止，但 `gzread`、`gzfread`、`gzgetc`、`gzgetc_`、`gzgets` 与 `gzungetc` 需要小于 `2^61` 的读取额度（`ReadsFinite`），即使 C 会立即返回也是如此 |
 
 上述结论在证明中需要的目标，作为依赖仍在计划内。sequence 目标所涉及的其他流调用属于这种情况，例如 `inflateSync`、`inflateCopy`、`deflateCopy`、`deflateParams`、`deflatePrime` 和 `deflateSetDictionary`。`gzvprintf` 在 zlib.h 中未文档化，但 `gzprintf` 经过它，所以它随第 5 项结论一起在计划内。
 
@@ -1960,7 +1960,7 @@ zlib.h 文档化的每个函数占一行。每行给出表明该调用不会出�
 | gzclose、gzclose_w、gzclose_r | 关闭叶子 | `gzclose_step`、`gzclose_w_step`、`gzclose_r_step_safe` | 否（checked） | |
 | gzread、gzfread | 读取叶子 | `gzread_step_of_read`、`gzfread_step_of_read`（来自 `GzReadSafe`），在 `gz.read-assembly` 中关闭 | 否 | 在 `gz.read-assembly` 上 dev 之前为 open。 |
 | gzgetc、gzgetc_、gzungetc、gzgets、gzdirect | 读取叶子 | open（batch C） | 否 | **缺口（审读 A1）：**`gzgetc` 宏的内联路径不是一个历史步骤。 |
-| `NULL` 句柄上的所有 gz 函数 | 无 | 无 | 否 | **缺口（审读 A2）：**没有计划中的定理覆盖这种拒绝。 |
+| `NULL` 句柄上的所有 gz 函数 | 自身安全目标 | `ZlibF.Spec.Public.GzRefusalProof.gz_refusal`（`Goal.gz_refusal`，`public-gz-refusal.lean`） | 否（checked） | 已关闭（审读 A2）：29 个函数中的每一个都返回其文档化的值，堆和世界不变。C 测试 `tests/goals/gz-refusal`：204 次调用，无违例。`gzgetc` 宏用于 `NULL` 在 C 中是未定义行为；目标陈述的是函数。 |
 | 同一 fd 上的第二个句柄 | 无 | 无 | 否 | **缺口（审读 B1）：**`GzWorldStep` 保持 fd 的打开状态；这条规则不在偏差文档中。 |
 
 #### 误计与未完成项
@@ -1974,7 +1974,7 @@ zlib.h 文档化的每个函数占一行。每行给出表明该调用不会出�
 5. **NULL 或不一致流的 refusal**：已关闭。`Goal.inflate_refusal` 与 `Goal.deflate_refusal`（checked）覆盖 `inflate`、`deflate`、`inflateEnd`、`inflateReset`、`inflateReset2`、`inflateGetDictionary`、`inflateSetDictionary`、`inflateCopy`、`deflateSetDictionary`、`deflateParams`、`deflateGetDictionary` 与 `deflateCopy`。这些目标与 `deflateGetDictionary_reject` 已登记。
 6. **deflateParams、deflateSetDictionary、deflatePrime、deflateBound、deflateBound_z、inflateSync**：没有自身目标定理。可达流上的无故障只经由 SeqI 或 SeqD 得到。这对计划内的安全性已足够，但逐调用的自身目标仍为 open。
 7. **adler32、adler32_z**：定义域比 zlib.h 更窄（NULL 只在 `len = 0` 时允许）。`len = 1` 是真实的 C 错误（偏差行）。`len ≥ 2` 的 NULL 安全但未证明。
-8. **gz 函数**：`Goal.gz_sequence_safety` 已登记，仍为 open；六个读取叶子关闭后（gzread 与 gzfread 随 `gz.read-assembly`；gzgetc、gzungetc、gzgets 与 gzdirect 随 batch C），它由 `gz_sequence_safety_of` 得出。对抗性审读发现的三个缺口不在任何计划中的定理内：`gzgetc` 宏路径、`NULL` 句柄，以及同一 fd 上的第二个句柄（2026-11-14 的对抗性审读）。
+8. **gz 函数**：`Goal.gz_sequence_safety` 已登记，仍为 open；六个读取叶子关闭后（gzread 与 gzfread 随 `gz.read-assembly`；gzgetc、gzungetc、gzgets 与 gzdirect 随 batch C），它由 `gz_sequence_safety_of` 得出。2026-11-14 的对抗性审读发现的两个缺口不在任何计划中的定理内：`gzgetc` 宏路径与同一 fd 上的第二个句柄（交由 batch C）。`NULL` 句柄由 `Goal.gz_refusal` 覆盖。
 9. 相关，但不是函数：`Goal.deflate_initialisation_domain`（非空性）没有定理。
 
 ### 按顺序的下一步工作
