@@ -12,6 +12,8 @@ namespace ZlibF.Spec.Public.GzRefusalProof
 open C Zlib.GzFs ZlibF.Spec.Public
 set_option autoImplicit false
 
+/-- Every gz function called with a NULL handle returns its refusal value at once and changes neither the
+heap nor the file system. -/
 theorem gz_refusal : Goal.gz_refusal := by
   refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_,
     ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩ <;> intros <;> rfl
