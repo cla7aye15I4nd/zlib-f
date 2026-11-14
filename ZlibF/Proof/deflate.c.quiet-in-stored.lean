@@ -5,7 +5,7 @@ import ZlibF.Proof.«deflate.c.quiet-in»
 # deflate.c: `deflate_stored` stops on a full output or an empty input (`StoredStop`)
 
 `stored_stop` proves `StoredStop`, the last open fact of `DeflateQuietIn`, and
-`deflate_quiet_in_holds` is `DeflateQuietIn` itself.
+`deflate_quiet_in_holds_block` is `DeflateQuietIn` itself, for `0 ≤ flush ≤ 5`.
 
 The copy loop of `deflate_stored` stops without a last block only with `len < min_block`
 (`LoopExit`): either the output room is below a header and `min_block`, or the window data and the
@@ -997,74 +997,7 @@ theorem deflate_quiet_in_holds_block :
       z'.avail_in = z.avail_in ∧ ∃ d', after.dstates k = some d' ∧ d'.status = FINISH_STATE ∧ d'.pending = 0) :=
   deflate_quiet_in_of stored_stop
 
-/-- **`DeflateQuietIn`** for `0 ≤ flush ≤ 4`, the statement `gz_comp`'s proof uses today: a corollary of
-`deflate_quiet_in_holds_block`. -/
-theorem deflate_quiet_in_holds :
-  ∃ (Φ : Int32 → Heap → ZStreamRef → Nat) (Quiet : Int32 → Heap → ZStreamRef → Prop),
-    (∀ (flush : Int32) (h : Heap) (r : ZStreamRef) (z : ZStream) (value : Int32) (after : Heap) (z' : ZStream),
-      0 ≤ flush.toInt → flush.toInt ≤ 4 →
-      StreamReachable .deflate h r → StreamBuffers h r → ActiveHeader h r →
-      r.get h = some z → z.next_out ≠ .null → z.avail_in = 0 → 8 ≤ z.avail_out.toNat →
-      Call.execute (.deflate (some r) flush) default h = .ok ((value, default), after) → r.get after = some z' →
-      z'.avail_out = 0 → Φ flush after r < Φ flush h r) ∧
-    (∀ (flush : Int32) (h : Heap) (r : ZStreamRef) (z : ZStream) (value : Int32) (after : Heap) (z' : ZStream),
-      0 ≤ flush.toInt → flush.toInt ≤ 4 →
-      StreamReachable .deflate h r → StreamBuffers h r → ActiveHeader h r →
-      r.get h = some z → z.next_out ≠ .null → z.avail_in = 0 → z.avail_out ≠ 0 →
-      Call.execute (.deflate (some r) flush) default h = .ok ((value, default), after) → r.get after = some z' →
-      z'.avail_out ≠ 0 → Quiet flush after r) ∧
-    (∀ (flush : Int32) (h : Heap) (r : ZStreamRef) (z : ZStream) (value : Int32) (after : Heap) (z' : ZStream),
-      Quiet flush h r → 0 ≤ flush.toInt → flush.toInt ≤ 4 →
-      StreamReachable .deflate h r → StreamBuffers h r → ActiveHeader h r →
-      r.get h = some z → z.next_out ≠ .null → z.avail_in = 0 →
-      Call.execute (.deflate (some r) flush) default h = .ok ((value, default), after) → r.get after = some z' →
-      z'.avail_out = z.avail_out) ∧
-    (∀ (flush : Int32) (h after : Heap) (r : ZStreamRef) (z z' : ZStream), StreamReachable .deflate h r →
-      Rebuffer h after r → r.get h = some z →
-      r.get after = some z' → z'.next_in = z.next_in → z'.avail_in = z.avail_in →
-      Φ flush after r = Φ flush h r ∧ (Quiet flush h r → Quiet flush after r)) ∧
-    -- (B)
-    (∀ (flush : Int32) (h : Heap) (r : ZStreamRef) (z : ZStream) (k : Nat) (d : DeflateState),
-      0 ≤ flush.toInt → flush.toInt ≤ 4 → StreamReachable .deflate h r → r.get h = some z →
-      z.state = some (.deflate k) → h.dstates k = some d → d.gzhead = none → Φ flush h r < 2 ^ 62) ∧
-    -- (1')
-    (∀ (flush : Int32) (h : Heap) (r : ZStreamRef) (z : ZStream) (value : Int32) (after : Heap) (z' : ZStream),
-      0 ≤ flush.toInt → flush.toInt ≤ 4 →
-      StreamReachable .deflate h r → StreamBuffers h r → ActiveHeader h r →
-      r.get h = some z → z.next_out ≠ .null → z.avail_in ≠ 0 → 8 ≤ z.avail_out.toNat →
-      Call.execute (.deflate (some r) flush) default h = .ok ((value, default), after) → r.get after = some z' →
-      z'.avail_out = 0 → Φ flush after r + 2 ^ 30 * z'.avail_in.toNat < Φ flush h r + 2 ^ 30 * z.avail_in.toNat) ∧
-    -- (2')
-    (∀ (flush : Int32) (h : Heap) (r : ZStreamRef) (z : ZStream) (k : Nat) (d : DeflateState) (value : Int32)
-      (after : Heap) (z' : ZStream),
-      0 ≤ flush.toInt → flush.toInt ≤ 4 →
-      StreamReachable .deflate h r → StreamBuffers h r → ActiveHeader h r →
-      r.get h = some z → z.state = some (.deflate k) → h.dstates k = some d → d.status ≠ FINISH_STATE →
-      z.next_out ≠ .null → z.avail_in ≠ 0 → z.avail_out ≠ 0 →
-      Call.execute (.deflate (some r) flush) default h = .ok ((value, default), after) → value ≠ Z_STREAM_ERROR →
-      r.get after = some z' → z'.avail_out ≠ 0 → z'.avail_in = 0 ∧ Quiet flush after r) ∧
-    -- (2f)
-    (∀ (flush : Int32) (h : Heap) (r : ZStreamRef) (z : ZStream) (k : Nat) (d : DeflateState) (value : Int32)
-      (after : Heap) (z' : ZStream),
-      0 ≤ flush.toInt → flush.toInt ≤ 4 →
-      StreamReachable .deflate h r → StreamBuffers h r → ActiveHeader h r →
-      r.get h = some z → z.state = some (.deflate k) → h.dstates k = some d → d.status = FINISH_STATE →
-      z.next_out ≠ .null → z.avail_in ≠ 0 → z.avail_out ≠ 0 →
-      Call.execute (.deflate (some r) flush) default h = .ok ((value, default), after) → value ≠ Z_STREAM_ERROR →
-      r.get after = some z' → z'.avail_out ≠ 0 →
-      z'.avail_in = z.avail_in ∧ ∃ d', after.dstates k = some d' ∧ d'.status = FINISH_STATE ∧ d'.pending = 0) := by
-  obtain ⟨Φ, Q, c1, c2, c3, c4, cB, c1', c2', c2f⟩ := deflate_quiet_in_holds_block
-  refine ⟨Φ, Q, ?_, ?_, ?_, c4, ?_, ?_, ?_, ?_⟩
-  · intro flush h r z value after z' lo up; exact c1 flush h r z value after z' lo (by omega)
-  · intro flush h r z value after z' lo up; exact c2 flush h r z value after z' lo (by omega)
-  · intro flush h r z value after z' q lo up; exact c3 flush h r z value after z' q lo (by omega)
-  · intro flush h r z k d lo up; exact cB flush h r z k d lo (by omega)
-  · intro flush h r z value after z' lo up; exact c1' flush h r z value after z' lo (by omega)
-  · intro flush h r z k d value after z' lo up; exact c2' flush h r z k d value after z' lo (by omega)
-  · intro flush h r z k d value after z' lo up; exact c2f flush h r z k d value after z' lo (by omega)
-
 end Zlib.Deflate.Universal.Quiet
 
 #print axioms Zlib.Deflate.Universal.Quiet.stored_stop
 #print axioms Zlib.Deflate.Universal.Quiet.deflate_quiet_in_holds_block
-#print axioms Zlib.Deflate.Universal.Quiet.deflate_quiet_in_holds
