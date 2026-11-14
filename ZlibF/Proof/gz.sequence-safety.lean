@@ -20,8 +20,9 @@ The assembly of the gz safety skeleton (`gz.skeleton.lean` on the branch `skelet
 What is proved. `gz_sequence_safety_of` has exactly the conclusion `Goal.gz_sequence_safety`. Every leaf that `dev`
 proves is used directly: the open leaves (`gzopen_safe`, `gzopen64_safe`, `gzdopen_safe`), the close leaves
 (`gzclose_step`, `gzclose_w_step`, `GzRead.gzclose_r_step_safe`), the write leaves (`gzwrite.c.safety`), and the
-queries (`gzeof`, `gztell*`, `gzbuffer`, `gzclearerr`, `gzerror`, `gzseek*`, `gzoffset*`, `gzrewind`). The inline path
-of the `gzgetc()` macro (`GzHistory.getcMacro`, audit A1) is `GzMacro.gzgetc_macro_safe` (`zlib.h.gzgetc-macro`).
+queries (`gzeof`, `gztell*`, `gzbuffer`, `gzclearerr`, `gzerror`, `gzseek*`, `gzoffset*`, `gzrewind`). A call of the
+`gzgetc()` macro (`GzHistory.getcMacro`, audit A1) is `GzMacro.gzgetc_macro_safe` (`zlib.h.gzgetc-macro`): the inline
+path with buffered output, and with `x.have = 0` the function, through the read leaf `gzgetc_step`.
 
 What is assumed. The open read leaves of the skeleton (`gz.skeleton-read.lean`), each with the skeleton's exact
 statement, as the fields of `GzReadLeaves`: `gzread_step`, `gzfread_step`, `gzgetc_step`, `gzungetc_step`,
@@ -133,11 +134,11 @@ theorem history_inv (L : GzReadLeaves) {h : Heap} {fs : Fs} {i : Nat} (hist : Gz
     rw [hs0] at inv0
     obtain ⟨_, hfs', s', inv', _⟩ := ((operation_safe L hop) h fs s inv0 hfs hargs).2.2 value fs' after e
     exact ⟨hfs', s', inv'⟩
-  | @getcMacro h after fs fs' i s value _ hs hh e ih =>
+  | @getcMacro h after fs fs' i s value _ hs e ih =>
     obtain ⟨hfs, s0, inv0⟩ := ih
     have hs0 := inv0.state_eq hs
     rw [hs0] at inv0
-    obtain ⟨_, hfs', s', inv', _⟩ := (GzMacro.gzgetc_macro_safe inv0 hfs hh).2 value fs' after e
+    obtain ⟨_, hfs', s', inv', _⟩ := (GzMacro.gzgetc_macro_safe (L.gzgetc_step i) inv0 hfs).2.2 value fs' after e
     exact ⟨hfs', s', inv'⟩
   | @caller h after fs i s _ hs hf hfit ih =>
     obtain ⟨hfs, s0, inv0⟩ := ih
@@ -156,11 +157,11 @@ theorem gz_sequence_safety_of (L : GzReadLeaves) : Goal.gz_sequence_safety := by
     have hs0 := inv0.state_eq hs
     rw [hs0] at inv0
     exact (operation_safe L hop) h fs s inv0 hfs hargs
-  · intro h fs i s hist hs hh
+  · intro h fs i s hist hs
     obtain ⟨hfs, s0, inv0⟩ := history_inv L hist
     have hs0 := inv0.state_eq hs
     rw [hs0] at inv0
-    exact GzMacro.gzgetc_macro_safe inv0 hfs hh
+    exact GzMacro.gzgetc_macro_safe (L.gzgetc_step i) inv0 hfs
   · intro h fs i s errnum hist hs hargs value fs' after e
     obtain ⟨_, s0, inv0⟩ := history_inv L hist
     have hs0 := inv0.state_eq hs
