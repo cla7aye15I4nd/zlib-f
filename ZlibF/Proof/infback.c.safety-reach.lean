@@ -5,22 +5,15 @@ import ZlibF.Proof.«public-infback-end»
 /-!
 # infback.c: the histories of the callback decoder
 
-`back_reach_valid` is clause 2 of `Goal.inflate_back_sequence_safety`: every history of
-`BackSafeReachable` leaves a valid state over the caller's window (initialisation, a caller's
-edit, a call that returned). `back_null` and `back_end` are clauses 1 and 4.
-`inflate_back_sequence_safety_of` composes the goal from these and `back_call_total`, given
-`FastOk`: the fast path of `case LEN` on the invariant, the one piece still open.
+The steps of a `BackSafeReachable` history: `reach_init` (initialisation) and `reach_caller` (a
+caller's edit) keep a valid state over the caller's window, and `back_reach_window` shows that the
+window is a slice of a heap byte block. `back_null` is clause 1 of
+`Goal.inflate_back_sequence_safety`. The goal is composed in `infback.c.safety-fast`.
 -/
 
 namespace Zlib.Infback.Safety
 open C ZlibF.Spec ZlibF.Spec.Public Zlib.Inflate Zlib.Inflate.Proofs Zlib.Infback Zlib.Infback.Proofs
 set_option autoImplicit false
-
-/-- The fast path of `case LEN` on the invariant, for every call the goal states. -/
-def FastOk : Prop :=
-  ∀ (h : Heap) (r : ZStreamRef) (i : Nat) (window : BPtr) (n : Nat) (input : InCb) (inDesc : BPtr)
-    (output : OutCb) (outDesc : BPtr) (protocol : CallbackProtocol r i window n input inDesc output outDesc),
-    LenFast (callCtx r i input inDesc output outDesc) protocol h
 
 /-- The window of every history is a slice of a heap byte block. -/
 theorem back_reach_window {h : Heap} {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
@@ -94,65 +87,9 @@ theorem reach_caller {h after : Heap} {r : ZStreamRef} {i : Nat} {window : BPtr}
         exact ro0
       | _ => exact ro0
 
-/-- Every history leaves a valid state over the caller's window, with `sane ≠ 0` and `wnext = 0`. -/
-theorem back_reach_st (fast : FastOk) {h : Heap} {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
-    (reach : BackSafeReachable h r i window n) :
-    ∃ z s, BackValid h r i z s ∧ s.window = window ∧ s.wsize.toNat = n ∧ (s.sane ≠ 0 ∧ s.wnext = 0) := by
-  induction reach with
-  | init hd lo hi wr nn _ run =>
-    obtain ⟨z, s, valid, win, size, st⟩ := reach_init hd lo hi wr nn run
-    exact ⟨z, s, valid, win, size, st⟩
-  | caller _ rebuf same ro ih =>
-    obtain ⟨z, s, valid, win, size, st⟩ := ih
-    obtain ⟨z', valid'⟩ := reach_caller valid win size rebuf same ro
-    exact ⟨z', s, valid', win, size, st⟩
-  | @step h after r i window n z input inDesc output outDesc first rc protocol reach hz firstB sep inv0 fit plat
-      fc run ih =>
-    obtain ⟨z0, s0, valid0, win0, size0, st0⟩ := ih
-    have e : z0 = z := Option.some.inj (valid0.1.symm.trans hz)
-    subst e
-    obtain ⟨w, woff, hw⟩ := back_reach_window reach
-    obtain ⟨z', s', log, valid', win', ws', st', -⟩ :=
-      back_call_partial protocol valid0 win0 size0 hw firstB sep inv0 fit plat fc st0
-        (fast h r i window n input inDesc output outDesc protocol) run
-    exact ⟨z', s', valid', win', by rw [ws']; exact size0, st'⟩
-
-/-- **Every history leaves a valid state over the caller's window** (clause 2 of the goal). -/
-theorem back_reach_valid (fast : FastOk) {h : Heap} {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
-    (reach : BackSafeReachable h r i window n) :
-    ∃ z s, BackValid h r i z s ∧ s.window = window ∧ s.wsize.toNat = n := by
-  obtain ⟨z, s, valid, win, size, -⟩ := back_reach_st fast reach
-  exact ⟨z, s, valid, win, size⟩
-
 /-- A null stream is refused. -/
 theorem back_null : ∀ h input inDesc output outDesc,
     C.run (Zlib.Infback.inflateBack none input inDesc output outDesc) h = .ok (Z_STREAM_ERROR, h) :=
   fun h input inDesc output outDesc => inflateBack_nullstream input inDesc output outDesc h
-
-/-- `inflateBackEnd` on every history frees the state (clause 4 of the goal). -/
-theorem back_end (fast : FastOk) {h : Heap} {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
-    (reach : BackSafeReachable h r i window n) :
-    ∃ after z, C.run (Zlib.Infback.inflateBackEnd (some r)) h = .ok (Z_OK, after) ∧
-      r.get after = some z ∧ z.state = none ∧
-      Frame h after (fun b => StreamRoot r b ∨ b = i) ∧
-      LiveChange h after (fun _ => False) (fun b => b = i) := by
-  obtain ⟨z, s, valid, -, -⟩ := back_reach_valid fast reach
-  obtain ⟨after, run, get, live, frame, -, -⟩ :=
-    ZlibF.Spec.Public.InflateBackEndProof.back_end_public.2.2 h r i z s valid
-  exact ⟨after, { z with state := none }, run, get, rfl, frame, live⟩
-
-/-- **`Goal.inflate_back_sequence_safety` from the fast path of `case LEN`.** -/
-theorem inflate_back_sequence_safety_of (fast : FastOk) : Goal.inflate_back_sequence_safety := by
-  refine ⟨back_null, fun h r i window n reach => back_reach_valid fast reach, ?_,
-    fun h r i window n reach => back_end fast reach⟩
-  intro h r i window n z s input inDesc output outDesc protocol first reach valid firstB sep inv0 bound fit plat fc
-  obtain ⟨z0, s0, valid0, win0, size0, st0⟩ := back_reach_st fast reach
-  have es : s0 = s := Option.some.inj (valid0.2.1.symm.trans valid.2.1)
-  subst es
-  obtain ⟨w, woff, hw⟩ := back_reach_window reach
-  obtain ⟨rc, after, run, z', s', log, valid', win', ws', -, inv', codes, frame, live⟩ :=
-    back_call_total protocol valid win0 size0 hw firstB sep inv0 fit plat fc st0
-      (fast h r i window n input inDesc output outDesc protocol) bound
-  exact ⟨rc, after, z', s', log, run, valid', win', ws', inv', codes, frame, live⟩
 
 end Zlib.Infback.Safety

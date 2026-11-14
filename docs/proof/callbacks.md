@@ -66,3 +66,17 @@ A fast theorem with separate output and history arrays does not cover output
 inside the callback window. The actual caller must establish the installed-table
 and copy premises on the returned heap. The historical missing-whave report
 remains **to confirm**; ordinary-inflate examples do not settle this API.
+
+## The sequence goal and the fast path
+
+`Goal.inflate_back_sequence_safety` is proved by `inflate_back_sequence_safety`
+(`ZlibF/Proof/infback.c.safety-fast.lean`). The fast path of `case LEN` calls `inflate_fast` with
+the window as its output. `inflate_fast`'s entry environment (`EnvG`) covers output only in a raw
+heap byte block (`.blk`). So the fast path is not proved at every window. An earlier composition,
+`inflate_back_sequence_safety_of`, took the fast path at every window as a premise (`FastOk`). That
+premise is not false; it is beyond the proof technique, and it is not needed. `back_reach_window`
+shows that every reachable history has its window in a `.blk` block, because the init clause of
+`BackSafeReachable` requires it (a row in [deviations](../deviations.md)). At such a window,
+`lenFast_of_blk` gives the fast path from `LEN_fast_p`. The goal is composed from the `.blk` copies
+of the history lemmas: `back_reach_st_blk`, `back_reach_valid_blk` and `back_end_blk`, with
+`back_call_total` for the call. The earlier composition and `FastOk` were deleted.

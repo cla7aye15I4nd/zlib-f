@@ -11,9 +11,9 @@ window ends where the output range ends. `fast_consumes` (`inffast.c.consume`) g
 frame and the strict consumption of input bits; `LEN_fast_p` turns them into one `Round` of the
 dispatch loop.
 
-`FastOk` asks for the fast path at every window. The histories of the goal have a window in a
-heap byte block (`back_reach_window`), and `inflate_fast`'s entry takes a raw byte block, so the
-composition below uses the fast path only at such windows (`lenFast_of_blk`).
+`inflate_fast`'s entry takes output in a raw heap byte block, so the fast path is proved only at
+such a window (`lenFast_of_blk`). The histories of the goal have their window there
+(`back_reach_window`), and the composition below uses the fast path only at such windows.
 -/
 
 namespace Zlib.Infback.Safety
@@ -390,8 +390,7 @@ theorem lenFast_of_blk (c : BCtx) {r : ZStreamRef} {i : Nat} {window : BPtr} {n 
     LenFast c pr h0 :=
   fun _ _ _ _ I hs mode short fast => LEN_fast_p c pr I hw hs mode short fast
 
-/-- Every history leaves a valid state over the caller's window, with `sane ≠ 0` and `wnext = 0`
-(`back_reach_st` without the premise `FastOk`). -/
+/-- Every history leaves a valid state over the caller's window, with `sane ≠ 0` and `wnext = 0`. -/
 theorem back_reach_st_blk {h : Heap} {r : ZStreamRef} {i : Nat} {window : BPtr} {n : Nat}
     (reach : BackSafeReachable h r i window n) :
     ∃ z s, BackValid h r i z s ∧ s.window = window ∧ s.wsize.toNat = n ∧ (s.sane ≠ 0 ∧ s.wnext = 0) := by
