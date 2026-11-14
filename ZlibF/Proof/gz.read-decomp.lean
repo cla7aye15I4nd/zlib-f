@@ -52,13 +52,16 @@ def InflateHeadUsesInput : Prop :=
 `Z_DATA_ERROR` or `Z_MEM_ERROR` and leaves `avail_in` and `avail_out` unchanged. `inflate.c`, `inflate()`:
 `case BAD: ret = Z_DATA_ERROR; goto inf_leave;` (`inf_leave` restores the registers, which no step of the call moved;
 `updatewindow` then copies no output and can only fail, into `MEM` with `Z_MEM_ERROR`) and
-`case MEM: return Z_MEM_ERROR;`. -/
+`case MEM: return Z_MEM_ERROR;`. The entry check (`inflateStateCheck`, `next_out == NULL`, `next_in == NULL` with
+input) runs before the mode dispatch and returns `Z_STREAM_ERROR` with nothing moved; `gz_decomp`'s calls never take
+it. -/
 def InflateStuckNoOutput : Prop :=
   ∀ {h : Heap} {r : ZStreamRef} {k : Nat} {z : ZStream} {st : InflateState},
     Zlib.Inflate.Spec.Good h r k z st → (st.mode = BAD ∨ st.mode = MEM) →
     ∀ {rc : Int32} {after : Heap} {z' : ZStream},
       C.run (Zlib.Inflate.inflate (some r) Z_NO_FLUSH) h = .ok (rc, after) → r.get after = some z' →
-      z'.avail_in = z.avail_in ∧ z'.avail_out = z.avail_out ∧ (rc = Z_DATA_ERROR ∨ rc = Z_MEM_ERROR)
+      z'.avail_in = z.avail_in ∧ z'.avail_out = z.avail_out ∧
+        (rc = Z_DATA_ERROR ∨ rc = Z_MEM_ERROR ∨ rc = Z_STREAM_ERROR)
 
 /-- Every literal of the sources is a C string with no NUL inside. -/
 theorem table_no_nul : ∀ j : Fin strTable.size,
@@ -190,7 +193,7 @@ theorem inflate_step (head : InflateHeadUsesInput) (stuck : InflateStuckNoOutput
       (InflateAtHead h s → s.strm.avail_out ≠ 0 → used ≠ 0) ∧
       (rc = Z_OK → z'.avail_in ≠ 0 → z'.avail_out = 0) ∧
       (rc = Z_NEED_DICT ∨ rc = Z_STREAM_ERROR → produced = 0) ∧
-      (Stuck h s → produced = 0 ∧ (rc = Z_DATA_ERROR ∨ rc = Z_MEM_ERROR)) ∧
+      (Stuck h s → s.strm.avail_out ≠ 0 → produced = 0 ∧ (rc = Z_DATA_ERROR ∨ rc = Z_MEM_ERROR)) ∧
       (rc = Z_DATA_ERROR ∨ rc = Z_MEM_ERROR → Stuck after { s with strm := z' }) ∧
       (MsgLit s → MsgLit { s with strm := z' }) ∧
       GzPost h i s [⟨s.strm.next_out, produced⟩] fs after GzInvUpToOutput := by
@@ -615,12 +618,23 @@ theorem inflate_step (head : InflateHeadUsesInput) (stuck : InflateStuckNoOutput
       omega
     · obtain ⟨-, -, -, hnil⟩ := sEq e
       rw [hnil]; rfl
-  · rintro ⟨k2, st2, hk2, hst2, hmode⟩
+  · rintro ⟨k2, st2, hk2, hst2, hmode⟩ hao
     rw [hstate] at hk2
     cases hk2
     rw [hk] at hst2
     cases hst2
-    obtain ⟨-, hao', hrc⟩ := stuck good1 hmode run good'.live.hz
+    obtain ⟨-, hao', hrc'⟩ := stuck good1 hmode run good'.live.hz
+    have hrc : rc = Z_DATA_ERROR ∨ rc = Z_MEM_ERROR := by
+      rcases hrc' with e | e | e
+      · exact Or.inl e
+      · exact Or.inr e
+      · exfalso
+        rcases serr.1 e with hn | ⟨hn, -⟩ | hsy
+        · rcases hw with ⟨-, hz0⟩ | ⟨r', off', a', hp', -, -, -⟩
+          · exact hao (UInt32.toNat_inj.mp (by rw [hz0]; rfl))
+          · rw [hp'] at hn; cases hn
+        · rw [hnin] at hn; cases hn
+        · rcases hmode with hm | hm <;> rw [hm] at hsy <;> exact absurd hsy (by decide)
     refine ⟨?_, hrc⟩
     have := acct.2.2.2.1
     rw [hao'] at this
@@ -1361,7 +1375,7 @@ theorem inflate_trans (head : InflateHeadUsesInput) (stuck : InflateStuckNoOutpu
     pMsg, post⟩ := inflate_step head stuck fs hfs B.inv hm hsz hav hw side
   rw [hd] at post
   refine ⟨rc, after, z', used, produced, run, hrec', ?_, acct, codes, pOK, fun e => pBUF e hao,
-    fun hd => pHead hd hao, pFull, pDict, pStuck, pStuck'⟩
+    fun hd => pHead hd hao, pFull, pDict, fun hs => pStuck hs hao, pStuck'⟩
   refine Base.step B post hrec' (fun _ => Iff.rfl) (Or.inr ⟨d, produced, rfl, by have := acct.2.1; omega⟩)
     ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩ ?_ ?_ B.rb B.err (pMsg B.ml) St.hlen St.hm0 St.hsz0 St.outLen St.views
     (BudgetAcc.refl _ _)
