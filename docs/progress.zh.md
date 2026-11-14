@@ -1,4 +1,4 @@
-<!-- source-sha256: 8bfbf0c5123f0f857dfa5bb9b77c0cbcdc722bf9c4004f718073ae15a7e6a355 -->
+<!-- source-sha256: 49c2e69aa8d12117914fb12fc67d18b52eeda1256d49858c73a9622306aea628 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1739,9 +1739,9 @@ deflate 安全性目标尚未完成的工作（2026-11-12）。调用之间的�
 | `operation_header` | 头部事实 `HeaderInv`（头部状态下没有已记录的符号；从 `EXTRA_STATE` 到 `HCRC_STATE` 附有 gzip 记录）在每个流操作之后成立。已在 `dev` 上检查（`deflate.c.universal-header-inv`）：`init2_header`、`tune_header`、`setHeader_header`、`reset_header`、`prime_header`。未完成：`deflateSetDictionary`（需要 B 批 `setdict_body` 给出状态字段）、`deflateParams`，以及 `deflate` 本身（头部阶段）。已作为 `operation_header_of` 检查（`deflate.c.universal-ops-header`），即对每个操作分情况，带以下假设：`deflate`、`deflateParams`、`deflateSetDictionary` 的头部引理，以及前提 `CallFacts`（`params_header` 读取它）。对 `deflateResetKeep` 的直接调用不是流操作。 | checked given hypotheses | 0 (case split) |
 | `operation_callfacts` | 调用之间的事实 `CallFacts` 在每个流操作之后成立。已检查（`deflate.c.universal-ops-callfacts`，inflate 1 批）：`reset_callfacts`、`prime_callfacts`、`tune_callfacts`、`setHeader_callfacts`、各查询（状态不变）、`copy_callfacts`（`-ops-copy`）；初始化时由 `init2_inv` 给出。`setDictionary_callfacts`（`-ops-dictionary-slid`）、`params_callfacts`（`-ops-params-general`，在 `SlideRepair` 之下）。已作为 `operation_callfacts_of` 检查，带 `deflate` 的假设。 | checked given hypotheses | 2 |
 | `copy_header` | `deflateCopy` 复制状态记录，因此副本中 `HeaderInv` 成立（`deflate.c.universal-ops-copy`，骨架陈述）。 | checked | 0 |
-| `copy_failure` | 某次分配失败的 `deflateCopy`（状态记录失败，或四个缓冲区请求的任意子集失败，它们都在空指针检查之前执行）返回 `Z_MEM_ERROR`，释放它分配的每个块，清除 `dest->state`，并保持源与其他活跃块不变（`deflate.c.copy-failure`）。 | open | 6 |
-| `copy_success` | 所有分配都成功时，`deflateCopy` 返回 `Z_OK`：目标满足 `DGood`，其状态为 `copiedDeflate`，窗口、`head`、`prev` 的已复制部分、待发字节和符号都被复制，账目恰好增加五个新块（`deflate.c.copy-success`，来自 `copy_tail_run`）。 | open | 6 |
-| `deflate_copy_public`、`deflate_copy_safety`（`public-deflate-copy`） | 类型为 `Goal.deflateCopy` 与 `Goal.deflateCopy_safety` 的定理：空参数被拒绝；从可达源出发，由 `copy_failure` 或 `copy_success` 得出。陈述先在真实 C 上测试（`tests/goals/deflate-copy`：144000 种组合，五次分配的每个失败子集，无违例）。 | open | 2 |
+| `copy_failure` | 某次分配失败的 `deflateCopy`（状态记录失败，或四个缓冲区请求的任意子集失败，它们都在空指针检查之前执行）返回 `Z_MEM_ERROR`，释放它分配的每个块，清除 `dest->state`，并保持源与其他活跃块不变（`deflate.c.copy-failure`）。 | checked | 0 |
+| `copy_success` | 所有分配都成功时，`deflateCopy` 返回 `Z_OK`：目标满足 `DGood`，其状态为 `copiedDeflate`，窗口、`head`、`prev` 的已复制部分、待发字节和符号都被复制，账目恰好增加五个新块（`deflate.c.copy-success`，来自 `copy_tail_run`）。 | checked | 0 |
+| `deflate_copy_public`、`deflate_copy_safety`（`public-deflate-copy`） | 类型为 `Goal.deflateCopy` 与 `Goal.deflateCopy_safety` 的定理：空参数被拒绝；从可达源出发，由 `copy_failure` 或 `copy_success` 得出。陈述先在真实 C 上测试（`tests/goals/deflate-copy`：144000 种组合，五次分配的每个失败子集，无违例）。`Goal.deflateCopy_safety` 还包含 zlib.h 对不一致源的拒绝（`deflateCopy_refused`）。尚未登记：登记需要 `Goal.deflateCopy` 的证明变异体（验收批次）。 | checked | 0 |
 | `reachable_inv` | 对 `StreamReachable` 归纳：每个可达状态都满足 `DInv`、`HeaderInv` 和 `CallFacts`（`reachable_inv_of`，`deflate.c.universal-sequence-safety`）。 | checked in skeleton | 0 |
 | `deflate_proof` | 类型为 `Goal.deflate` 的定理。已检查为 `deflate_proof_of (facts : SequenceFacts) : Goal.deflate`（`deflate.c.universal-deflate-proof`）：`reachable_inv_of`、`DInv.unique`、字段 `deflateCall`。一旦 `SequenceFacts` 的字段都成为定理，它就是 `Goal.deflate`。`CallFacts.finishBits`（M18）已检查。 | checked given hypotheses | 0 |
 | **小计 `Goal.deflateInit2_` 与 `Goal.deflate`** | | | **150** |
@@ -1881,7 +1881,7 @@ zlib.h 文档化的每个函数占一行。每行给出表明该调用不会出�
 | deflateEnd | 自身目标 + SeqD 的 End 子句 | `ZlibF.Spec.Public.DeflateEndProof.deflate_end_public`，`public-deflate-end.lean`；SeqD 的第 3 子句 | 是 | 自身目标需要 `DGood`。Refusal：`Zlib.Deflate.Proofs.deflateEnd_reject`（`deflate.c.life.end.lean`，已登记）覆盖 NULL、zalloc/zfree 为 NULL、state 为 NULL，以及被拒绝的活动 state。因此已覆盖：从未初始化（模型指针为 NULL）、NULL、state 为 NULL，以及复制失败之后。它不是类型为目标的定理。 |
 | deflateSetDictionary | SeqD | SeqD | 是 | 自身的 `Goal.deflateSetDictionary`：无定理。Refusal：**无**（NULL 或不一致没有 `_reject`）。 |
 | deflateGetDictionary | 自身目标 + SeqD | `ZlibF.Spec.Public.DeflateDictionaryProof.deflate_getdict_public`，`public-deflate-getdict.lean` | 是 | 自身目标需要 `DGood`，且目标缓冲区与窗口分离。Refusal：`Zlib.Deflate.Proofs.deflateGetDictionary_reject`（`deflate.c.life.getdict.lean`）已检查，但**未登记**。 |
-| deflateCopy | 自身目标（进行中） | `Zlib.Deflate.Universal.deflate_copy_public` / `deflate_copy_safety`（`public-deflate-copy`，计划中；见 deflate 骨架各行） | 否 | open。不是 `StreamOperation`。`StreamReachable.deflateCopy` 只为 SeqD 的第 1 子句提供输入。证明完成后，定义域缺口仍在：`source ≠ dest`（偏差行），以及非 NULL 的不一致源（zlib.h：`Z_STREAM_ERROR`，“如 zalloc 为 Z_NULL”）；只陈述了 NULL 源和 NULL 目标。 |
+| deflateCopy | 自身目标 | `Zlib.Deflate.Universal.deflate_copy_public` / `deflate_copy_safety`，`public-deflate-copy.lean` | 否（checked） | 不是 `StreamOperation`；`StreamReachable.deflateCopy` 只为 SeqD 的第 1 子句提供输入。缺口：`source ≠ dest`（偏差行）；状态存活但被检查拒绝的源（反向指针或状态错误）未被陈述。`Goal.deflateCopy_safety` 覆盖 `zalloc`、`zfree` 或状态为空的源。 |
 | deflateReset | 自身目标 + SeqD | `ZlibF.Spec.Public.DeflateResetProof.deflate_reset_public`，`public-deflate-reset.lean` | 是 | Refusal：`Zlib.Deflate.Proofs.deflateReset_reject`（已登记）。 |
 | deflateParams | SeqD | SeqD | 是 | 自身的 `Goal.deflateParams`：无定理。Refusal：**无**。 |
 | deflateTune | 自身目标 + SeqD | `ZlibF.Spec.Public.DeflateQueryProof.tune_public`，`public-deflate-small-queries.lean` | 是 | 完整（`CheckedDeflate` 包含各 refusal）。 |
@@ -1969,7 +1969,7 @@ zlib.h 文档化的每个函数占一行。每行给出表明该调用不会出�
 对完整文档化定义域没有已检查无故障定理的已文档化函数：
 
 1. **inflateBack**：open。只有 `inflate_back_sequence_safety_of (FastOk)`；`LEN_fast_p` 和 `fast_alias` 未完成。progress.md 也把该目标行列为“Not proved”。
-2. **deflateCopy**：在 dev 上 open（进行中，见 deflate 骨架各行）。完成之后：非 NULL 的不一致源仍未覆盖，且假设 `source ≠ dest`。
+2. **deflateCopy**：checked，未登记。假设 `source ≠ dest`（偏差行）。状态存活但被检查拒绝的源（反向指针或状态错误）未被陈述。
 3. **inflateEnd**：NULL、state 为 NULL、从未初始化、初始化失败之后，以及 `inflateCopy` 失败之后（zlib.h 明确文档化）**没有定理**。自身目标和 End 子句只覆盖 `Good` 或可达的流。progress.md 的“All stated inputs”掩盖了这一点。deflateEnd 有类似的 `deflateEnd_reject`（已登记）。
 4. **inflateCopy**：非 NULL 的不一致源（`Z_STREAM_ERROR`，目标 state 被清除）未覆盖。
 5. **NULL 或不一致流的 refusal，完全没有定理**：`inflate`、`deflate`、`inflateReset`、`inflateReset2`、`inflateGetDictionary`、`inflateSetDictionary`、`deflateSetDictionary`、`deflateParams`。在别处已覆盖：deflate 的各查询、`deflateEnd`、`deflateReset`、`deflatePrime`、`deflateBound*`、`inflateSync`、`inflateGetHeader`，以及 inflate 的各查询。`deflateGetDictionary_reject` 已检查但未登记。
