@@ -1,4 +1,5 @@
 import ZlibF.Proof.«gz.inv-model»
+import ZlibF.Zlib.«zlib.h»
 
 /-!
 # gz file interface, safety: the history of a handle and the sequence goal
@@ -38,7 +39,11 @@ def GzWorldStep (_fs fs' : Fs) (_fd : Int32) : Prop :=
 
 /-- **Every actual history of one handle** (safety; replaces `GzReachable`, with `ByteObjectsFit` at every point
 where the caller supplies a heap). The caller may free its own buffers (`caller`), including the last `gzread`
-buffer (R-4: `GzCommon.next` says nothing of `x.next` without buffered output). -/
+buffer (R-4: `GzCommon.next` says nothing of `x.next` without buffered output). `getcMacro` is the inline path of
+the `gzgetc()` macro of `zlib.h` (`Zlib.ZlibH.gzgetc`), the default way an application calls `gzgetc`: with buffered
+output (`x.have ≠ 0`) it changes `x.have`, `x.pos` and `x.next` with no library call, and unlike the function it
+does not clear `err` and `msg` when `again` is set. With `x.have = 0` the macro calls the function `gzgetc`, which
+is the `step` with `Call.gzgetc`. -/
 inductive GzHistory : Heap → Fs → Nat → Prop
   | open {h after fs fs' path mode i name flags} :
       Fresh h → Zlib.Gzlib.Spec.Uniq h → LibraryGlobals h → ZlibF.PlatformMemory.ByteObjectsFit h →
@@ -58,6 +63,8 @@ inductive GzHistory : Heap → Fs → Nat → Prop
   | step {h after fs fs' i s call value} : GzHistory h fs i → h.gzstates i = some s →
       GzOperation i call → GzArguments h i s call →
       call.execute fs h = .ok ((value, fs'), after) → GzHistory after fs' i
+  | getcMacro {h after fs fs' i s value} : GzHistory h fs i → h.gzstates i = some s → s.x.have ≠ 0 →
+      Zlib.ZlibH.gzgetc (some (.in_gzstate_x i)) fs h = .ok ((value, fs'), after) → GzHistory after fs' i
   | caller {h after fs i s} : GzHistory h fs i → h.gzstates i = some s →
       GzCallerFrame h after i s → ZlibF.PlatformMemory.ByteObjectsFit after → GzHistory after fs i
   | world {h fs fs' i s} : GzHistory h fs i → h.gzstates i = some s → GzWorldStep fs fs' s.fd →
@@ -130,7 +137,8 @@ where the C returns at once (a call on a writer, a request of length 0); every o
 first half is partial correctness up to `2^64` iterations of each loop, which no real execution reaches. A call
 that returns keeps the open descriptors, keeps
 `GzInv`, writes only the handle's blocks and the declared caller regions, and changes the live blocks exactly
-by the handle's ledger. The pointer `gzerror` returns is a readable NUL-terminated string in the heap after the
+by the handle's ledger. The inline path of the `gzgetc()` macro (`x.have ≠ 0`) returns with no premise and keeps the
+same post as the function, which writes no caller region. The pointer `gzerror` returns is a readable NUL-terminated string in the heap after the
 call: a literal or the handle's message. Every close returns and either refuses on the wrong mode or frees every owned block and
 releases the descriptor. Every open returns; a failed open leaves no block and no open descriptor behind. -/
 def Goal.gz_sequence_safety : Prop :=
@@ -141,6 +149,10 @@ def Goal.gz_sequence_safety : Prop :=
       ∃ value fs' after, call.execute fs h = .ok ((value, fs'), after)) ∧
     (∀ value fs' after, call.execute fs h = .ok ((value, fs'), after) →
       FdsKept fs fs' ∧ GzStepPost h i s call fs' after)) ∧
+  (∀ h fs i s, GzHistory h fs i → h.gzstates i = some s → s.x.have ≠ 0 →
+    (∃ value fs' after, Zlib.ZlibH.gzgetc (some (.in_gzstate_x i)) fs h = .ok ((value, fs'), after)) ∧
+    (∀ value fs' after, Zlib.ZlibH.gzgetc (some (.in_gzstate_x i)) fs h = .ok ((value, fs'), after) →
+      FdsKept fs fs' ∧ GzStepPost h i s (.gzgetc (some (.in_gzstate_x i))) fs' after)) ∧
   (∀ h fs i s errnum, GzHistory h fs i → h.gzstates i = some s →
     GzArguments h i s (.gzerror (some (.in_gzstate_x i)) errnum) →
     ∀ (value : BPtr) fs' after,
