@@ -6,6 +6,22 @@
     {
       "path": "patches/0001-inflate-copy-pointer-equality.patch",
       "sha256": "3f6cfc505bd777a3632e679a7d71f03cb8bf62371947c5e601c32df5f7d8601c"
+    },
+    {
+      "path": "patches/0002-gzseek-negative-position-overflow.patch",
+      "sha256": "7a4483de9066053741acb45ba2c2daabc3bd1c77847adb4a46d94cf8373f7428"
+    },
+    {
+      "path": "patches/0003-gzread-partial-copy-read-error.patch",
+      "sha256": "0b2c29c187797d2b1a3ad02f64b21eb3c00deaf6bd1db69518ef8570fc24ff4d"
+    },
+    {
+      "path": "patches/0004-gz-position-overflow.patch",
+      "sha256": "b7e4fded002d35c8f6b5341358d7170e35c63feb506e5e3d2a084ad64e6255af"
+    },
+    {
+      "path": "patches/0005-gz-next-zero-advance.patch",
+      "sha256": "d2524a6af61583e4007ed1367415e75f111eccc94c229bc50c1dd8ab6eba046b"
     }
   ],
   "compiler": "emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) 6.0.12-git",

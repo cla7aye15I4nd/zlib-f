@@ -5,7 +5,7 @@
 
 ---
 
-**标题：** gzseek64, gz_skip_have: do not advance x.next when nothing is skipped（gzseek64、gz_skip_have：没有跳过任何内容时不移动 x.next）
+**标题：** `gzseek64, gz_skip_have: do not advance x.next when nothing is skipped`（gzseek64、gz_skip_have：没有跳过任何内容时不移动 x.next）
 
 **问题**
 

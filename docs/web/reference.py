@@ -274,7 +274,9 @@ def write(path: Path, content: str) -> None:
 
 def goal_excerpts() -> dict[str, tuple[Path, int, str]]:
     result = {}
-    for source in sorted((REPO / "ZlibF/Spec/Public").glob("*.lean")):
+    # Goals live in Spec/Safety, Spec/Functional and Spec/Public (docs/design/safety-functional-split.md).
+    layers = ("Public", "Safety", "Functional")
+    for source in sorted(s for layer in layers for s in (REPO / "ZlibF/Spec" / layer).glob("*.lean")):
         text = source.read_text()
         for match in re.finditer(r"^def Goal\.(\w+)\b", text, re.M):
             start = match.start()

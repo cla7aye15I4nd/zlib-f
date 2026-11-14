@@ -11,7 +11,7 @@
 
 `gz_open` 用 `malloc` 分配 `gz_state` 记录，`gz_reset` 初始化其中除 `x.next` 以外的字段。在读取者上，`x.next` 第一次被写入是在产生输出时（透明模式下的 `gz_look`、`gz_decomp`、`gz_fetch`、`gzungetc`）。有两个函数在此之前就计算它：
 
-- `gzseek64`，不在透明模式时：`n` 是目标中落在输出缓冲区里的部分，缓冲区为空时为 0，而代码照样执行 `state->x.next += n`（`gzlib.c`，“if reading, skip what's in output buffer” 处）。
+- `gzseek64`，不在透明模式时：`n` 是目标中落在输出缓冲区里的部分，缓冲区为空时为 0，而代码照样执行 `state->x.next += n`（`gzlib.c` 中读取时跳过输出缓冲区已有内容的那一段）。
 - `gz_skip_have`，由 `gzdirect` 在 `gz_look` 之后调用：对 gzip 文件，`gz_look` 不写 `x.next`，而 `gz_skip_have` 以 `n == 0` 执行 `state->x.next += n`。
 
 读到的值是这块分配的不确定内容。C11 规定，使用可能是陷阱表示的不确定值是未定义的（6.2.6.1p5，J.2）；指针运算只对指向对象或其末尾之后一个位置的指针有定义（6.5.6p8），不确定的指针两者都不是。在 x86_64 上，用通常的编译器，`p + 0` 不改变 `p`，不会出错。

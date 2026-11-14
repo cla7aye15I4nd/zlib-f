@@ -3,7 +3,7 @@
   "kind": "fixed-source-native-example-runs",
   "source_commit": "757f0527154291bcf6bfbd6396ecde6bedd2db95",
   "zlib_version": "1.3.2.1-motley",
-  "source_patches": ["0001-inflate-copy-pointer-equality.patch"],
+  "source_patches": ["0001-inflate-copy-pointer-equality.patch", "0002-gzseek-negative-position-overflow.patch", "0003-gzread-partial-copy-read-error.patch", "0004-gz-position-overflow.patch", "0005-gz-next-zero-advance.patch"],
   "input": {"bytes": 196608, "sha256": "d102172af46192ffbae104ba61502713619753598334be882a3d14d613f01d33",
     "generator": "three 65536-byte regions: periodic text with numeric markers; 1024-byte runs; xorshift32 bytes",
     "random_seed": "0x12345678", "random_shifts": [13, 17, 5]},
