@@ -1709,6 +1709,7 @@ import ZlibF.Proof.«gzwrite.c.printf»
 import ZlibF.Proof.«gzwrite.c.printf-run»
 import ZlibF.Proof.«gzwrite.c.printf-error-string-regression»
 import ZlibF.Proof.«gz.inv-seek»
+import ZlibF.Proof.«gzwrite.c.safety»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.
