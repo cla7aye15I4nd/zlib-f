@@ -1702,6 +1702,7 @@ import ZlibF.Proof.«gz.read-fetch»
 import ZlibF.Proof.«gz.read-look»
 import ZlibF.Proof.«gz.read-read»
 import ZlibF.Proof.«gz.read-gzread»
+import ZlibF.Proof.«gz.read-assembly»
 import ZlibF.Proof.«gz.read-close»
 import ZlibF.Proof.«gz.read-decomp»
 import ZlibF.Proof.«inflate.c.head-uses-input»
