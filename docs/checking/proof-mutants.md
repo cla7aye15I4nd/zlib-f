@@ -145,7 +145,12 @@ The mutation shards check the three lists by re-elaboration. A kernel replay of 
 refusal rows (each replay ends within two seconds). A kernel replay of `gz_sequence_safety_public` with the
 translation edit of each structural row (the rows in a loop body or in machine arithmetic left out: `patch0003-*`,
 the three `patch0004` rows of `gz_fetch` and `gz_read`, `patch0004-gets-room-removed`, `gzgets-left-whole-length`,
-`gztell64-adds-max`) accepts the original (51615 dependencies, peak about 10.7 GB).
+`gztell64-adds-max`) accepts the original (51615 dependencies, peak about 10.7 GB) and rejects 29 of the 36 rows it was given, most at
+the restatement of the mutated function (`gzwrite_eq`, `gzclose_w_eq`, `gzgetc_macro_eq`, ...), peaks 10.7 GB. Seven
+rows reach the 12 GiB budget before a verdict: `gzvprintf-length-check-dropped`, `gz_open-open-failure-path-leak`,
+`gz_open-reset-skipped`, `gzseek64-have-not-consumed`, `gzseek64-skip-wrong`, `patch0005-seek-next-unconditional`
+and `patch0004-printf-position-check-removed`. Their functions (`gzvprintf`, `gz_open`, `gzseek64`) contain a loop,
+and the kernel unfolds it when the bodies differ; for these rows the re-elaboration kill is the evidence.
 
 ## List format
 

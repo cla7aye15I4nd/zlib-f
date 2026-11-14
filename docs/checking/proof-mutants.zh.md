@@ -1,4 +1,4 @@
-<!-- source-sha256: 48f9e64aaeb128642710607493d6ca166bbd6e68f618347f05ecc2a6fa0251e6 -->
+<!-- source-sha256: 364ca9daed7d6cdb8bac82a916700ed2b9ce43d3d5fd10d4c4d98980eaaf0adf -->
 
 # 证明变异
 
@@ -70,7 +70,7 @@ gz 目标也不是公开入口；它们的行在三个安全表中。
 
 `macro-have-guard-dropped` 一行起初存活：目标只在 `x.have ≠ 0` 时运行宏，所以它的 `have = 0` 分支从未被运行。目标已更正（3c5292f7；回归 `tests/verification/regressions/gz-macro-have-zero.lean`），该行现在在 `zlib.h.gzgetc-macro` 中被杀死。
 
-变异分片以重新繁饰检查这三个表。对 `gz_refusal` 的内核重放拒绝全部十九行拒绝变异（每次重放在两秒内结束）。用每个结构性行的翻译修改对 `gz_sequence_safety_public` 做内核重放（不含位于循环体或机器算术中的行：`patch0003-*`、`gz_fetch` 与 `gz_read` 的三行 `patch0004`、`patch0004-gets-room-removed`、`gzgets-left-whole-length`、`gztell64-adds-max`），接受原始证明（51615 个依赖，峰值约 10.7 GB）。
+变异分片以重新繁饰检查这三个表。对 `gz_refusal` 的内核重放拒绝全部十九行拒绝变异（每次重放在两秒内结束）。用每个结构性行的翻译修改对 `gz_sequence_safety_public` 做内核重放（不含位于循环体或机器算术中的行：`patch0003-*`、`gz_fetch` 与 `gz_read` 的三行 `patch0004`、`patch0004-gets-room-removed`、`gzgets-left-whole-length`、`gztell64-adds-max`），接受原始证明（51615 个依赖，峰值约 10.7 GB），并拒绝所给 36 行中的 29 行，多数在被变异函数的重述处（`gzwrite_eq`、`gzclose_w_eq`、`gzgetc_macro_eq` 等），峰值约 10.7 GB。有七行在得出结论之前达到 12 GiB 预算：`gzvprintf-length-check-dropped`、`gz_open-open-failure-path-leak`、`gz_open-reset-skipped`、`gzseek64-have-not-consumed`、`gzseek64-skip-wrong`、`patch0005-seek-next-unconditional` 与 `patch0004-printf-position-check-removed`。它们所在的函数（`gzvprintf`、`gz_open`、`gzseek64`）含有循环，函数体不同时内核会展开该循环；对这些行，以重新繁饰杀死为证据。
 
 ## 列表格式
 
