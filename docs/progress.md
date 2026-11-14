@@ -2366,7 +2366,7 @@ Abbreviations:
 | function | route | theorem (Lean name, file) | registered? | domain gap or note |
 | --- | --- | --- | --- | --- |
 | inflateBackInit_ (macro inflateBackInit) | own goal | `ZlibF.Spec.Public.InflateBackInitProof.back_init_public`, `public-infback-init.lean` | yes | Full: bad version or size, NULL strm, NULL window, bad `windowBits`, allocation failure. The success branch needs a writable window of `2^wb` bytes (zlib.h's own rule). |
-| inflateBack | sequence (`Goal.inflate_back_sequence_safety`) | **none unconditional**. Only `inflate_back_sequence_safety_of (fast : FastOk)`, `infback.c.safety-reach.lean` | no | **Open**: `LEN_fast_p` and `fast_alias` are open (progress.md, about 15 h). Own `Goal.inflateBack` (functional) is not planned. NULL strm and state NULL are covered (`inflateBack_nullstream`, `inflateBack_nostate`, registered). The goal also narrows: `inputBound < 2^48`, the window is a slice of a heap byte block, every input chunk lies in a heap byte block (deviation rows). |
+| inflateBack | sequence (`Goal.inflate_back_sequence_safety`) | **none unconditional**. Only `inflate_back_sequence_safety_of (fast : FastOk)`, `infback.c.safety-reach.lean` | no | **Open**: `fast_env`, `fast_consumes` and `LEN_fast_p` are open (progress.md, about 13 h). Own `Goal.inflateBack` (functional) is not planned. NULL strm and state NULL are covered (`inflateBack_nullstream`, `inflateBack_nostate`, registered). The goal also narrows: `inputBound < 2^48`, the window is a slice of a heap byte block, every input chunk lies in a heap byte block (deviation rows). |
 | inflateBackEnd | own goal | `ZlibF.Spec.Public.InflateBackEndProof.back_end_public`, `public-infback-end.lean` | yes | Full: NULL, state NULL or zfree NULL, and `BackValid`. Clause 4 of the inflateBack sequence goal is also proved inside the conditional theorem only. |
 
 #### Checksums
@@ -2424,7 +2424,7 @@ regular-file world, not every OS-call oracle world).
 
 Documented functions with no checked no-fault theorem for their full documented domain:
 
-1. **inflateBack**: open. Only `inflate_back_sequence_safety_of (FastOk)`; `LEN_fast_p` and `fast_alias` are open. progress.md also lists the target row as "Not proved".
+1. **inflateBack**: open. Only `inflate_back_sequence_safety_of (FastOk)`; `fast_env`, `fast_consumes` and `LEN_fast_p` are open. progress.md also lists the target row as "Not proved".
 2. **deflateCopy**: registered. `source ≠ dest` is assumed (deviation row).
 3. **inflateEnd**: closed. NULL, state NULL, after `End`, after a failed init and the destination of a failed copy are covered by `Goal.inflate_refusal` (checked).
 4. **inflateCopy**: closed. An inconsistent source is covered by `Goal.inflate_refusal` (checked).
@@ -2555,7 +2555,7 @@ row and "Callbacks". Candidate generalisation, not planned now: an input chunk a
 (a caller's structure field, static data) for both decoders together, `inflate` and `inflateBack`;
 both rest on `inflate_fast`, whose entry takes a raw byte block.
 Composition (6f9575e7): `inflate_back_sequence_safety_of` proves the goal from `FastOk`, the fast
-path of `case LEN` on the invariant; `LEN_fast_p` and `fast_alias` are what is left.
+path of `case LEN` on the invariant; `fast_env`, `fast_consumes` and `LEN_fast_p` are what is left.
 
 | Lemma | Meaning | State | Hours |
 | --- | --- | --- | ---: |
@@ -2567,15 +2567,16 @@ path of `case LEN` on the invariant; `LEN_fast_p` and `fast_alias` are what is l
 | `STORED_p` | `case STORED`: length check and the copy through `PULL` and `ROOM`; the chunk may share the window's block | checked (eec477cd) | 0 |
 | `TABLE_p` | `case TABLE`: header, code-length code, decoded lengths, three `inflate_table` calls, tables installed (`TablesOk`, with the decode invariant and query stability), and the fall-through into `LEN` | checked (650c8931) | 0 |
 | `BitsShort` | Fewer than 8 bits held at the start of a round in `TYPE`, `TABLE`, `LEN` (`Short` in `Round`): lookups with pull witnesses, `consumed_gt` from `StableQuery` and `PrefixQuery`, the code-length decoding of `TABLE` by `CodeLengthContents` | checked (57c7fabd, 9e93b576) | 0 |
-| `fast_alias` | `inflate_fast` with the output inside the window block (`wnext = 0`): `Env.hwin` of `Goal.fast_safe` asks for a separate window block; plan: allow the output block with `wnext = 0` and copy through `Src.out` (`cpyG`), the exact-content lemmas keeping the separate case | open | 12 |
+| `fast_env` | From `PInv` at `LEN` after `RESTORE`: an `EnvG true` with `start = wsize`; the window aliasing itself is covered by c51943af (`EnvG true`, `inflate_fast_safe_progress`). Owner: batch C | open | 3 |
+| `fast_consumes` | `inflate_fast` on an `EnvG α` whose length table has `LenLeavesPositive` strictly consumes bits: `bits' + 8·avail_in' < bits + 8·avail_in` (the measure of route (a)). Owner: batch C | open | 6 (+3 risk) |
 | `LEN_slow_p` | `case LEN` without the fast path: literal, end of block, length/distance with the distance check and the copy through `ROOM`, invalid codes | checked (06e4a17d) | 0 |
-| `LEN_fast_p` | `case LEN` with the fast path: `RESTORE`, `fast_alias`, `LOAD` | open | 3 |
+| `LEN_fast_p` | `case LEN` with the fast path: `RESTORE`, `inflate_fast` on `fast_env`, `LOAD`; `PInv`, the measure (from `fast_consumes`) and `Short` afterwards. Owner: batch C | open | 4 |
 | `dispatch_p` | One round of the dispatch: every mode reachable from `PInv`; the measure falls or the call leaves with one of three results; the fast path is the premise `LenFast` until `LEN_fast_p` | checked (650c8931) | 0 |
 | `loop_p` | The dispatch loop ends within the fuel (`backMeasure < 2^64` from `inputBound < 2^48`) | checked (650c8931) | 0 |
 | `back_call` | One call: prologue, `loop_p`, epilogue (the last partial window to `out`, `next_in`, `avail_in`): `back_call_partial` (a call that returns, any input) and `back_call_total` (input below `2^48`) | checked (3a2a8753, f91f401d) | 0 |
 | `back_null`, `back_end` | Null stream; `inflateBackEnd` on a reachable history (`back_end_public`) | checked (6f9575e7) | 0 |
 | `back_reach_valid` | Every reachable history leaves a valid state over the caller's window (init, rebuffer, `back_call_partial` with the loop rule without a measure) | checked (6f9575e7) | 0 |
-| **Total** | | | **15** |
+| **Total** | | | **13** |
 
 #### Next work for every unfinished public target
 
