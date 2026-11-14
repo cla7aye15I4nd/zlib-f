@@ -552,9 +552,8 @@ ZlibF.Spec.Public.Proofs.Compress.compress2_safety
 ZlibF.Spec.Public.Proofs.Compress.compress_z_safety
 ZlibF.Spec.Public.Proofs.Compress.compress_safety
 ZlibF.Spec.Public.Proofs.DeflateInit2.deflateInit2_proof
-# gz read side, safety steps over GzInv (no open premise). gz_read_safe, gzread_step and gzfread_step need the
-# dev commit that drops the InflateStuckNoOutput premise (batch 3, b9002f2d); the non-vacuity goal lands from
-# the coordinator.
+# gz read side: safety steps over GzInv with no premise (InflateStuckNoOutput is inflateStuckNoOutput_holds), and
+# the non-vacuity goal of the gz sequence.
 ZlibF.Spec.Public.GzRead.gzclose_r_step_safe
 ZlibF.Spec.Public.GzRead.gz_read_safe
 ZlibF.Spec.Public.GzRead.gzread_step
