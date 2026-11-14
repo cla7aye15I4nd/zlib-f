@@ -451,7 +451,18 @@ def coverage() -> dict:
                               "gz_sequence_nonvacuity"],
         "safety_goals": ["inflate_sequence_safety", "deflate_sequence_safety", "uncompress_safe", "uncompress_z_safe", "uncompress2_safe", "uncompress2_z_safe", "compress_safety", "compress_z_safety", "compress2_safety", "compress2_z_safety",
                          "inflate_back_sequence_safety", "deflateCopy_safety",
-                         "inflate_refusal", "deflate_refusal", "gz_sequence_safety", "gz_refusal"],
+                         "inflate_refusal", "deflate_refusal", "gz_sequence_safety", "gz_refusal",
+                         "inflate_safety", "inflateSetDictionary_safety", "inflateGetDictionary_safety", "inflateSync_safety",
+                         "inflateReset_safety", "inflateReset2_safety", "inflatePrime_safety", "inflateMark_safety",
+                         "inflateGetHeader_safety", "deflate_safety", "deflateSetDictionary_safety", "deflateGetDictionary_safety",
+                         "deflateReset_safety", "deflateParams_safety", "deflateTune_safety", "deflateBound_safety",
+                         "deflateBound_z_safety", "deflatePending_safety", "deflateUsed_safety", "deflatePrime_safety",
+                         "deflateSetHeader_safety", "inflateEnd_safety", "deflateEnd_safety", "inflateInit2__safety",
+                         "inflateInit__safety", "deflateInit2__safety", "deflateInit__safety", "inflateCopy_safety",
+                         "adler32_safety", "adler32_z_safety", "adler32_combine_safety", "adler32_combine64_safety",
+                         "crc32_safety", "crc32_z_safety", "crc32_combine_gen_safety", "crc32_combine_gen64_safety",
+                         "crc32_combine_op_safety", "crc32_combine_safety", "crc32_combine64_safety", "zlibVersion_safety",
+                         "zlibCompileFlags_safety"],
     }
     for group, suffixes in groups.items():
         expected = ["ZlibF.Spec.Public.Goal." + suffix for suffix in suffixes]
