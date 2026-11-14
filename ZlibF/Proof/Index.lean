@@ -1709,6 +1709,7 @@ import ZlibF.Proof.«gz.read-decomp»
 import ZlibF.Proof.«inflate.c.head-uses-input»
 import ZlibF.Proof.«inflate.c.stuck-no-output»
 import ZlibF.Proof.«gz.read-leaf-common»
+import ZlibF.Proof.«gzread.c.skip-terminates»
 import ZlibF.Proof.«gz.read-getc-step»
 import ZlibF.Proof.«gz.read-direct-step»
 import ZlibF.Proof.«gz.read-gets-step»
