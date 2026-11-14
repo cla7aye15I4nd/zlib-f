@@ -147,17 +147,24 @@ records current evidence and remaining work.
 [Documentation](README.md) · [API](spec/api/README.md) · [Checking](checking/README.md)
 
 **Work in progress. The project is not finished.**
-The project is finished when two results are accepted: `inflate` is safe on every
-input, and `deflate` is safe on every input, both with their call sequences. The safety
+The project is finished when the safety results are accepted, in this order: `inflate` is
+safe on every input; `deflate` is safe on every input, both with their call sequences; then
+every other public function, including the gzip file interface and `inflateBack`. The safety
 of `compress` and `uncompress` follows as compositions. Functional correctness (the
 output of `inflate` equals the format, the output of `deflate` decodes to its input) is
 not planned since 2026-11-11, except a functional fact that a planned safety proof depends
 on, which is in scope; what is already proved of it stays.
-The target is the default x86_64 Linux build with the default allocator. The gzip file
-interface, the callback decoder, model-only statements and other build configurations
-are not planned either: see [scope](progress.md#scope). The functions that zlib.h declares
+The target is the default x86_64 Linux build with the default allocator. Model-only
+statements and other build configurations are not planned either: see
+[scope](progress.md#scope). The functions that zlib.h declares
 undocumented and not part of the zlib API are not required public targets. Compiler and OS
 correctness and performance are outside the proof.
+
+Each public function has a safety goal in `ZlibF/Spec/Safety/` and a functional goal in
+`ZlibF/Spec/Functional/`; `tests/audit/public-api.json` names both. The acceptance audit
+requires the safety goals and the non-vacuity goals, except those `open_safety` lists with an
+owner; a proved functional goal is audited in full. [The split](design/safety-functional-split.md)
+gives the rules and [safety](spec/safety.md#where-the-goals-are) the layout.
 
 Current status, counts and the ordered list of remaining work are only in
 [progress](progress.md). Earlier narrative checkpoints are kept, unchanged, in the

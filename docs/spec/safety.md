@@ -9,6 +9,29 @@ where the model needs a separate argument before a model result applies to C.
 The accepted [platform assumptions](platform.md), including the per-byte-object
 size bound, are environmental premises. Execution proofs establish their preservation.
 
+## Where the goals are
+
+Every safety goal is a Lean definition `ZlibF.Spec.Public.Goal.<name>` in `ZlibF/Spec/Safety/`.
+Reading that directory and what it imports gives the whole required target: the fast gate's
+`scripts/check-spec-layers.py` rejects an import of a functional specification from it.
+
+| Function | Safety goal | File |
+| --- | --- | --- |
+| inflate and deflate stream functions | `Goal.<function>_safety`: one more call on a reachable stream (section 2) | `Safety/Streams.lean` |
+| `inflateEnd`, `deflateEnd` | `Goal.<function>_safety`: the stream frees what it owns | `Safety/Streams.lean` |
+| init functions | `Goal.<function>_safety` on a fresh record | `Safety/Initialisation.lean` |
+| `inflateCopy`, `deflateCopy` | `Goal.<function>_safety` | `Safety/Copy.lean` |
+| checksums, `zlibVersion`, `zlibCompileFlags` | `Goal.<function>_safety`: the call returns and the heap is unchanged | `Safety/Checksums.lean`, `Safety/Queries.lean` |
+| `compress*`, `uncompress*` | `Goal.compress*_safety`, `Goal.uncompress*_safe` | `Safety/Utilities.lean` |
+| `compressBound`, `compressBound_z` | the full contract (a pure function) | `Functional/Queries.lean` |
+| gzip file interface, `inflateBack` | the sequence goals `Goal.gz_sequence_safety`, `Goal.inflate_back_sequence_safety` | `Public/GzSafety.lean`, `Public/Sequences.lean` |
+
+`tests/audit/public-api.json` gives each function's `safety_goal` and `functional_goal`. A
+`NULL` or inconsistent stream is the domain of `Goal.inflate_refusal`, `Goal.deflate_refusal` and
+`Goal.gz_refusal`. The non-vacuity goals (`Goal.*_initialisation_domain`) show that each
+domain has a member. The audit requires all of these; `open_safety` lists, with an owner, the
+ones that have no registered theorem yet.
+
 ## Terms and reading guide
 
 **Undefined behaviour (UB)** means a program action for which the applicable C
