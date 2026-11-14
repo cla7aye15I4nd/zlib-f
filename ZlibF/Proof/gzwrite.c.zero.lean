@@ -89,10 +89,9 @@ theorem inv_rebuf {H : Heap} {t : GzState} (inv : GzInv H i t) (hw : t.mode = GZ
         ⟨(c.distinct.2 p hp b hb).1, by rw [hso]; exact (c.distinct.2 p hp b hb).2⟩⟩
       live := fun b hb => (putGz_live hs b).2 (c.live b ((hown b).1 hb))
       pos := c.pos
-      next := by
-        rcases c.next with hn | ⟨b, off, a, hxn, hbi, ho, hmb, hb, hle⟩
-        · exact Or.inl hn
-        · exact Or.inr ⟨b, off, a, hxn, hbi, (hown b).2 ho, hmb, hb, hle⟩
+      next := fun hh => by
+        obtain ⟨b, off, a, hxn, hbi, ho, hmb, hb, hle⟩ := c.next hh
+        exact ⟨b, off, a, hxn, hbi, (hown b).2 ho, hmb, hb, hle⟩
       nullHave := c.nullHave
       recordFree := fun x => c.recordFree ((hso i).1 x) }
   · exact {

@@ -66,13 +66,14 @@ structure GzGood (h : Heap) (gs : Nat) (s : GzState) : Prop where
   uniq : Uniq h
   fresh : Fresh h
 
-/-- `x.next` can be advanced by up to `x.have` bytes: it is `NULL` with nothing buffered, or points into a live array with
-`x.have` bytes after it; and it does not point into the message block. (After a direct read it can dangle; with patch
-0005 a seek with nothing buffered does not use it: `seekTail_fwd_empty`.) -/
+/-- With buffered output (`x.have ≠ 0`), `x.next` can be advanced by up to `x.have` bytes: it points into a live array
+with `x.have` bytes after it, and not into the message block. With nothing buffered it says nothing: after a direct read
+`x.next` is left in the caller's buffer and can dangle (R-4), or it was never written (R-3); with patch 0005 nothing
+reads or advances it then (`seekTail_fwd_empty`). -/
 def NextOk (h : Heap) (s : GzState) : Prop :=
-  ((s.x.next = .null ∧ s.x.«have» = 0) ∨
+  (s.x.«have» ≠ 0 →
     ∃ r a off, s.x.next = .ref r off ∧ Space.get h r = some a ∧ off + s.x.«have».toNat ≤ a.size) ∧
-  (∀ b, ptrBlk s.x.next = some b → ptrBlk s.msg ≠ some b)
+  (s.x.«have» ≠ 0 → ∀ b, ptrBlk s.x.next = some b → ptrBlk s.msg ≠ some b)
 
 /-- The pointer advanced by `n` bytes (`Ptr.add` when it does not fault). -/
 def padv : BPtr → Nat → BPtr

@@ -499,7 +499,7 @@ theorem GzInv.put_past {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) (h
       by show s.x.pos.toInt + (0 : Int64).toInt ≤ _; simp; omega, c.pos.2.2⟩ ?_ ?_
   · intro _
     exact ⟨r.how, r.copyDirect, r.gzipDirect, r.junk, r.flags.1, Or.inr rfl, r.flags.2.2,
-      fun hz => (r.unalloc hz).2.2.1, r.againSize, r.posHave, fun _ => rfl⟩
+      fun hz => (r.unalloc hz).2.2.1, r.againSize, r.posHave, fun _ => rfl, r.againEof⟩
   · intro hw; rw [hm] at hw; cases hw
 
 /-- The measure of the `gz_skip` loop: twice the skip, plus one when a fetch is due. -/

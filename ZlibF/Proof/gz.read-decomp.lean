@@ -470,7 +470,7 @@ theorem inflate_step (head : InflateHeadUsesInput) {h : Heap} {i : Nat} {s : GzS
             exact liveOfBytes after ob oarr' houtb'
           · exact (sownAfter b ((hsoA b).1 e)).2.1
         pos := c0.pos
-        next := Or.inl rfl
+        next := fun hh => absurd rfl hh
         nullHave := fun _ => rfl
         recordFree := fun ho => recFreeAfter ((hsoA i).1 ho) }
     · exact {
@@ -499,7 +499,15 @@ theorem inflate_step (head : InflateHeadUsesInput) {h : Heap} {i : Nat} {s : GzS
           hstate', good'.live.hs, by rw [ctl.2.2.1]; exact hhead⟩
         posHave := rd.posHave
         againSize := rd.againSize
-        haveSkip := rd.haveSkip }
+        haveSkip := rd.haveSkip
+        againEof := fun ha he => by
+          have h1 : s.strm.avail_in = 0 := rd.againEof ha he
+          have h0 : s.strm.avail_in.toNat = 0 := by rw [h1]; rfl
+          have := acct.2.2.1
+          show z'.avail_in = 0
+          apply UInt32.toNat_inj.mp
+          show z'.avail_in.toNat = 0
+          omega }
   -- ownership across the call
   have ownA : ∀ b, GzOwned (putGz after i (clearOut s')) i (clearOut s') b ↔ GzOwned after i s' b :=
     putGz_owned (s' := clearOut s') hrec' ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
@@ -1037,10 +1045,9 @@ theorem GzInv.zero_input {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) 
         ⟨(c.distinct.2 p hp b hb).1, by rw [hso]; exact (c.distinct.2 p hp b hb).2⟩⟩
       live := fun b hb => (putGz_live hs b).2 (c.live b ((hown b).1 hb))
       pos := c.pos
-      next := by
-        rcases c.next with hn | ⟨b, off, a, hx, hbi, ho, hmb, hb, hle⟩
-        · exact Or.inl hn
-        · exact Or.inr ⟨b, off, a, hx, hbi, (hown b).2 ho, hmb, hb, hle⟩
+      next := fun hh => by
+        obtain ⟨b, off, a, hx, hbi, ho, hmb, hb, hle⟩ := c.next hh
+        exact ⟨b, off, a, hx, hbi, (hown b).2 ho, hmb, hb, hle⟩
       nullHave := c.nullHave
       recordFree := by rw [hso]; exact c.recordFree }
   · intro hm
@@ -1063,7 +1070,8 @@ theorem GzInv.zero_input {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) 
         exact ⟨StreamReachable.rebuffer reach hreb (fun _ => fitH), _, k, st, gH, hzst, hk, hhead⟩
       posHave := r.posHave
       againSize := r.againSize
-      haveSkip := r.haveSkip }
+      haveSkip := r.haveSkip
+      againEof := fun _ _ => rfl }
   · intro hm
     exact absurd (hm0.symm.trans hm) (by decide)
 
@@ -1092,13 +1100,14 @@ theorem upto_put {h : Heap} {i : Nat} {s s2 : GzState} (hu : GzInvUpToOutput h i
     (rd : (s2.how = LOOK ∨ s2.how = GZ_COPY ∨ s2.how = GZIP) ∧ (s2.how = GZ_COPY → s2.direct = 0 ∨ s2.direct = 1) ∧
       (s2.how = GZIP → s2.direct = 0) ∧ (s2.junk = -1 ∨ s2.junk = 0 ∨ s2.junk = 1) ∧
       (s2.eof = 0 ∨ s2.eof = 1) ∧ (s2.past = 0 ∨ s2.past = 1) ∧ (s2.again = 0 ∨ s2.again = 1) ∧
-      (s.size = 0 → s2.how = LOOK) ∧ (s.size = 0 → s2.again = 0)) :
+      (s.size = 0 → s2.how = LOOK) ∧ (s.size = 0 → s2.again = 0) ∧
+      (s2.again ≠ 0 → s2.eof ≠ 0 → s2.strm.avail_in = 0)) :
     GzInvUpToOutput (putGz h i s2) i s2 := by
   obtain ⟨hs, inv⟩ := hu
   have c := inv.common
   have rr := inv.reader hm
   obtain ⟨e1, e2, e3, e4, e5, e6, e7, e8, e9, e10, e11, e12⟩ := same
-  obtain ⟨r1, r2, r3, r4, r5, r6, r7, r8, r9⟩ := rd
+  obtain ⟨r1, r2, r3, r4, r5, r6, r7, r8, r9, r10⟩ := rd
   refine ⟨by simp [putGz], ?_⟩
   have e : putGz (putGz h i s2) i (clearOut s2) = putGz (putGz h i (clearOut s)) i (clearOut s2) := by
     simp only [putGz, upd_upd]
@@ -1113,7 +1122,7 @@ theorem upto_put {h : Heap} {i : Nat} {s s2 : GzState} (hu : GzInvUpToOutput h i
     rw [e11, e12]
     exact p
   · intro _
-    refine ⟨r1, r2, r3, r4, r5, r6, r7, r8, r9, ?_, fun hh => absurd rfl hh⟩
+    refine ⟨r1, r2, r3, r4, r5, r6, r7, r8, r9, ?_, fun hh => absurd rfl hh, r10⟩
     show s2.x.pos.toInt + (0 : UInt32).toNat ≤ 9223372036854775807
     rw [e11]
     exact ph
@@ -1401,7 +1410,7 @@ theorem errs_run (St : Stat i out h0 s0) {fs : Fs} {h : Heap} {s : GzState} (B :
         upto_put hu2 hm ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
           ⟨Or.inl rfl, (fun e => absurd (show LOOK = GZ_COPY from e) (by decide)),
             (fun e => absurd (show LOOK = GZIP from e) (by decide)), rd.junk, Or.inr rfl, rd.flags.2.1, rd.flags.2.2,
-            fun hz => absurd hz hsz, fun hz => absurd hz hsz⟩
+            fun hz => absurd hz hsz, fun hz => absurd hz hsz, fun _ _ => rfl⟩
       have B3 : Base i out h0 fs0 s0 fs (putGz (putGz h i s2) i s3) s3 :=
         put_trans St B2 hu3 ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩ ⟨rfl, rfl, rfl⟩ rfl rfl (Nat.le_refl _) rfl B2.ml
       have hs2 : (putGz h i s2).gzstates i = some s2 := by simp [putGz]
@@ -1507,7 +1516,7 @@ theorem run_run (head : InflateHeadUsesInput) (St : Stat i out h0 s0) (had : UIn
     have hu3 : GzInvUpToOutput (putGz h2 i s3) i s3 :=
       upto_put B2.inv hm ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
         ⟨rd.how, rd.copyDirect, rd.gzipDirect, Or.inr (Or.inl rfl), rd.flags.1, rd.flags.2.1, rd.flags.2.2,
-          fun hz => absurd hz hsz, fun hz => absurd hz hsz⟩
+          fun hz => absurd hz hsz, fun hz => absurd hz hsz, rd.againEof⟩
     have B3 : Base i out h0 fs0 s0 fs (putGz h2 i s3) s3 :=
       put_trans St B2 hu3 ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩ ⟨rfl, rfl, rfl⟩ rfl rfl (Nat.le_refl _) rfl B2.ml
     have hu : (StateT.lift (updS (gzSt i) fun s => { s with junk := 0 }) : G Unit) fs h2 =
@@ -1736,7 +1745,7 @@ theorem tail_run (St : Stat i out h0 s0) (had : UInt32) (hhad : had.toNat = out.
       upto_put B2.inv hm ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
         ⟨Or.inl rfl, (fun e => absurd (show LOOK = GZ_COPY from e) (by decide)),
           (fun e => absurd (show LOOK = GZIP from e) (by decide)), Or.inr (Or.inl rfl), rd.flags.1, rd.flags.2.1,
-          rd.flags.2.2, fun hz => absurd hz hsz, fun hz => absurd hz hsz⟩
+          rd.flags.2.2, fun hz => absurd hz hsz, fun hz => absurd hz hsz, rd.againEof⟩
     have B3 := put_trans St B2 hu3 ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩ ⟨rfl, rfl, rfl⟩ rfl rfl (Nat.le_refl _) rfl B2.ml
     have hu4 : (StateT.lift (updS (gzSt i) fun s => { s with junk := 0, how := LOOK }) : G Unit) fs
         (putGz (putGz h i s1) i s2) = .ok (((), fs), putGz (putGz (putGz h i s1) i s2) i s3) := lift_ok (updS_run hs2 _)

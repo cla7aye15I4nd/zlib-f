@@ -317,11 +317,10 @@ theorem GzInv.frame_data (inv : GzInv h i s) (fr : Frame h after (fun b => ¬ Gz
         ⟨(c.distinct.2 p hp b hb).1, by rw [hso]; exact (c.distinct.2 p hp b hb).2⟩⟩
       live := fun b hb => hlive b ((hown b).1 hb)
       pos := c.pos
-      next := by
-        rcases c.next with hn | ⟨b, off, a, hx, hbi, ho, hmb, hb, hle⟩
-        · exact Or.inl hn
-        · obtain ⟨a', ha', hs'⟩ := hsize b a ho hb
-          exact Or.inr ⟨b, off, a', hx, hbi, (hown b).2 ho, hmb, ha', by rw [hs']; exact hle⟩
+      next := fun hh => by
+        obtain ⟨b, off, a, hx, hbi, ho, hmb, hb, hle⟩ := c.next hh
+        obtain ⟨a', ha', hs'⟩ := hsize b a ho hb
+        exact ⟨b, off, a', hx, hbi, (hown b).2 ho, hmb, ha', by rw [hs']; exact hle⟩
       nullHave := c.nullHave
       recordFree := fun hn => c.recordFree ((hso i).1 hn) }
   · intro hm
@@ -347,7 +346,8 @@ theorem GzInv.frame_data (inv : GzInv h i s) (fr : Frame h after (fun b => ¬ Gz
           z, k, st, by rw [hget]; exact hzget, hzst, by rw [he]; exact hk, hhead⟩
       posHave := r.posHave
       againSize := r.againSize
-      haveSkip := r.haveSkip }
+      haveSkip := r.haveSkip
+      againEof := r.againEof }
   · intro hm
     have w := inv.writer hm
     exact {
@@ -1005,9 +1005,11 @@ theorem load_frame (i : Nat) (buf : BPtr) (len : UInt32) (h : Heap) (s : GzState
     refine ⟨a'', by rw [putGz_space]; exact h2, hsz, fun j hj hnc => hout j hj (fun hin => hnc ?_)⟩
     exact ⟨⟨buf, len.toNat⟩, List.mem_singleton.mpr rfl, off', hp, hin.1, hin.2⟩
 
-/-- Writing the flags `again` and `eof` of a reader keeps the invariant up to the buffered output. -/
+/-- Writing the flags `again` and `eof` of a reader keeps the invariant up to the buffered output, when a stall at
+the end of the input leaves no pending input (`hae`). -/
 theorem upToOutput_flags {h : Heap} {i : Nat} {s : GzState} (hu : GzInvUpToOutput h i s) (hm : s.mode = GZ_READ)
-    (ag ef : Int32) (hag : ag = 0 ∨ ag = 1) (hef : ef = 0 ∨ ef = 1) (hsz : s.size = 0 → ag = 0) :
+    (ag ef : Int32) (hag : ag = 0 ∨ ag = 1) (hef : ef = 0 ∨ ef = 1) (hsz : s.size = 0 → ag = 0)
+    (hae : ag ≠ 0 → ef ≠ 0 → s.strm.avail_in = 0) :
     GzInvUpToOutput (putGz h i { s with again := ag, eof := ef }) i { s with again := ag, eof := ef } := by
   obtain ⟨hs, inv⟩ := hu
   have hm' : (clearOut s).mode = GZ_READ := hm
@@ -1020,7 +1022,8 @@ theorem upToOutput_flags {h : Heap} {i : Nat} {s : GzState} (hu : GzInvUpToOutpu
   rw [e]
   refine inv.put_scalars ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩ ⟨c.want.1, c.want.2, Or.inr rfl⟩
     c.pos (Nat.le_refl _) (fun _ => ⟨rd.how, rd.copyDirect, rd.gzipDirect, rd.junk, hef, rd.flags.2.1, hag,
-      fun hz => (rd.unalloc hz).2.2.1, hsz, rd.posHave, fun hh => absurd rfl hh⟩) (fun hw => absurd (hm'.symm.trans hw) (by decide))
+      fun hz => (rd.unalloc hz).2.2.1, hsz, rd.posHave, fun hh => absurd rfl hh, hae⟩)
+    (fun hw => absurd (hm'.symm.trans hw) (by decide))
 
 theorem upd_self_heap {H : Heap} {i : Nat} {s : GzState} (hs : H.gzstates i = some s) : putGz H i s = H := by
   show { H with gzstates := upd H.gzstates i (some s) } = H
@@ -1035,14 +1038,16 @@ theorem gz_load_paths (i : Nat) (buf : BPtr) (len : UInt32) (h : Heap) (fs : Fs)
     (hu : GzInvUpToOutput h i s) (hm : s.mode = GZ_READ) (hsz : s.size ≠ 0) (hfs : FileSystem fs)
     (hw : Writable h buf len.toNat)
     (hroot : (∃ b off, buf = .ref (.blk b) off ∧ DataBuf (clearOut s) b) ∨
-      (∀ b, ByteRoot buf b → ¬ GzOwned h i s b)) :
+      (∀ b, ByteRoot buf b → ¬ GzOwned h i s b))
+    (heofin : s.eof ≠ 0 → s.strm.avail_in = 0) :
     ∃ l fs' H, Zlib.Gzread.gz_load (gzSt i) buf len fs h = loadTail i l fs' H ∧
       LoadInv i buf len { s with again := 0 } (putGz h i { s with again := 0 }) { fs with errno := 0 } l fs' H ∧
       l.«have».toNat ≤ len.toNat ∧
       (¬ (l.ret < 0 ∧ ¬ (BLOCKED fs'.errno = true ∧ l.«have» ≠ 0)) →
         ∃ fs'' after, loadTail i l fs' H = .ok (((0, l.«have»), fs''), after) ∧ fs'' = fs' ∧ FdsKept fs fs'' ∧
           (∀ k, after.istates k = h.istates k) ∧ GzPost h i s [⟨buf, len.toNat⟩] fs'' after GzInvUpToOutput ∧
-          ∃ ag ef : Int32, after.gzstates i = some { s with again := ag, eof := ef } ∧ (l.«have» = 0 → ef = 1)) := by
+          ∃ ag ef : Int32, after.gzstates i = some { s with again := ag, eof := ef } ∧ (l.«have» = 0 → ef = 1) ∧
+            (ag ≠ 0 → ef = s.eof)) := by
   obtain ⟨hs, inv⟩ := hu
   let s1 : GzState := { s with again := 0 }
   let h1 := putGz h i s1
@@ -1050,7 +1055,7 @@ theorem gz_load_paths (i : Nat) (buf : BPtr) (len : UInt32) (h : Heap) (fs : Fs)
   -- the invariant after the prefix
   have hu1 : GzInvUpToOutput h1 i s1 := by
     have := upToOutput_flags ⟨hs, inv⟩ hm 0 s.eof (Or.inl rfl)
-      ((inv.reader hm).flags.1) (fun _ => rfl)
+      ((inv.reader hm).flags.1) (fun _ => rfl) (fun h0 _ => absurd rfl h0)
     exact this
   have hw1 : Writable h1 buf len.toNat := by
     rcases hw with hn | ⟨r, off, a, hp, ha, hro, hfit⟩
@@ -1087,12 +1092,12 @@ theorem gz_load_paths (i : Nat) (buf : BPtr) (len : UInt32) (h : Heap) (fs : Fs)
     (putGz_live hs b).1 (inv.common.live b
       ((putGz_owned (s' := clearOut s) hs ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩ b).2 ho))
   -- the post-condition for a final record `s2` that only changes `again`/`eof`
-  have post : ∀ ag ef, (ag = 0 ∨ ag = 1) → (ef = 0 ∨ ef = 1) →
+  have post : ∀ ag ef, (ag = 0 ∨ ag = 1) → (ef = 0 ∨ ef = 1) → (ag ≠ 0 → ef ≠ 0 → s.strm.avail_in = 0) →
       GzPost h i s [⟨buf, len.toNat⟩] fs' (putGz H i { s1 with again := ag, eof := ef }) GzInvUpToOutput := by
-    intro ag ef hag hef
+    intro ag ef hag hef hae
     obtain ⟨bf, hlive, hown⟩ := load_frame i buf len h s { fs with errno := 0 } fs' l H
       { s1 with again := ag, eof := ef } hs hw linv0 ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
-    refine ⟨hfsH, _, upToOutput_flags huH hm ag ef hag hef (fun hz => absurd hz hsz), rfl, rfl, bf, ?_, ?_⟩
+    refine ⟨hfsH, _, upToOutput_flags huH hm ag ef hag hef (fun hz => absurd hz hsz) hae, rfl, rfl, bf, ?_, ?_⟩
     · intro b
       constructor
       · intro hl
@@ -1113,14 +1118,14 @@ theorem gz_load_paths (i : Nat) (buf : BPtr) (len : UInt32) (h : Heap) (fs : Fs)
     have hge : getErrno fs' H = .ok ((fs'.errno, fs'), H) := rfl
     simp only [g_bind_app, g_lift_app, liftM, monadLift, MonadLift.monadLift,
       MonadLiftT.monadLift, hge, hb.1, updS_run hrecH, hne, g_pure_app, ite_true, if_true]
-    exact ⟨fs', _, rfl, rfl, hkept, hist, post 1 s.eof (Or.inr rfl) heof, 1, s.eof, (by first | rfl | (simp only [Zlib.Gzlib.Spec.setS, putGz, upd_same]; rfl) | simp only [Zlib.Gzlib.Spec.setS, putGz, upd_same]),
-      fun h0 => absurd h0 hb.2⟩
+    exact ⟨fs', _, rfl, rfl, hkept, hist, post 1 s.eof (Or.inr rfl) heof (fun _ he => heofin he), 1, s.eof, (by first | rfl | (simp only [Zlib.Gzlib.Spec.setS, putGz, upd_same]; rfl) | simp only [Zlib.Gzlib.Spec.setS, putGz, upd_same]),
+      fun h0 => absurd h0 hb.2, fun _ => rfl⟩
   · rw [if_neg hr]
     by_cases hz : (l.ret == 0) = true
     · simp only [hz, ite_true, g_bind_app, g_lift_app, liftM, monadLift, MonadLift.monadLift,
         MonadLiftT.monadLift, updS_run hrecH, g_pure_app]
-      exact ⟨fs', _, rfl, rfl, hkept, hist, post 0 1 (Or.inl rfl) (Or.inr rfl), 0, 1, (by first | rfl | (simp only [Zlib.Gzlib.Spec.setS, putGz, upd_same]; rfl) | simp only [Zlib.Gzlib.Spec.setS, putGz, upd_same]),
-        fun _ => rfl⟩
+      exact ⟨fs', _, rfl, rfl, hkept, hist, post 0 1 (Or.inl rfl) (Or.inr rfl) (fun h0 _ => absurd rfl h0), 0, 1, (by first | rfl | (simp only [Zlib.Gzlib.Spec.setS, putGz, upd_same]; rfl) | simp only [Zlib.Gzlib.Spec.setS, putGz, upd_same]),
+        fun _ => rfl, fun h0 => absurd rfl h0⟩
     · simp only [hz, Bool.false_eq_true, ite_false, g_bind_app, g_pure_app]
       have hself : putGz H i { s1 with again := 0, eof := s.eof } = H := upd_self_heap hrecH
       -- `ret > 0`: the loop left without `brk`, after a trip that counted bytes
@@ -1138,8 +1143,8 @@ theorem gz_load_paths (i : Nat) (buf : BPtr) (len : UInt32) (h : Heap) (fs : Fs)
             simp only [Int32.toInt_zero] at hle0 hr ⊢
             omega
           rw [h0]; rfl
-      refine ⟨fs', H, rfl, rfl, hkept, hist, ?_, 0, s.eof, hrecH, fun h0 => absurd h0 (hbrkhave hbf)⟩
+      refine ⟨fs', H, rfl, rfl, hkept, hist, ?_, 0, s.eof, hrecH, fun h0 => absurd h0 (hbrkhave hbf), fun _ => rfl⟩
       rw [← hself]
-      exact post 0 s.eof (Or.inl rfl) heof
+      exact post 0 s.eof (Or.inl rfl) heof (fun h0 _ => absurd rfl h0)
 
 end ZlibF.Spec.Public.GzRead

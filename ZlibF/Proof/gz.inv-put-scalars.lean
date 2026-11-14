@@ -105,7 +105,8 @@ theorem GzInv.put_scalars_of {h : Heap} {i : Nat} {s s' : GzState} (inv : GzInv 
       (s'.how = GZIP → s'.direct = 0) ∧ (s'.junk = -1 ∨ s'.junk = 0 ∨ s'.junk = 1) ∧
       (s'.eof = 0 ∨ s'.eof = 1) ∧ (s'.past = 0 ∨ s'.past = 1) ∧ (s'.again = 0 ∨ s'.again = 1) ∧
       (s.size = 0 → s'.how = LOOK) ∧ (s.size = 0 → s'.again = 0) ∧
-      s'.x.pos.toInt + s'.x.have.toNat ≤ 9223372036854775807 ∧ (s'.x.have ≠ 0 → s'.skip = 0))
+      s'.x.pos.toInt + s'.x.have.toNat ≤ 9223372036854775807 ∧ (s'.x.have ≠ 0 → s'.skip = 0) ∧
+      (s'.again ≠ 0 → s'.eof ≠ 0 → s'.strm.avail_in = 0))
     (wr : s.mode = GZ_WRITE → s'.reset = 0 ∨ s'.reset = 1) :
     GzInv (putGz h i s') i s' := by
   obtain ⟨hpath, hmsg, hin, hout, hsize, hmode, hdirect, hstrm, hnext, herr⟩ := same
@@ -155,17 +156,16 @@ theorem GzInv.put_scalars_of {h : Heap} {i : Nat} {s s' : GzState} (inv : GzInv 
         exact c.distinct
       live := fun b hb => (putGz_live hs b).2 (c.live b ((hown b).1 hb))
       pos := pos
-      next := by
-        rcases c.next with hn | ⟨b, off, a, hx, hbi, ho, hmb, hb, hle⟩
-        · exact Or.inl (by rw [hnext]; exact hn)
-        · exact Or.inr ⟨b, off, a, by rw [hnext]; exact hx, hbi, (hown b).2 ho, by rw [hmsg]; exact hmb, hb,
-            by have := have_le; omega⟩
+      next := fun hh => by
+        obtain ⟨b, off, a, hx, hbi, ho, hmb, hb, hle⟩ := c.next (fun e => hh (hzero e))
+        exact ⟨b, off, a, by rw [hnext]; exact hx, hbi, (hown b).2 ho, by rw [hmsg]; exact hmb, hb,
+          by have := have_le; omega⟩
       nullHave := fun hn => hzero (c.nullHave (by rw [← hnext]; exact hn))
       recordFree := by rw [hso]; exact c.recordFree }
   · intro hm'
     have hm : s.mode = GZ_READ := by rw [← hmode]; exact hm'
     have r := inv.reader hm
-    obtain ⟨hhow, hcopy, hgzip, hjunk, heof, hpast, hagain, hlook, hagz, hph, hhs⟩ := rd hm
+    obtain ⟨hhow, hcopy, hgzip, hjunk, heof, hpast, hagain, hlook, hagz, hph, hhs, hae⟩ := rd hm
     exact {
       how := hhow
       copyDirect := hcopy
@@ -194,7 +194,8 @@ theorem GzInv.put_scalars_of {h : Heap} {i : Nat} {s s' : GzState} (inv : GzInv 
           z, k, st, by rw [hget]; exact hzget, hzst, hk, hhead⟩
       posHave := hph
       againSize := fun hz => hagz (by rw [← hsize]; exact hz)
-      haveSkip := hhs }
+      haveSkip := hhs
+      againEof := hae }
   · intro hm'
     have hm : s.mode = GZ_WRITE := by rw [← hmode]; exact hm'
     have w := inv.writer hm
@@ -243,7 +244,8 @@ theorem GzInv.put_scalars {h : Heap} {i : Nat} {s s' : GzState} (inv : GzInv h i
       (s'.how = GZIP → s'.direct = 0) ∧ (s'.junk = -1 ∨ s'.junk = 0 ∨ s'.junk = 1) ∧
       (s'.eof = 0 ∨ s'.eof = 1) ∧ (s'.past = 0 ∨ s'.past = 1) ∧ (s'.again = 0 ∨ s'.again = 1) ∧
       (s.size = 0 → s'.how = LOOK) ∧ (s.size = 0 → s'.again = 0) ∧
-      s'.x.pos.toInt + s'.x.have.toNat ≤ 9223372036854775807 ∧ (s'.x.have ≠ 0 → s'.skip = 0))
+      s'.x.pos.toInt + s'.x.have.toNat ≤ 9223372036854775807 ∧ (s'.x.have ≠ 0 → s'.skip = 0) ∧
+      (s'.again ≠ 0 → s'.eof ≠ 0 → s'.strm.avail_in = 0))
     (wr : s.mode = GZ_WRITE → s'.reset = 0 ∨ s'.reset = 1) :
     GzInv (putGz h i s') i s' :=
   inv.put_scalars_of inv.common.recordFree same want pos have_le rd wr

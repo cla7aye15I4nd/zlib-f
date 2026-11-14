@@ -172,10 +172,9 @@ theorem GzInv.set_output {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) 
         ⟨(c.distinct.2 q hq b hb).1, by rw [hso]; exact (c.distinct.2 q hq b hb).2⟩⟩
       live := fun b hb => (putGz_live hs b).2 (c.live b ((hown b).1 hb))
       pos := c.pos
-      next := by
-        rcases c.next with hn | ⟨b, off, a, hx, hbi, ho, hmb, hb, hle⟩
-        · exact Or.inl hn
-        · exact Or.inr ⟨b, off, a, hx, hbi, (hown b).2 ho, hmb, hb, hle⟩
+      next := fun hh => by
+        obtain ⟨b, off, a, hx, hbi, ho, hmb, hb, hle⟩ := c.next hh
+        exact ⟨b, off, a, hx, hbi, (hown b).2 ho, hmb, hb, hle⟩
       nullHave := c.nullHave
       recordFree := by rw [hso]; exact c.recordFree }
   · intro hm
@@ -198,7 +197,8 @@ theorem GzInv.set_output {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) 
         exact ⟨StreamReachable.rebuffer reach hreb (fun _ => fitH), _, k, st, gH, hzst, hk, hhead⟩
       posHave := r.posHave
       againSize := r.againSize
-      haveSkip := r.haveSkip }
+      haveSkip := r.haveSkip
+      againEof := r.againEof }
   · intro hm
     exact absurd (hm0.symm.trans hm) (by decide)
 
@@ -469,8 +469,8 @@ theorem fetch_copy (i : Nat) (h : Heap) (fs : Fs) (s : GzState) (hu : GzInvUpToO
         { s with x := { s.x with next := s.out } } b) :=
     Or.inl ⟨ob, 0, hout', hsz, Or.inr ⟨Or.inl hm, hout'⟩⟩
   refine RunSafe.bind ((gz_load_safe i s.out (if room != 0 then room else 1) _ fs _ hu1 hm hsz hfs hw
-    hroot).fin_mono (fun _ => trivial)) ?_
-  rintro ⟨r, hv⟩ fs2 h2 ⟨hr, hle2, hk, post, ⟨ag, ef, e, m, hrec, herr, -, -, heof⟩, hbud⟩
+    hroot (fun _ => hcopy)).fin_mono (fun _ => trivial)) ?_
+  rintro ⟨r, hv⟩ fs2 h2 ⟨hr, hle2, hk, post, ⟨ag, ef, e, m, hrec, herr, -, -, heof, -⟩, hbud⟩
   try dsimp only
   refine RunSafe.bind_lift (updX_run hrec (fun x => { x with «have» := hv })) ?_
   -- the records

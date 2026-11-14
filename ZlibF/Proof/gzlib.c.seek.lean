@@ -475,17 +475,15 @@ theorem i64_toU32_toNat (x : Int64) (hx : 0 ≤ x.toInt) : x.toUInt64.toUInt32.t
 theorem padv_zero (p : BPtr) : padv p 0 = p := by cases p <;> rfl
 
 /-- `x.next + n` for `n ≤ x.have`: the pointer advanced by `n`. -/
-theorem next_add_run {h : Heap} {s : GzState} (hN : NextOk h s) {n : Nat} (hn : n ≤ s.x.«have».toNat) (gs : Nat) (s' : GzState) :
+theorem next_add_run {h : Heap} {s : GzState} (hN : NextOk h s) {n : Nat} (hn : n ≤ s.x.«have».toNat) (hn0 : n ≠ 0)
+    (gs : Nat) (s' : GzState) :
     Ptr.add s.x.next (n : Int) (setS h gs s') = .ok (padv s.x.next n, setS h gs s') := by
-  rcases hN.1 with ⟨hnl, hh0⟩ | ⟨r, a, off, hr, hg, hle⟩
-  · have : n = 0 := by rw [hh0] at hn; simpa using hn
-    subst this
-    rw [hnl]
-    simp [Ptr.add, padv]
-  · rw [hr]
-    have hg' : Space.get (setS h gs s') r = some a := by rw [space_get_setS]; exact hg
-    have := Ptr.add_nat_ok (R := BRef) (h := setS h gs s') hg' (n := n) (off := off) (by omega)
-    exact this
+  have hh : s.x.«have» ≠ 0 := fun e => hn0 (by rw [e] at hn; simpa using hn)
+  obtain ⟨r, a, off, hr, hg, hle⟩ := hN.1 hh
+  rw [hr]
+  have hg' : Space.get (setS h gs s') r = some a := by rw [space_get_setS]; exact hg
+  have := Ptr.add_nat_ok (R := BRef) (h := setS h gs s') hg' (n := n) (off := off) (by omega)
+  exact this
 
 
 /-- The part of `gzseek64` after the checks, for a reader that is not in the raw area, with the target not before `x.pos`, `x.pos >= 0` and `NextOk`: the buffered bytes before the target are consumed (`have`, `next`, `pos` advance by `n`), the rest of the distance becomes `skip`; the result is the target; no fault. -/
@@ -530,7 +528,8 @@ theorem seekTail_fwd {h : Heap} {gs : Nat} {s : GzState} (hG : SeekGood h gs s) 
       refine ⟨s.x.«have», fun hh => absurd hh hc, fun _ => rfl, ?_, Nat.le_refl _, ?_⟩
       · unfold fwdN; rw [ite_eq_right hc']
       · omega
-  have fn := next_add_run hN hn1 gs
+  have fn := fun hz0 : nU ≠ 0 =>
+    next_add_run hN hn1 (fun e => hz0 (UInt32.toNat_inj.mp (by rw [e]; rfl))) gs
   have fpos : ∀ h', i64add s.x.pos (u32ToI64 nU) h' =
       .ok (Int64.ofInt (s.x.pos.toInt + nU.toNat), h') := fun h' => by
     have := i64add_run s.x.pos (u32ToI64 nU) (by rw [u32ToI64_toInt]; omega) (by rw [u32ToI64_toInt]; have := ht.2; omega) h'
@@ -546,12 +545,12 @@ theorem seekTail_fwd {h : Heap} {gs : Nat} {s : GzState} (hG : SeekGood h gs s) 
     by_cases hz : nU = 0
     · subst hz
       ggsimp [hs, fpos, fsk, skipFwd, ← hnU, padv_zero]
-    · ggsimp [hs, hz, fn, fpos, fsk, skipFwd, ← hnU]
+    · ggsimp [hs, hz, fn hz, fpos, fsk, skipFwd, ← hnU]
   · rw [ite_eq_right hc, ← hB hc]
     by_cases hz : nU = 0
     · subst hz
       ggsimp [hs, fpos, fsk, skipFwd, ← hnU, padv_zero]
-    · ggsimp [hs, hz, fn, fpos, fsk, skipFwd, ← hnU]
+    · ggsimp [hs, hz, fn hz, fpos, fsk, skipFwd, ← hnU]
 
 
 theorem freeStr_get_other (h : Heap) (p : BPtr) (r : BRef) (hr : ∀ b, r ≠ .blk b) :
@@ -563,20 +562,17 @@ theorem freeStr_get_other (h : Heap) (p : BPtr) (r : BRef) (hr : ∀ b, r ≠ .b
     | ref q o => cases q <;> rfl
 
 /-- `x.next + n` after `gz_reset` freed the message block: the pointer does not point into it. -/
-theorem next_add_run_reset {h : Heap} {s : GzState} (hN : NextOk h s) {n : Nat} (hn : n ≤ s.x.«have».toNat) (gs : Nat)
-    (s' : GzState) :
+theorem next_add_run_reset {h : Heap} {s : GzState} (hN : NextOk h s) {n : Nat} (hn : n ≤ s.x.«have».toNat)
+    (hn0 : n ≠ 0) (gs : Nat) (s' : GzState) :
     Ptr.add s.x.next (n : Int) (setS (freeStr h s.msg) gs s') = .ok (padv s.x.next n, setS (freeStr h s.msg) gs s') := by
-  rcases hN.1 with ⟨hnl, hh0⟩ | ⟨r, a, off, hr, hg, hle⟩
-  · have : n = 0 := by rw [hh0] at hn; simpa using hn
-    subst this
-    rw [hnl]
-    simp [Ptr.add, padv]
+  have hh : s.x.«have» ≠ 0 := fun e => hn0 (by rw [e] at hn; simpa using hn)
+  obtain ⟨r, a, off, hr, hg, hle⟩ := hN.1 hh
   · rw [hr]
     have hg' : Space.get (setS (freeStr h s.msg) gs s') r = some a := by
       rw [space_get_setS]
       cases r with
       | blk b =>
-        have hb := hN.2 b (by rw [hr]; rfl)
+        have hb := hN.2 hh b (by rw [hr]; rfl)
         cases hm : s.msg with
         | null => simpa [hm, freeStr] using hg
         | ref q o =>
@@ -632,12 +628,9 @@ theorem seekTail_back {h : Heap} {gs : Nat} {s : GzState} (hG : SeekGood h gs s)
       simpa [u32ToI64] using this
     have fc0 : ∀ h', i64add 0 (u32ToI64 0) h' = .ok (0, h') := fun h' => by
       simp [i64add, i64chk, u32ToI64]
-    have fn0 : ∀ s', Ptr.add s.x.next 0 (setS (freeStr h s.msg) gs s') = .ok (s.x.next, setS (freeStr h s.msg) gs s') := fun s' => by
-      have := next_add_run_reset hN (n := 0) (Nat.zero_le _) gs s'
-      simpa [padv_zero] using this
     have hGT : ¬ (u32ToI64 0 > q) := by rw [i64_gt_iff, u32ToI64_toInt, hqi']; simp; omega
     have hnt : ¬ t < 0 := by omega
-    ggsimp [hs, hm, hhow, c6, hrw, hl, fa0, fb0, fc0, fn0, hGT, skipFwd, fwdN, resetRec, padv_zero, GT_OFF_run, hnt, ← hqd]
+    ggsimp [hs, hm, hhow, c6, hrw, hl, fa0, fb0, fc0, hGT, skipFwd, fwdN, resetRec, padv_zero, GT_OFF_run, hnt, ← hqd]
 
 
 /-! ### The invariants after a seek -/
@@ -685,14 +678,14 @@ theorem PosInv_skipFwd {s : GzState} (hnn : 0 ≤ s.x.pos.toInt) {t : Int} (ht :
 
 theorem NextOk_skipFwd {h : Heap} {s : GzState} (hN : NextOk h s) (t : Int) : NextOk h (skipFwd s t) := by
   have hle := fwdN_le (s := s) (t - s.x.pos.toInt)
-  refine ⟨?_, ?_⟩
-  · rcases hN.1 with ⟨hnl, hh0⟩ | ⟨r, a, off, hr, hg, hl⟩
-    · have : fwdN s (t - s.x.pos.toInt) = 0 := by rw [hh0] at hle; simpa using hle
-      left; refine ⟨?_, ?_⟩
-      · show padv s.x.next _ = _; rw [hnl, this]; rfl
-      · show s.x.«have» - UInt32.ofNat _ = 0; rw [hh0, this]; rfl
-    · right
-      refine ⟨r, a, off + fwdN s (t - s.x.pos.toInt), ?_, hg, ?_⟩
+  have hh : (skipFwd s t).x.«have» ≠ 0 → s.x.«have» ≠ 0 := by
+    intro h1 hh0
+    apply h1
+    have : fwdN s (t - s.x.pos.toInt) = 0 := by rw [hh0] at hle; simpa using hle
+    show s.x.«have» - UInt32.ofNat _ = 0; rw [hh0, this]; rfl
+  refine ⟨fun h1 => ?_, fun h1 => ?_⟩
+  · obtain ⟨r, a, off, hr, hg, hl⟩ := hN.1 (hh h1)
+    · refine ⟨r, a, off + fwdN s (t - s.x.pos.toInt), ?_, hg, ?_⟩
       · show padv s.x.next _ = _; rw [hr]; rfl
       · show _ + (s.x.«have» - UInt32.ofNat _).toNat ≤ a.size
         have hh := s.x.«have».toNat_lt
@@ -708,7 +701,7 @@ theorem NextOk_skipFwd {h : Heap} {s : GzState} (hN : NextOk h s) (t : Int) : Ne
       cases hp : s.x.next with
       | null => rw [hp] at hb; simp [padv, ptrBlk] at hb
       | ref r o => rw [hp] at hb; cases r <;> simp [padv, ptrBlk] at hb ⊢ <;> exact hb
-    have := hN.2 b hb'
+    have := hN.2 (hh h1) b hb'
     exact this
 
 
@@ -737,10 +730,15 @@ theorem NextOk_free {h : Heap} {s s' : GzState} (hN : NextOk h s) (gs : Nat) (z 
     (hnx : s'.x.next = s.x.next) (hhv : s'.x.«have».toNat ≤ s.x.«have».toNat)
     (hnull : s'.x.next = .null → s'.x.«have» = 0) (hm : s'.msg = .null) :
     NextOk (setS (freeStr h s.msg) gs z) s' := by
-  refine ⟨?_, ?_⟩
-  · rcases hN.1 with ⟨hnl, hh0⟩ | ⟨r, a, off, hr, hg, hl⟩
-    · exact Or.inl ⟨by rw [hnx]; exact hnl, hnull (by rw [hnx]; exact hnl)⟩
-    · exact Or.inr ⟨r, a, off, by rw [hnx]; exact hr, get_after_free hN.2 hr hg gs z, by omega⟩
+  have _ := hnull
+  refine ⟨fun h1 => ?_, fun _ => ?_⟩
+  · have h0 : s.x.«have» ≠ 0 := by
+      intro e
+      apply h1
+      have : s'.x.«have».toNat = 0 := by rw [e] at hhv; simpa using hhv
+      exact UInt32.toNat_inj.mp (by rw [this]; rfl)
+    obtain ⟨r, a, off, hr, hg, hl⟩ := hN.1 h0
+    exact ⟨r, a, off, by rw [hnx]; exact hr, get_after_free (hN.2 h0) hr hg gs z, by omega⟩
   · intro b hb; rw [hm]; simp [ptrBlk]
 
 theorem PosInv_resetRec (s : GzState) : PosInv (resetRec s) ∧ tellPos (resetRec s) = 0 := by
@@ -789,10 +787,9 @@ theorem sameCfg_copyRec (s : GzState) (t : Int) : SameCfg s (copyRec s t) :=
   ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
 
 theorem NextOk_setS {h : Heap} {s' : GzState} (hN : NextOk h s') (gs : Nat) (z : GzState) : NextOk (setS h gs z) s' := by
-  refine ⟨?_, hN.2⟩
-  rcases hN.1 with hn | ⟨r, a, off, hr, hg, hl⟩
-  · exact Or.inl hn
-  · exact Or.inr ⟨r, a, off, hr, by rw [space_get_setS]; exact hg, hl⟩
+  refine ⟨fun h1 => ?_, hN.2⟩
+  obtain ⟨r, a, off, hr, hg, hl⟩ := hN.1 h1
+  exact ⟨r, a, off, hr, by rw [space_get_setS]; exact hg, hl⟩
 
 theorem seek_write_safe {h : Heap} {gs : Nat} {s : GzState} (hG : GzGood h gs s) (hP : PosInv s)
     (hnn : 0 ≤ s.x.pos.toInt) (he : s.err = Z_OK ∨ s.err = Z_BUF_ERROR) {whence : Int32}

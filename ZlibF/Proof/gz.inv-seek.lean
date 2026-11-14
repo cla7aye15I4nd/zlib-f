@@ -157,11 +157,10 @@ theorem GzInv.seekGood (inv : GzInv h i s) : SeekGood h i s := by
 
 theorem GzInv.nextOk (inv : GzInv h i s) : NextOk h s := by
   have c := inv.common
-  rcases c.next with hn | ⟨b, off, a, hx, _, _, hmb, hb, hle⟩
-  · refine ⟨Or.inl ⟨hn, c.nullHave hn⟩, fun b hb => ?_⟩
-    rw [hn] at hb
-    simp [ptrBlk] at hb
-  · refine ⟨Or.inr ⟨.blk b, a, off, hx, hb, hle⟩, ?_⟩
+  refine ⟨fun hh => ?_, fun hh => ?_⟩
+  · obtain ⟨b, off, a, hx, _, _, _, hb, hle⟩ := c.next hh
+    exact ⟨.blk b, a, off, hx, hb, hle⟩
+  · obtain ⟨b, off, a, hx, _, _, hmb, _, _⟩ := c.next hh
     intro b' hb' e
     rw [hx] at hb'
     have hbb : b = b' := by simpa [ptrBlk] using hb'
@@ -248,18 +247,22 @@ theorem GzInv.clear_put_drop {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i
       (s'.how = GZIP → s'.direct = 0) ∧ (s'.junk = -1 ∨ s'.junk = 0 ∨ s'.junk = 1) ∧
       (s'.eof = 0 ∨ s'.eof = 1) ∧ (s'.past = 0 ∨ s'.past = 1) ∧ (s'.again = 0 ∨ s'.again = 1) ∧
       (s.size = 0 → s'.how = LOOK) ∧ (s.size = 0 → s'.again = 0) ∧
-      s'.x.pos.toInt + s'.x.have.toNat ≤ 9223372036854775807 ∧ (s'.x.have ≠ 0 → s'.skip = 0)) :
+      s'.x.pos.toInt + s'.x.have.toNat ≤ 9223372036854775807 ∧ (s'.x.have ≠ 0 → s'.skip = 0) ∧
+      (s'.eof ≠ 0 → s.strm.avail_in = 0)) :
     GzInv (setS (freeStr h s.msg) i s') i s' ∧
     (∀ b, GzOwned (setS (freeStr h s.msg) i s') i s' b ↔ GzOwned h i s b ∧ blkOf s.msg ≠ some b) ∧
     (∀ b, (setS (freeStr h s.msg) i s').live b ↔ h.live b ∧ blkOf s.msg ≠ some b) ∧
     Frame h (setS (freeStr h s.msg) i s') (fun b => b = i ∨ blkOf s.msg = some b) := by
   obtain ⟨hpath, hmsg, hin, hout, hsize, hmode, hdirect, hstrm, hnext, herr⟩ := same
   obtain ⟨inv1, own1, live1, frame1⟩ :=
-    inv.clear_message s'.eof s'.past Z_OK (fun _ => ⟨rd.2.2.2.2.1, rd.2.2.2.2.2.1⟩)
+    inv.clear_message s'.eof s'.past Z_OK
+      (fun _ => ⟨rd.2.2.2.2.1, rd.2.2.2.2.2.1, fun _ he => rd.2.2.2.2.2.2.2.2.2.2.2 he⟩)
   have hs1 := inv1.common.record
   have inv2 := inv1.put_scalars (s' := { s' with strm := s.strm })
     ⟨hpath, hmsg, hin, hout, hsize, hmode, hdirect, rfl, hnext, herr⟩ want pos have_le
-    (fun _ => rd) (fun hw => absurd (hm.symm.trans hw) (by decide))
+    (fun _ => ⟨rd.1, rd.2.1, rd.2.2.1, rd.2.2.2.1, rd.2.2.2.2.1, rd.2.2.2.2.2.1, rd.2.2.2.2.2.2.1,
+      rd.2.2.2.2.2.2.2.1, rd.2.2.2.2.2.2.2.2.1, rd.2.2.2.2.2.2.2.2.2.1, rd.2.2.2.2.2.2.2.2.2.2.1,
+      fun _ he => rd.2.2.2.2.2.2.2.2.2.2.2 he⟩) (fun hw => absurd (hm.symm.trans hw) (by decide))
   have inv3 := inv2.drop_input
   have key : ∀ (H : Heap) (Z : GzState), H = setS (freeStr h s.msg) i Z → Z = s' → GzInv H i Z →
       GzInv (setS (freeStr h s.msg) i s') i s' := by
@@ -326,7 +329,7 @@ theorem GzInv.seek_fwd {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) (h
     (by rw [hhave]; omega) ⟨c.want.1, c.want.2, Or.inr rfl⟩
     ⟨by rw [hskip]; omega, by rw [hpos, hskip]; omega, by rw [hpos, hhave]; omega⟩
     (fun _ => ⟨r.how, r.copyDirect, r.gzipDirect, r.junk, r.flags.1, r.flags.2.1, r.flags.2.2,
-      fun hz => (r.unalloc hz).2.2.1, r.againSize, by rw [hpos, hhave]; omega, hhs⟩)
+      fun hz => (r.unalloc hz).2.2.1, r.againSize, by rw [hpos, hhave]; omega, hhs, r.againEof⟩)
     (fun hw => absurd (hm.symm.trans hw) (by decide)), ?_⟩
   intro b
   exact putGz_owned (s' := skipFwd s t) c.record ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩ b
@@ -449,7 +452,7 @@ theorem gzseek64_inv {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) {fs 
           ⟨r.how, r.copyDirect, r.gzipDirect, r.junk, Or.inl rfl, Or.inl rfl, r.flags.2.2,
             fun hz => (r.unalloc hz).2.2.1, r.againSize,
             by show (Int64.ofInt t).toInt + ((0 : UInt32).toNat : Int) ≤ 9223372036854775807; rw [hq, u0]; omega,
-            fun hz => absurd rfl hz⟩
+            fun hz => absurd rfl hz, fun he => absurd rfl he⟩
         exact post_gen inv hfs' hk hr inv' rfl rfl _ inv.msg_owned own' live' fr'
     · by_cases hb : t < s.x.pos.toInt
       · -- back: `gzrewind`, then forward from 0
@@ -478,7 +481,7 @@ theorem gzseek64_inv {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) {fs 
               fun e => absurd e (by show ¬ (LOOK = GZIP); decide), Or.inl rfl,
               Or.inl rfl, Or.inl rfl, Or.inl rfl, fun _ => rfl, fun _ => rfl,
               by show (0 : Int64).toInt + ((0 : UInt32).toNat : Int) ≤ 9223372036854775807; decide,
-              fun hz => absurd rfl hz⟩
+              fun hz => absurd rfl hz, fun he => absurd rfl he⟩
           obtain ⟨inv2, own2⟩ := inv1.seek_fwd hm (t := t) hok.1 (by show (0 : Int64).toInt ≤ t; rw [z0]; omega)
             (by show t - (0 : Int64).toInt ≤ OffMax; rw [z0]; omega)
           have hs1 := inv1.common.record

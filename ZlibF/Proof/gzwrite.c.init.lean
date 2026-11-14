@@ -929,9 +929,7 @@ theorem inv_size0 {h H : Heap} {i : Nat} {s : GzState} {pin pout : BPtr} {z : ZS
       exact live_of_gz ht
     · exact live b (cm.live b ho)
     · exact live b (cm.live b ho)
-  · rcases cm.next with hn | ⟨b, off, a, he, hbi, ho, hnm, hb, hle⟩
-    · exact Or.inl hn
-    · exact Or.inr ⟨b, off, a, he, hbi, (hown b).2 ho, hnm, by rw [(same b (cm.live b ho) hbi).1]; exact hb, hle⟩
+  · exact fun hh => absurd wr.have0 hh
 
 /-! ## The `gz_error` tail of the failure paths -/
 
@@ -1158,11 +1156,7 @@ theorem direct_final {h : Heap} {i : Nat} {s : GzState} {n1 : Nat} (fs : Fs) (hf
       · simp [dRec] at e
         exact (live b).2 (Or.inr e.symm)
       · exact absurd m mode1
-    · rcases cm.next with hn | ⟨b, off, a, he, hbi, ho, hnm, hb, hle⟩
-      · exact Or.inl hn
-      · refine Or.inr ⟨b, off, a, he, hbi, owned_mono (t := dRec h s) hsz rfl rfl ho, hnm, ?_, hle⟩
-        rw [(E.same fr b (cm.live b ho) hbi).1]
-        exact hb
+    · exact fun hh => absurd wr.have0 hh
   refine ⟨hfs, dRec h s, invX, rfl, rfl,
     ⟨frame_mono (E.frame fr) (fun x e => (owned0 hsz x).2 (Or.inl e)), fun _ hr => by simp at hr⟩,
     ledger (fun b o => owned_mono (X := Zlib.Gzlib.Spec.setS (aHeap h n1) i (dRec h s)) (t := dRec h s) hsz rfl rfl o)
@@ -1592,7 +1586,7 @@ theorem deflate_final {h A : Heap} {i : Nat} {s : GzState} {z' : ZStream} {p : Z
         intro e
         have := Fresh.lt fr (cm.live _ ((owned0 hsz _).2 (Or.inr (Or.inr (msg_of_blkOf cm e)))))
         omega
-      exact Or.inr ⟨h.nextBlk + 1, 0, a1, rfl, by omega,
+      exact fun _ => ⟨h.nextBlk + 1, 0, a1, rfl, by omega,
         Or.inr (Or.inr (Or.inr ⟨hW0, Or.inr ⟨mode0, Or.inl rfl⟩⟩)), hnm, Fb1, by simp [sf, wr.have0]⟩
     · simp [sf, s3, padv]
     · simp [sf]

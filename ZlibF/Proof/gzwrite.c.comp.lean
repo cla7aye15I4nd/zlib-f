@@ -529,13 +529,13 @@ theorem inv_codec_step {H H' : Heap} {t t' : GzState}
         ⟨(c.distinct.2 p (hptrs ▸ hp) b hb).1, by rw [hso]; exact (c.distinct.2 p (hptrs ▸ hp) b hb).2⟩⟩
       live := fun b hb => (hlive b).2 (c.live b ((hown b).1 hb))
       pos := by rw [hskip, hpos, hhave]; exact c.pos
-      next := by
+      next := fun _ => by
         obtain ⟨b, cc, -, -, hx, hcb, hbs⟩ := output'
         obtain ⟨ob, oa, hop, hob, -, hos⟩ := (w.bufs hz).2 hd
         have hdbo : DataBuf t ob := ⟨hz, Or.inr ⟨Or.inr hd, hop⟩⟩
         obtain ⟨⟨a0, a', h0, ha', hs'⟩, -⟩ := hdata ob hdbo
         rw [hob] at h0; cases h0
-        refine Or.inr ⟨ob, cc, a', by rw [hx, hout, hop]; simp [padv], ?_, ?_, ?_, ha', ?_⟩
+        refine ⟨ob, cc, a', by rw [hx, hout, hop]; simp [padv], ?_, ?_, ?_, ha', ?_⟩
         · exact (GzRead.GzInv.data_separate inv hdbo).1
         · exact (hown ob).2 hdbo.owned
         · rw [hmsg]
@@ -1484,11 +1484,10 @@ theorem inv_direct_step {H : Heap} {t t' : GzState} (inv : GzInv H i t) (hw : t.
         ⟨(c.distinct.2 p (hptrs ▸ hp) b hb).1, by rw [hso]; exact (c.distinct.2 p (hptrs ▸ hp) b hb).2⟩⟩
       live := fun b hb => (putGz_live hs b).2 (c.live b ((hown b).1 hb))
       pos := by rw [hskip, hpos, hhave]; exact c.pos
-      next := by
-        rw [hx]
-        rcases c.next with hn | ⟨b, off, a, hxn, hbi, ho, hmb, hb, hle⟩
-        · exact Or.inl hn
-        · exact Or.inr ⟨b, off, a, hxn, hbi, (hown b).2 ho, by rw [hmsg]; exact hmb, hb, hle⟩
+      next := fun hh => by
+        rw [hx] at hh ⊢
+        obtain ⟨b, off, a, hxn, hbi, ho, hmb, hb, hle⟩ := c.next hh
+        exact ⟨b, off, a, hxn, hbi, (hown b).2 ho, by rw [hmsg]; exact hmb, hb, hle⟩
       nullHave := by rw [hx]; exact c.nullHave
       recordFree := fun x => c.recordFree ((hso i).1 x) }
   · exact {

@@ -156,6 +156,7 @@ theorem GzInv.rebuild (inv : GzInv h i s) (hm : s.mode = GZ_READ) (hsz : s.size 
       (s'.junk = -1 ∨ s'.junk = 0 ∨ s'.junk = 1))
     (input : s'.strm.avail_in = 0 ∨
       ∃ a, s'.strm.next_in = padv s'.«in» a ∧ a + s'.strm.avail_in.toNat ≤ s'.size.toNat)
+    (hae : s'.again ≠ 0 → s'.eof ≠ 0 → s'.strm.avail_in = 0)
     (fr : Frame h h' (fun b => b = i ∨ StreamOwned h (gzStrm i) b))
     (sown : ∀ b, StreamOwned h' (gzStrm i) b → StreamOwned h (gzStrm i) b ∧ h'.live b)
     (fresh : Fresh h') (uniq : Zlib.Gzlib.Spec.Uniq h') (globals : LibraryGlobals h')
@@ -227,7 +228,7 @@ theorem GzInv.rebuild (inv : GzInv h i s) (hm : s.mode = GZ_READ) (hsz : s.size 
         · exact (kept (Or.inr (Or.inr (Or.inr rfl))) (by rw [← eout]; exact e)).2.2.2
         · exact (sown b e).2
       pos := by rw [ex, eskip]; exact c.pos
-      next := Or.inl (by rw [ex]; exact hxn)
+      next := fun hh => absurd (by rw [ex]; exact hx0) hh
       nullHave := fun _ => by rw [ex]; exact hx0
       recordFree := fun ho => c.recordFree (sown i ho).1 }
   · exact {
@@ -247,7 +248,8 @@ theorem GzInv.rebuild (inv : GzInv h i s) (hm : s.mode = GZ_READ) (hsz : s.size 
       codec := fun _ => codec
       posHave := by rw [ex]; exact rd.posHave
       againSize := fun hz => absurd hz hsz'
-      haveSkip := fun hh => absurd (by rw [ex]; exact hx0) hh }
+      haveSkip := fun hh => absurd (by rw [ex]; exact hx0) hh
+      againEof := hae }
 
 end rebuild
 
@@ -707,7 +709,7 @@ theorem lookGzip_run {H : Heap} {i : Nat} {t : GzState} (fs : Fs) (hu : GzInvUpT
       ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
       ⟨Or.inr (Or.inr rfl), fun e => absurd (show GZIP = GZ_COPY from e) (by decide), fun _ => rfl,
         Or.inr (Or.inl rfl), ?_⟩
-      ?_ frWV sownV freshV' uniqV' globalsV' fitV' codecV
+      ?_ ?_ frWV sownV freshV' uniqV' globalsV' fitV' codecV
     · show f t.junk = -1 ∨ f t.junk = 0 ∨ f t.junk = 1
       rcases hf t.junk with e | e
       · exact Or.inr (Or.inl e)
@@ -715,6 +717,10 @@ theorem lookGzip_run {H : Heap} {i : Nat} {t : GzState} (fs : Fs) (hu : GzInvUpT
     · show z1.avail_in = 0 ∨ ∃ a, z1.next_in = padv t.«in» a ∧ a + z1.avail_in.toNat ≤ t.size.toNat
       rw [z1in.1, z1in.2.1]
       exact rd.input
+    · intro ha he
+      show z1.avail_in = 0
+      rw [z1in.1]
+      exact rd.againEof ha he
   have hu2 : GzInvUpToOutput Hx i t2 := ⟨hHx, invV⟩
   -- the post-condition
   have gHx : (gzStrm i).get Hx = some z1 := by simp [ZStreamRef.get, gzStrm, Hx, t2, t1]
@@ -1009,7 +1015,7 @@ theorem lookCopy_run {H : Heap} {i : Nat} {t : GzState} (fs : Fs) (hu : GzInvUpT
   have invV : GzInv V i (clearOut t5) := by
     refine GzInv.rebuild invW' hmc hszc rfl rfl (by simp [V, putGz])
       ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
-      ⟨Or.inr (Or.inl rfl), fun _ => ?_, fun e => absurd (show GZ_COPY = GZIP from e) (by decide), rd.direct, rd.junk⟩ (Or.inl rfl)
+      ⟨Or.inr (Or.inl rfl), fun _ => ?_, fun e => absurd (show GZ_COPY = GZIP from e) (by decide), rd.direct, rd.junk⟩ (Or.inl rfl) (fun _ _ => rfl)
       ⟨by rw [eV]; rfl, by rw [eV]; rfl, by rw [eV]; rfl, by rw [eV]; exact Nat.le_refl _,
         by rw [eV]; exact Nat.le_refl _, fun b _ hc => frV b (fun e => hc (Or.inl e))⟩
       (fun b ho => ⟨(soVW b).1 ho, (liveV b).2 (c'.live b (invW'.streamOwned_owned ((soVW b).1 ho)))⟩)
@@ -1147,7 +1153,7 @@ theorem GzInv.size0_rebuild (inv : GzInv h i s) (hm : s.mode = GZ_READ) (hsz : s
         · exact (kept _ (Or.inr rfl) b (by rw [← emsg]; exact e)).2.2
         · exact absurd hsz' hz
       pos := by rw [ex, eskip]; exact c.pos
-      next := Or.inl (by rw [ex]; exact hxn)
+      next := fun hh => absurd (by rw [ex]; exact hx0) hh
       nullHave := fun _ => by rw [ex]; exact hx0
       recordFree := noSO i }
   · exact {
@@ -1164,7 +1170,8 @@ theorem GzInv.size0_rebuild (inv : GzInv h i s) (hm : s.mode = GZ_READ) (hsz : s
       codec := fun hz => absurd hsz' hz
       posHave := by rw [ex]; exact rd.posHave
       againSize := fun _ => by rw [eagain]; exact rd.againSize hsz
-      haveSkip := fun hh => absurd (by rw [ex]; exact hx0) hh }
+      haveSkip := fun hh => absurd (by rw [ex]; exact hx0) hh
+      againEof := fun _ _ => hav }
 
 end size0
 
@@ -1885,7 +1892,7 @@ theorem init_success {H H5 : Heap} {i : Nat} {s : GzState} (fs : Fs) (hfs : File
             subst this
             exact Or.inr (Or.inr (Or.inr (Or.inr (Or.inr (Or.inl (by rw [kV]; exact Option.some_ne_none _))))))
         pos := c.pos
-        next := Or.inl rfl
+        next := fun hh => absurd rfl hh
         nullHave := fun _ => rfl
         recordFree := fun so => by have := (soV i).1 so; omega }
     · exact {
@@ -1902,7 +1909,8 @@ theorem init_success {H H5 : Heap} {i : Nat} {s : GzState} (fs : Fs) (hfs : File
         codec := fun _ => ⟨reach, z6, ks, st6, gV, zst6, kV, rfl⟩
         posHave := rd.posHave
         againSize := fun hz => absurd hz hw0
-        haveSkip := fun hh => absurd rfl hh }
+        haveSkip := fun hh => absurd rfl hh
+        againEof := fun _ _ => rfl }
   have hu6 : GzInvUpToOutput H6 i s6 := ⟨hs6, invV⟩
   -- the post-condition
   have live6 : ∀ b, H6.live b ↔ H.live b ∨ (b = nb ∨ b = nb + 1 ∨ b = ks) := by

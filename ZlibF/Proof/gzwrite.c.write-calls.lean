@@ -45,7 +45,7 @@ theorem clear_step {h : Heap} {s : GzState} {fs : Fs} (inv : GzInv h i s) (hfs :
       GzPost h i s [] fs (okHeap h i s) GzInv := by
   have run := GetcUngetc.again_run inv.upToSkip
   obtain ⟨inv', hown', hlive', fr⟩ := inv.clear_message s.eof s.past Z_OK
-    (fun hm => ⟨(inv.reader hm).flags.1, (inv.reader hm).flags.2.1⟩)
+    (fun hm => ⟨(inv.reader hm).flags.1, (inv.reader hm).flags.2.1, (inv.reader hm).againEof⟩)
   refine ⟨run, inv', GetcUngetc.post_of_gz_error inv inv' rfl fr ?_ ?_ hfs⟩
   · intro b
     refine (hlive' b).trans ⟨fun x => Or.inl x, ?_⟩

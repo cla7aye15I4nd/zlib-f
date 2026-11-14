@@ -472,15 +472,14 @@ theorem inv_out_put {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) (hm :
       distinct := c.distinct
       live := fun b hb => (hlive b).2 (c.live b hb)
       pos := c.pos
-      next := by
-        rcases c.next with hn | ⟨b, off, a0, hx, hbi, ho, hmb, hb, hle⟩
-        · exact Or.inl hn
-        · by_cases e : b = ob
-          · subst e
-            rw [ha] at hb
-            cases hb
-            exact Or.inr ⟨b, off, arr, hx, hbi, ho, hmb, hob, by omega⟩
-          · exact Or.inr ⟨b, off, a0, hx, hbi, ho, hmb, by rw [hbytes b e]; exact hb, hle⟩
+      next := fun hh => by
+        obtain ⟨b, off, a0, hx, hbi, ho, hmb, hb, hle⟩ := c.next hh
+        by_cases e : b = ob
+        · subst e
+          rw [ha] at hb
+          cases hb
+          exact ⟨b, off, arr, hx, hbi, ho, hmb, hob, by omega⟩
+        · exact ⟨b, off, a0, hx, hbi, ho, hmb, by rw [hbytes b e]; exact hb, hle⟩
       nullHave := c.nullHave
       recordFree := c.recordFree }
   · intro _
@@ -503,7 +502,8 @@ theorem inv_out_put {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) (hm :
         exact ⟨StreamReachable.rebuffer reach hreb (fun _ => fit'), z, k, st, hzget, hzst, hk, hhead⟩
       posHave := r.posHave
       againSize := r.againSize
-      haveSkip := r.haveSkip }
+      haveSkip := r.haveSkip
+      againEof := r.againEof }
   · intro hw
     exact absurd (hm.symm.trans hw) read_ne_write
 
@@ -563,7 +563,7 @@ theorem put_push {h : Heap} {i : Nat} {s s' : GzState} (inv : GzInv h i s) (hm :
         exact c.distinct
       live := fun b hb => (putGz_live hs b).2 (c.live b ((hown b).1 hb))
       pos := ⟨by rw [hskip]; exact c.pos.1, pos1, pos2⟩
-      next := Or.inr ⟨ob, c0, a, hnext, hoi, (hown ob).2 (out_owned hm hz hout),
+      next := fun _ => ⟨ob, c0, a, hnext, hoi, (hown ob).2 (out_owned hm hz hout),
         by rw [hmsg]; exact fun e => hmsgb ob e rfl, ha, by omega⟩
       nullHave := fun hn => by rw [hnext] at hn; cases hn
       recordFree := by rw [hso]; exact c.recordFree }
@@ -589,7 +589,8 @@ theorem put_push {h : Heap} {i : Nat} {s s' : GzState} (inv : GzInv h i s) (hm :
           z, k, st, by rw [hget]; exact hzget, hzst, hk, hhead⟩
       posHave := pos3
       againSize := fun hz' => absurd (by rw [← hsize]; exact hz') hz
-      haveSkip := hhs }
+      haveSkip := hhs
+      againEof := fun ha he => by rw [hstrm]; exact r.againEof (by rw [← hagain]; exact ha) (by rw [← heof]; exact he) }
   · intro hw
     rw [hmode] at hw
     exact absurd (hm.symm.trans hw) read_ne_write
@@ -1072,7 +1073,7 @@ theorem again_step {h : Heap} {i : Nat} {s : GzState} {fs : Fs} (u : GzInvUpToSk
   obtain ⟨hs, inv, hp, hbd⟩ := u
   have r := inv.reader hm
   obtain ⟨inv', hown', hlive', -⟩ := inv.clear_message (clearSkip s).eof (clearSkip s).past Z_OK
-    (fun _ => ⟨r.flags.1, r.flags.2.1⟩)
+    (fun _ => ⟨r.flags.1, r.flags.2.1, r.againEof⟩)
   have hs2 : (setS (freeStr h s.msg) i { s with msg := .null, err := Z_OK }).gzstates i =
       some { s with msg := .null, err := Z_OK } := setS_gz_same _ _ _
   have eH : putGz (setS (freeStr h s.msg) i { s with msg := .null, err := Z_OK }) i
@@ -1297,9 +1298,8 @@ theorem getc_buffered {i : Nat} {h : Heap} {s : GzState} {fs fs1 : Fs} {h1 : Hea
     · exact UInt32.le_iff_toNat_le.mpr (by simp; omega)
   obtain ⟨b, off, a, hx, hb⟩ : ∃ b off a, s1.x.next = .ref (BRef.blk b) off ∧ h1.bytes b = some a ∧
       off + s1.x.have.toNat ≤ a.size := by
-    rcases c.next with hn | ⟨b, off, a, hx, -, -, -, hba, hle⟩
-    · exact absurd (c.nullHave hn) hh
-    · exact ⟨b, off, a, hx, hba, hle⟩
+    obtain ⟨b, off, a, hx, -, -, -, hba, hle⟩ := c.next hh
+    exact ⟨b, off, a, hx, hba, hle⟩
   obtain ⟨hba, hle⟩ := hb
   have hinc : ∀ H : Heap, i64add s1.x.pos 1 H = .ok (Int64.ofInt (s1.x.pos.toInt + 1), H) := by
     intro H
@@ -1332,7 +1332,7 @@ theorem getc_buffered {i : Nat} {h : Heap} {s : GzState} {fs fs1 : Fs} {h1 : Hea
     (fun _ => ⟨r.how, r.copyDirect, r.gzipDirect, r.junk, r.flags.1, r.flags.2.1, r.flags.2.2,
       fun hz => (r.unalloc hz).2.2.1, r.againSize,
       by show (Int64.ofInt (s1.x.pos.toInt + 1)).toInt + ((s1.x.have - 1).toNat : Int) ≤ _; rw [hpos, hhv]; omega,
-      fun _ => hsk0⟩)
+      fun _ => hsk0, r.againEof⟩)
     (fun hw => absurd (hm1.symm.trans hw) read_ne_write)
   exact Eff.trans e inv1 (rec_step inv1 inv2 ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩ rfl e.2.1)
     (fun _ => Iff.rfl)

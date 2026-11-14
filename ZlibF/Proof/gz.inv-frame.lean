@@ -244,10 +244,9 @@ theorem GzInv.frame_core (inv : GzInv h i s) (fr : Frame h after (fun b => ¬ Gz
         ⟨(c.distinct.2 p hp b hb).1, by rw [hso]; exact (c.distinct.2 p hp b hb).2⟩⟩
       live := fun b hb => hlive b ((hown b).1 hb)
       pos := c.pos
-      next := by
-        rcases c.next with hn | ⟨b, off, a, hx, hbi, ho, hmb, hb, hle⟩
-        · exact Or.inl hn
-        · exact Or.inr ⟨b, off, a, hx, hbi, (hown b).2 ho, hmb, by rw [hbytes b ho]; exact hb, hle⟩
+      next := fun hh => by
+        obtain ⟨b, off, a, hx, hbi, ho, hmb, hb, hle⟩ := c.next hh
+        exact ⟨b, off, a, hx, hbi, (hown b).2 ho, hmb, by rw [hbytes b ho]; exact hb, hle⟩
       nullHave := c.nullHave
       recordFree := fun hn => c.recordFree ((hso i).1 hn) }
   · intro hm
@@ -273,7 +272,8 @@ theorem GzInv.frame_core (inv : GzInv h i s) (fr : Frame h after (fun b => ¬ Gz
           z, k, st, by rw [hget]; exact hzget, hzst, by rw [he]; exact hk, hhead⟩
       posHave := r.posHave
       againSize := r.againSize
-      haveSkip := r.haveSkip }
+      haveSkip := r.haveSkip
+      againEof := r.againEof }
   · intro hm
     have w := inv.writer hm
     exact {

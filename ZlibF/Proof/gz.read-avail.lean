@@ -108,7 +108,7 @@ theorem copy_loop (b : Nat) (a : Nat) :
 
 /-- **Setting the input window to the start of `in`** (`next_in = in`, `avail_in = n ≤ size`) keeps `GzInv`. -/
 theorem GzInv.set_input {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) (hm0 : s.mode = GZ_READ)
-    (hz0 : s.size ≠ 0) (n : UInt32) (hn : n.toNat ≤ s.size.toNat) :
+    (hz0 : s.size ≠ 0) (n : UInt32) (hn : n.toNat ≤ s.size.toNat) (hae : s.again ≠ 0 → s.eof ≠ 0 → n = 0) :
     GzInv (putGz h i { s with strm := { s.strm with avail_in := n, next_in := s.«in» } }) i
       { s with strm := { s.strm with avail_in := n, next_in := s.«in» } } ∧
     (∀ b, GzOwned (putGz h i { s with strm := { s.strm with avail_in := n, next_in := s.«in» } }) i
@@ -167,10 +167,9 @@ theorem GzInv.set_input {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) (
         ⟨(c.distinct.2 p hp b hb).1, by rw [hso]; exact (c.distinct.2 p hp b hb).2⟩⟩
       live := fun b hb => (putGz_live hs b).2 (c.live b ((hown b).1 hb))
       pos := c.pos
-      next := by
-        rcases c.next with hn | ⟨b, off, a, hx, hbi, ho, hmb, hb, hle⟩
-        · exact Or.inl hn
-        · exact Or.inr ⟨b, off, a, hx, hbi, (hown b).2 ho, hmb, hb, hle⟩
+      next := fun hh => by
+        obtain ⟨b, off, a, hx, hbi, ho, hmb, hb, hle⟩ := c.next hh
+        exact ⟨b, off, a, hx, hbi, (hown b).2 ho, hmb, hb, hle⟩
       nullHave := c.nullHave
       recordFree := by rw [hso]; exact c.recordFree }
   · intro hm
@@ -197,7 +196,8 @@ theorem GzInv.set_input {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) (
         exact ⟨StreamReachable.rebuffer reach hreb (fun _ => fitH), _, k, st, gH, hzst, hk, hhead⟩
       posHave := r.posHave
       againSize := r.againSize
-      haveSkip := r.haveSkip }
+      haveSkip := r.haveSkip
+      againEof := hae }
   · intro hm
     exact absurd (hm0.symm.trans hm) (by decide)
 
@@ -457,7 +457,7 @@ theorem AvailFs.refl (s : GzState) (fs : Fs) : AvailFs s s fs fs :=
 /-- **The tail of `gz_avail`**: load behind the pending input, then set the window. -/
 theorem availLoad_run {h : Heap} {i : Nat} {s : GzState} {fs : Fs} (hu : GzInvUpToOutput h i s)
     (hm : s.mode = GZ_READ) (hsz : s.size ≠ 0) (hfs : FileSystem fs)
-    (hav : s.strm.avail_in.toNat ≤ s.size.toNat) :
+    (hav : s.strm.avail_in.toNat ≤ s.size.toNat) (heof0 : s.eof = 0) :
     ∃ r fs' after, availLoad i fs h = .ok ((r, fs'), after) ∧ (r = 0 ∨ r = -1) ∧ FdsKept fs fs' ∧
       GzPost h i s [] fs' after GzInvUpToOutput ∧ ∃ s', after.gzstates i = some s' ∧ AvailRec s s' ∧ AvailFs s s' fs fs' ∧
         AvailFlags r s s' ∧ ∀ k, after.istates k = h.istates k := by
@@ -478,10 +478,10 @@ theorem availLoad_run {h : Heap} {i : Nat} {s : GzState} {fs : Fs} (hu : GzInvUp
     Or.inr ⟨.blk inb, _, arr, rfl, hb0, hro, by rw [hlen]; omega⟩
   have isData : DataBuf (clearOut s) inb := ⟨hsz, Or.inl hin⟩
   obtain ⟨-, hex, hpost⟩ := gz_load_safe i _ (s.size - s.strm.avail_in) h fs s hu hm hsz hfs hw
-    (Or.inl ⟨inb, _, rfl, isData⟩)
+    (Or.inl ⟨inb, _, rfl, isData⟩) (fun he => absurd heof0 he)
   obtain ⟨⟨r, got⟩, fs1, h2, run⟩ := hex trivial
-  have hist2 : ∀ k, h2.istates k = h.istates k := gz_load_istates i _ _ h fs s hu hm hsz hfs hw (Or.inl ⟨inb, _, rfl, isData⟩) run
-  obtain ⟨hr, hgot, hkept, post, ⟨ag, ef, e, mm, hrec2, herr2, hf0, hf1, hf2⟩, hbud2⟩ := hpost _ _ _ run
+  have hist2 : ∀ k, h2.istates k = h.istates k := gz_load_istates i _ _ h fs s hu hm hsz hfs hw (Or.inl ⟨inb, _, rfl, isData⟩) (fun he => absurd heof0 he) run
+  obtain ⟨hr, hgot, hkept, post, ⟨ag, ef, e, mm, hrec2, herr2, hf0, hf1, hf2, hfa⟩, hbud2⟩ := hpost _ _ _ run
   have hown_in : GzOwned h i s inb := DataBuf.owned (s := s) ⟨hsz, Or.inl hin'⟩
   have postZ := post_drop_region post hown_in
   have hld : (StateT.lift (ldS (some (.tab i))) : G GzState) fs h = .ok ((s, fs), h) := by
@@ -527,7 +527,10 @@ theorem availLoad_run {h : Heap} {i : Nat} {s : GzState} {fs : Fs} (hu : GzInvUp
     show (s.strm.avail_in + got).toNat ≤ s.size.toNat
     rw [UInt32.toNat_add, Nat.mod_eq_of_lt (by have := s.size.toNat_lt; omega)]
     omega
-  obtain ⟨inv3c, own3c⟩ := GzInv.set_input inv'.2 hm hsz (s2.strm.avail_in + got) hn
+  have hae2 : s2.again ≠ 0 → s2.eof ≠ 0 → (s2.strm.avail_in + got) = 0 := fun ha he => by
+    have : ef = 0 := (hfa ha).trans heof0
+    exact absurd this he
+  obtain ⟨inv3c, own3c⟩ := GzInv.set_input inv'.2 hm hsz (s2.strm.avail_in + got) hn hae2
   have e3 : putGz (putGz h2 i s3) i (clearOut s3) = putGz (putGz h2 i (clearOut s2)) i (clearOut s3) := by
     rw [putGz_putGz', putGz_putGz']
   have hs3 : (putGz h2 i s3).gzstates i = some s3 := by simp [putGz]
@@ -586,6 +589,7 @@ theorem gz_avail_safe (i : Nat) (h : Heap) (fs : Fs) (s : GzState)
       exact ⟨0, fs, h, rfl, Or.inl rfl, fun _ => Iff.rfl, post_refl hu hfs, s, hs, by unfold AvailRec; rfl, AvailFs.refl s fs,
         ⟨(fun h0 => absurd h0 (by decide)), (fun _ => rfl), (fun _ _ e => heof (by simp [e]))⟩, fun _ => rfl⟩
     rw [if_pos (Classical.not_not.mp heof)]
+    have heof0 : s.eof = 0 := by simpa using Classical.not_not.mp heof
     have hz : (StateT.lift (ldZ (strmOf (some (.tab i)))) : G ZStream) fs h = .ok ((s.strm, fs), h) := by
       rw [g_lift_app, show ldZ (strmOf (some (GzStateRef.tab i))) h = .ok (s.strm, h) from ldZ_run hs]
     simp only [g_bind_app, hz]
@@ -604,12 +608,12 @@ theorem gz_avail_safe (i : Nat) (h : Heap) (fs : Fs) (s : GzState)
         have crun' : (StateT.lift (cdoWhile copyBody copyCond (s.«in», s.strm.next_in, s.strm.avail_in)) :
             G _) fs h = .ok ((st, fs), Z) := by rw [g_lift_app, crun]
         simp only [g_bind_app, crun']
-        obtain ⟨r, fs', after, run, hr, hk, post, s', hs', hrec, hfs', hfl, hist⟩ := availLoad_run huZ hm hsz hfs hav
+        obtain ⟨r, fs', after, run, hr, hk, post, s', hs', hrec, hfs', hfl, hist⟩ := availLoad_run huZ hm hsz hfs hav heof0
         exact ⟨r, fs', after, run, hr, hk, post_pre frZ hliveZ hownZ post, s', hs', hrec, hfs', hfl, fun k => (hist k).trans (by rw [histZ])⟩
       · rw [if_neg h2]
-        exact availLoad_run hu hm hsz hfs hav
+        exact availLoad_run hu hm hsz hfs hav heof0
     · rw [if_neg h1]
-      exact availLoad_run hu hm hsz hfs hav
+      exact availLoad_run hu hm hsz hfs hav heof0
   obtain ⟨r, fs', after, run, post⟩ := key
   refine ⟨fun e he => ?_, fun _ => ⟨r, fs', after, run⟩, fun r' fs3 after' he => ?_⟩
   · rw [run] at he; cases he

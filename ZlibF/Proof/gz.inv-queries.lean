@@ -177,7 +177,7 @@ theorem gzbuffer_step (i : Nat) (size : UInt32) : GzCallSafe i (.gzbuffer (some 
         ⟨by rw [hw]; exact hmax.1, by rw [hw]; exact hmax.2, Or.inl hz⟩ inv.common.pos (Nat.le_refl _)
         (fun hm => let r := inv.reader hm
           ⟨r.how, r.copyDirect, r.gzipDirect, r.junk, r.flags.1, r.flags.2.1, r.flags.2.2, fun hz' => (r.unalloc hz').2.2.1,
-            r.againSize, r.posHave, r.haveSkip⟩)
+            r.againSize, r.posHave, r.haveSkip, r.againEof⟩)
         (fun hm => (inv.writer hm).reset)
     have hown : ∀ b, GzOwned (putGz h i s') i s' b ↔ GzOwned h i s b :=
       putGz_owned hs ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩

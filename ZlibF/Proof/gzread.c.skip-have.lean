@@ -35,7 +35,8 @@ theorem GzInv.put_consume {h : Heap} {i : Nat} {s s' : GzState} (inv : GzInv h i
       (s'.how = GZIP → s'.direct = 0) ∧ (s'.junk = -1 ∨ s'.junk = 0 ∨ s'.junk = 1) ∧
       (s'.eof = 0 ∨ s'.eof = 1) ∧ (s'.past = 0 ∨ s'.past = 1) ∧ (s'.again = 0 ∨ s'.again = 1) ∧
       (s.size = 0 → s'.how = LOOK) ∧ (s.size = 0 → s'.again = 0) ∧
-      s'.x.pos.toInt + s'.x.have.toNat ≤ 9223372036854775807 ∧ (s'.x.have ≠ 0 → s'.skip = 0))
+      s'.x.pos.toInt + s'.x.have.toNat ≤ 9223372036854775807 ∧ (s'.x.have ≠ 0 → s'.skip = 0) ∧
+      (s'.again ≠ 0 → s'.eof ≠ 0 → s'.strm.avail_in = 0))
     (wr : s.mode = GZ_WRITE → s'.reset = 0 ∨ s'.reset = 1) :
     GzInv (putGz h i s') i s' := by
   obtain ⟨hpath, hmsg, hin, hout, hsize, hmode, hdirect, hstrm, herr⟩ := same
@@ -93,21 +94,21 @@ theorem GzInv.put_consume {h : Heap} {i : Nat} {s s' : GzState} (inv : GzInv h i
         exact c.distinct
       live := fun b hb => (putGz_live hs b).2 (c.live b ((hown b).1 hb))
       pos := pos
-      next := by
-        rcases c.next with hn | ⟨b, off, a, hx, hbi, ho, hmb, hb, hle⟩
-        · exact Or.inl (by rw [hnext, hn]; rfl)
-        · exact Or.inr ⟨b, off + k, a, by rw [hnext, hx]; rfl, hbi, (hown b).2 ho, by rw [hmsg]; exact hmb, hb,
-            by omega⟩
+      next := fun hh => by
+        obtain ⟨b, off, a, hx, hbi, ho, hmb, hb, hle⟩ := c.next (fun e => hh (hzero e))
+        exact ⟨b, off + k, a, by rw [hnext, hx]; rfl, hbi, (hown b).2 ho, by rw [hmsg]; exact hmb, hb,
+          by omega⟩
       nullHave := fun hn => by
-        rcases c.next with hn0 | ⟨b, off, a, hx, _⟩
-        · exact hzero (c.nullHave hn0)
-        · rw [hnext, hx] at hn
+        by_cases h0 : s.x.have = 0
+        · exact hzero h0
+        · obtain ⟨b, off, a, hx, _⟩ := c.next h0
+          rw [hnext, hx] at hn
           simp [padv] at hn
       recordFree := by rw [hso]; exact c.recordFree }
   · intro hm'
     have hm : s.mode = GZ_READ := by rw [← hmode]; exact hm'
     have r := inv.reader hm
-    obtain ⟨hhow, hcopy, hgzip, hjunk, heof, hpast, hagain, hlook, hagz, hph, hhs⟩ := rd hm
+    obtain ⟨hhow, hcopy, hgzip, hjunk, heof, hpast, hagain, hlook, hagz, hph, hhs, hae⟩ := rd hm
     exact {
       how := hhow
       copyDirect := hcopy
@@ -136,7 +137,8 @@ theorem GzInv.put_consume {h : Heap} {i : Nat} {s s' : GzState} (inv : GzInv h i
           z, k, st, by rw [hget]; exact hzget, hzst, hk, hhead⟩
       posHave := hph
       againSize := fun hz => hagz (by rw [← hsize]; exact hz)
-      haveSkip := hhs }
+      haveSkip := hhs
+      againEof := hae }
   · intro hm'
     have hm : s.mode = GZ_WRITE := by rw [← hmode]; exact hm'
     have w := inv.writer hm
@@ -236,9 +238,8 @@ bytes after it: no fault, and the record becomes `skipRec s`. -/
 theorem gz_skip_have_eq {h : Heap} {i : Nat} {s : GzState} (hs : h.gzstates i = some s)
     (pos : 0 ≤ s.skip.toInt ∧ s.x.pos.toInt + s.skip.toInt ≤ 9223372036854775807 ∧
       0 ≤ s.x.pos.toInt + s.x.have.toNat)
-    (hnext : s.x.next = .null ∨ ∃ b off a, s.x.next = .ref (.blk b) off ∧ h.bytes b = some a ∧
-      off + s.x.have.toNat ≤ a.size)
-    (hnull : s.x.next = .null → s.x.have = 0) :
+    (hnext : s.x.have ≠ 0 → ∃ b off a, s.x.next = .ref (.blk b) off ∧ h.bytes b = some a ∧
+      off + s.x.have.toNat ≤ a.size) :
     C.run (Zlib.Gzread.gz_skip_have (gzSt i)) h = .ok ((), putGz h i (skipRec s)) := by
   obtain ⟨hp, hb, hlo⟩ := pos
   have hsz := s.size.toNat_lt
@@ -259,14 +260,14 @@ theorem gz_skip_have_eq {h : Heap} {i : Nat} {s : GzState} (hs : h.gzstates i = 
   have fadd : skipN s ≠ 0 → ∀ s1 : GzState, Ptr.add s.x.next ((skipN s).toNat : Int) (setS h i s1) =
       .ok (padv s.x.next (skipN s).toNat, setS h i s1) := by
     intro hz s1
-    rcases hnext with hn | ⟨b, off, a, hx, hba, hoff⟩
-    · exfalso
-      have h0 := hnull hn
+    have hh : s.x.have ≠ 0 := by
+      intro h0
       rw [h0] at hle
       exact hz (UInt32.toNat_inj.mp (by simp at hle; simp [hle]))
-    · rw [hx]
-      have hg : Space.get (setS h i s1) (BRef.blk b) = some a := hba
-      exact Ptr.add_nat_ok (R := BRef) hg (by omega)
+    obtain ⟨b, off, a, hx, hba, hoff⟩ := hnext hh
+    rw [hx]
+    have hg : Space.get (setS h i s1) (BRef.blk b) = some a := hba
+    exact Ptr.add_nat_ok (R := BRef) hg (by omega)
   unfold Zlib.Gzread.gz_skip_have skipRec
   by_cases hc : (s.x.have.toNat : Int) > s.skip.toInt
   · have e : skipN s = s.skip.toUInt64.toUInt32 := if_pos hc
@@ -318,7 +319,7 @@ theorem GzInv.upToSkip {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) : 
   · intro hm
     have r := inv.reader hm
     exact ⟨r.how, r.copyDirect, r.gzipDirect, r.junk, r.flags.1, r.flags.2.1, r.flags.2.2,
-      fun hz => (r.unalloc hz).2.2.1, r.againSize, r.posHave, fun _ => rfl⟩
+      fun hz => (r.unalloc hz).2.2.1, r.againSize, r.posHave, fun _ => rfl, r.againEof⟩
   · intro hw
     exact (inv.writer hw).reset
 
@@ -334,7 +335,7 @@ theorem GzInvUpToSkip.inv {h : Heap} {i : Nat} {s : GzState} (u : GzInvUpToSkip 
   · intro hm
     have r := inv.reader hm
     exact ⟨r.how, r.copyDirect, r.gzipDirect, r.junk, r.flags.1, r.flags.2.1, r.flags.2.2,
-      fun hz => (r.unalloc hz).2.2.1, r.againSize, r.posHave, fun hh => hs.resolve_left hh⟩
+      fun hz => (r.unalloc hz).2.2.1, r.againSize, r.posHave, fun hh => hs.resolve_left hh, r.againEof⟩
   · intro hw
     exact (inv.writer hw).reset
 
@@ -389,12 +390,11 @@ theorem gz_skip_have_run' {h : Heap} {i : Nat} {s : GzState} (u : GzInvUpToSkip 
       rw [hski]
       show _ = 0
       omega
-  have hnext : s.x.next = .null ∨ ∃ b off a, s.x.next = .ref (.blk b) off ∧ h.bytes b = some a ∧
-      off + s.x.have.toNat ≤ a.size := by
-    rcases c.next with hn | ⟨b, off, a, hx, _, _, _, hba, hoff⟩
-    · exact Or.inl hn
-    · exact Or.inr ⟨b, off, a, hx, hba, hoff⟩
-  refine ⟨gz_skip_have_eq hrec ⟨hp, hb, hlo⟩ hnext c.nullHave, ?_, hor, hle, hmin, by rw [hpos, hski]; omega⟩
+  have hnext : s.x.have ≠ 0 → ∃ b off a, s.x.next = .ref (.blk b) off ∧ h.bytes b = some a ∧
+      off + s.x.have.toNat ≤ a.size := fun hh => by
+    obtain ⟨b, off, a, hx, _, _, _, hba, hoff⟩ := c.next hh
+    exact ⟨b, off, a, hx, hba, hoff⟩
+  refine ⟨gz_skip_have_eq hrec ⟨hp, hb, hlo⟩ hnext, ?_, hor, hle, hmin, by rw [hpos, hski]; omega⟩
   have e : putGz h i (skipRec s) = putGz (putGz h i (clearSkip s)) i (skipRec s) := by rw [putGz_putGz]
   rw [e]
   refine inv.put_consume ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩ (skipN s).toNat (skipRec_next s)
@@ -406,7 +406,7 @@ theorem gz_skip_have_run' {h : Heap} {i : Nat} {s : GzState} (u : GzInvUpToSkip 
     have hph : s.x.pos.toInt + s.x.have.toNat ≤ 9223372036854775807 := r.posHave
     exact ⟨r.how, r.copyDirect, r.gzipDirect, r.junk, r.flags.1, r.flags.2.1, r.flags.2.2,
       fun hz => (r.unalloc hz).2.2.1, r.againSize, by rw [hpos, hhv]; omega,
-      fun hh => hor.resolve_left hh⟩
+      fun hh => hor.resolve_left hh, r.againEof⟩
   · intro hm
     exact (inv.writer hm).reset
 

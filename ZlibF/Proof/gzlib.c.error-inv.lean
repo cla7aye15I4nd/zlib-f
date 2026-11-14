@@ -273,13 +273,12 @@ theorem GzInv.put_message {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s)
         · exact c.live b ho
         · exact hlive
       pos := c.pos
-      next := by
-        rcases c.next with hn | ⟨b, off, a, hx, hbi, ho, _, hb', hle⟩
-        · exact Or.inl hn
-        · refine Or.inr ⟨b, off, a, hx, hbi, (hown b).2 (Or.inl ho), ?_, hb', hle⟩
-          intro e
-          cases e
-          exact hnb ho
+      next := fun hh => by
+        obtain ⟨b, off, a, hx, hbi, ho, _, hb', hle⟩ := c.next hh
+        refine ⟨b, off, a, hx, hbi, (hown b).2 (Or.inl ho), ?_, hb', hle⟩
+        intro e
+        cases e
+        exact hnb ho
       nullHave := c.nullHave
       recordFree := by rw [hso]; exact c.recordFree }
   · intro hm
@@ -301,7 +300,8 @@ theorem GzInv.put_message {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s)
           z, k, st, by rw [hget]; exact hzget, hzst, hk, hhead⟩
       posHave := r.posHave
       againSize := r.againSize
-      haveSkip := r.haveSkip }
+      haveSkip := r.haveSkip
+      againEof := r.againEof }
   · intro hm
     have w := inv.writer hm
     exact {
@@ -657,7 +657,7 @@ theorem cleared_of {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) (err :
     Cleared h i s err (putGz (freeStr h s.msg) i { s with eof := s.eof, past := s.past, msg := .null, err := err })
       { s with eof := s.eof, past := s.past, msg := .null, err := err } := by
   obtain ⟨inv1, own1, live1, frame1⟩ := inv.clear_message s.eof s.past err
-    (fun hm => ⟨(inv.reader hm).flags.1, (inv.reader hm).flags.2.1⟩)
+    (fun hm => ⟨(inv.reader hm).flags.1, (inv.reader hm).flags.2.1, (inv.reader hm).againEof⟩)
   refine ⟨inv1, own1, live1, frame1, rfl, rfl, fun _ _ => rfl, freeStr_nextBlk h s.msg,
     inv.common.fresh _ (Nat.le_refl _), ?_⟩
   intro msg t ct hno
@@ -692,7 +692,7 @@ theorem post_refused {h h1 : Heap} {i : Nat} {s s1 : GzState} {err : Int32} (c :
     ErrPost h i s err (Zlib.Gzlib.MessageRefusal.refusedMessageHeap h1 i s1)
       { s1 with err := Z_MEM_ERROR, msg := .null } := by
   obtain ⟨inv2, own2, live2, frame2⟩ := c.inv1.clear_message s1.eof s1.past Z_MEM_ERROR
-    (fun hm => ⟨(c.inv1.reader hm).flags.1, (c.inv1.reader hm).flags.2.1⟩)
+    (fun hm => ⟨(c.inv1.reader hm).flags.1, (c.inv1.reader hm).flags.2.1, (c.inv1.reader hm).againEof⟩)
   have hX : freeStr h1 s1.msg = h1 := by rw [c.msg1]; rfl
   rw [hX] at inv2 own2 live2 frame2
   have hafter : Zlib.Gzlib.MessageRefusal.refusedMessageHeap h1 i s1 =

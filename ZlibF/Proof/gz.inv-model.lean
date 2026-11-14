@@ -30,7 +30,7 @@ Corrections against the skeleton at `7d896179` (strengthenings):
 - `GzPost` has a no-grab clause: a block owned after a helper call was owned before it or was not live before it.
 
 Patches. Some clauses (`GzCommon.pos`, `GzCommon.next`, `GzReadInv.output`) are established only for the patched
-source (patch 0002, patch 0003, and local patches for F-1, W7, R-3, R-4). The definitions do not depend on that;
+source (patch 0002, patch 0003, patch 0005, and local patches for F-1 and W7). The definitions do not depend on that;
 the lemmas that need a patch say so.
 -/
 
@@ -112,9 +112,13 @@ structure GzCommon (h : Heap) (i : Nat) (s : GzState) : Prop where
   (`GzInv.pos_lower`), since `x.have ≤ 2·size` by `GzReadInv.output`. -/
   pos : 0 ≤ s.skip.toInt ∧ s.x.pos.toInt + s.skip.toInt ≤ 9223372036854775807 ∧
     0 ≤ s.x.pos.toInt + s.x.have.toNat
-  /-- `x.next` is NULL, or inside an owned buffer other than the message with `x.have` bytes after it. Relies on
-  local patches for R-3 (`gz_reset` writes `x.next`) and R-4 (`x.next` is never left in the caller's buffer). -/
-  next : s.x.next = .null ∨ ∃ b off a, s.x.next = .ref (.blk b) off ∧ b ≠ i ∧ GzOwned h i s b ∧
+  /-- With buffered output (`x.have ≠ 0`), `x.next` is inside an owned buffer other than the message with `x.have`
+  bytes after it. With `x.have = 0` it says nothing: the direct path of `gz_read` (`gz_decomp` into the caller's
+  buffer) leaves `x.next = next_out - have` inside the caller's buffer with `x.have = 0`, and patch 0005 only guards
+  `x.next += n` with `n != 0` (regression `gz-next-caller.c`). After patch 0005 every read or advance of `x.next`
+  happens with `x.have ≠ 0` (`gz_skip_have`, `gzseek64`, `gzgetc`, `gzgets`, the compare in `gzungetc`), so a stale
+  or never-written `x.next` (R-3, R-4) is never used. -/
+  next : s.x.have ≠ 0 → ∃ b off a, s.x.next = .ref (.blk b) off ∧ b ≠ i ∧ GzOwned h i s b ∧
     blkOf s.msg ≠ some b ∧ h.bytes b = some a ∧ off + s.x.have.toNat ≤ a.size
   nullHave : s.x.next = .null → s.x.have = 0
   /-- The codec does not own the record block. The record holds the embedded stream, so a write of the record is a
@@ -162,6 +166,11 @@ structure GzReadInv (h : Heap) (i : Nat) (s : GzState) : Prop where
   Inside a reading call `gz_look` (COPY) and `gz_fetch` (called by `gz_skip`) may leave both nonzero: their posts are
   stated over `GzInvUpToSkip`. -/
   haveSkip : s.x.have ≠ 0 → s.skip = 0
+  /-- a reader that stalled at the end of its input has no pending input. Otherwise `gz_read` loops forever:
+  `gz_avail` reads nothing at `eof`, and `gz_look` returns 0 in LOOK because `again && avail_in < 4`. `again` is
+  set only by a stalled `gz_load`, which runs with `eof = 0`; the junk path of `gz_decomp` sets `eof` with
+  `avail_in = 0`; `gzclearerr` and `gz_reset` clear `eof` or `again`; `gz_look`'s COPY branch zeroes `avail_in`. -/
+  againEof : s.again ≠ 0 → s.eof ≠ 0 → s.strm.avail_in = 0
 
 /-- The writer part (`s.mode = GZ_WRITE`): batch C's W1–W10. W1 and W9 are in `GzCommon`; W10 needs no fact;
 W7 is the position clause of `GzCommon` (relies on the local patch for W7). -/
@@ -252,8 +261,8 @@ def GzPost (h : Heap) (i : Nat) (s : GzState) (regions : List Region) (fs' : Fs)
 def clearOut (s : GzState) : GzState := { s with x := { s.x with «have» := 0, next := .null } }
 
 /-- **The invariant up to the buffered output**, for the inside of a reading call: `GzInv` of the record with no
-buffered output. `gz_decomp` and `gz_load` into the caller's buffer leave `x.next` in that buffer until `gz_read`
-resets it (the local patch for R-4); this is what holds in between. -/
+buffered output. `gz_decomp` and `gz_load` into the caller's buffer leave `x.next` in that buffer; `GzInv` allows
+that once `x.have = 0` (`GzCommon.next`), and this is what holds before `x.have` is reset. -/
 def GzInvUpToOutput (h : Heap) (i : Nat) (s : GzState) : Prop :=
   h.gzstates i = some s ∧ GzInv (putGz h i (clearOut s)) i (clearOut s)
 

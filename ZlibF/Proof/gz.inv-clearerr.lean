@@ -96,7 +96,7 @@ theorem freeStr_facts {h : Heap} {s : GzState} (u : Zlib.Gzlib.Spec.Uniq h)
 /-- **Dropping the message keeps `GzInv`.** The owned message is freed, the pointer cleared, the code set to `e`,
 and (for a reader) `eof` and `past` set to `e1` and `p1`. -/
 theorem GzInv.clear_message {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s) (e1 p1 e : Int32)
-    (rd : s.mode = GZ_READ → (e1 = 0 ∨ e1 = 1) ∧ (p1 = 0 ∨ p1 = 1)) :
+    (rd : s.mode = GZ_READ → (e1 = 0 ∨ e1 = 1) ∧ (p1 = 0 ∨ p1 = 1) ∧ (s.again ≠ 0 → e1 ≠ 0 → s.strm.avail_in = 0)) :
     GzInv (putGz (freeStr h s.msg) i { s with eof := e1, past := p1, msg := .null, err := e }) i
         { s with eof := e1, past := p1, msg := .null, err := e } ∧
     (∀ b, GzOwned (putGz (freeStr h s.msg) i { s with eof := e1, past := p1, msg := .null, err := e }) i
@@ -252,17 +252,16 @@ theorem GzInv.clear_message {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i 
         obtain ⟨ho, hm⟩ := (hown b).1 hb
         exact ⟨c.live b ho, hm⟩)
       pos := c.pos
-      next := by
-        rcases c.next with hn | ⟨b, off, a, hx, hbi, ho, hmb, hb, hle⟩
-        · exact Or.inl hn
-        · refine Or.inr ⟨b, off, a, hx, hbi, (hown b).2 ⟨ho, hmb⟩, by simp [blkOf], ?_, hle⟩
-          show (freeStr h s.msg).bytes b = some a
-          rw [dbytes b hmb]; exact hb
+      next := fun hh => by
+        obtain ⟨b, off, a, hx, hbi, ho, hmb, hb, hle⟩ := c.next hh
+        refine ⟨b, off, a, hx, hbi, (hown b).2 ⟨ho, hmb⟩, by simp [blkOf], ?_, hle⟩
+        show (freeStr h s.msg).bytes b = some a
+        rw [dbytes b hmb]; exact hb
       nullHave := c.nullHave
       recordFree := by rw [hso]; exact c.recordFree }
   · intro hm
     have r := inv.reader hm
-    obtain ⟨he1, hp1⟩ := rd hm
+    obtain ⟨he1, hp1, hae⟩ := rd hm
     exact {
       how := r.how
       copyDirect := r.copyDirect
@@ -282,7 +281,8 @@ theorem GzInv.clear_message {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i 
           z, k, st, by rw [hget]; exact hzget, hzst, by rw [hist]; exact hk, hhead⟩
       posHave := r.posHave
       againSize := r.againSize
-      haveSkip := r.haveSkip }
+      haveSkip := r.haveSkip
+      againEof := hae }
   · intro hm
     have w := inv.writer hm
     exact {
@@ -334,11 +334,12 @@ theorem gzclearerr_inv_run {h : Heap} {i : Nat} {s : GzState} (inv : GzInv h i s
 theorem gzclearerr_step (i : Nat) : GzCallSafe i (.gzclearerr (some (.in_gzstate_x i))) := by
   intro h fs s inv hfs _
   have hrun := gzclearerr_inv_run inv
-  have key : ∃ e1 p1 : Int32, (s.mode = GZ_READ → (e1 = 0 ∨ e1 = 1) ∧ (p1 = 0 ∨ p1 = 1)) ∧
+  have key : ∃ e1 p1 : Int32, (s.mode = GZ_READ → (e1 = 0 ∨ e1 = 1) ∧ (p1 = 0 ∨ p1 = 1) ∧
+        (s.again ≠ 0 → e1 ≠ 0 → s.strm.avail_in = 0)) ∧
       Zlib.Gzlib.Spec.errNull (Zlib.Gzlib.Spec.clearRec s) Z_OK =
         { s with eof := e1, past := p1, msg := .null, err := Z_OK } := by
     by_cases hm : s.mode = GZ_READ
-    · refine ⟨0, 0, fun _ => ⟨Or.inl rfl, Or.inl rfl⟩, ?_⟩
+    · refine ⟨0, 0, fun _ => ⟨Or.inl rfl, Or.inl rfl, fun _ he => absurd rfl he⟩, ?_⟩
       simp [Zlib.Gzlib.Spec.errNull, Zlib.Gzlib.Spec.clearRec, hm]
     · refine ⟨s.eof, s.past, fun h' => absurd h' hm, ?_⟩
       have hm' : (s.mode == GZ_READ) = false := by simpa using hm
