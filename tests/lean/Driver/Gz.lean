@@ -1,5 +1,6 @@
 import ZlibF.Zlib.«gzclose.c»
 import ZlibF.Zlib.«uncompr.c»
+import ZlibF.Zlib.«zlib.h»
 import DiffTest.Common
 import DiffTest.Heap
 
@@ -192,6 +193,11 @@ def doOp (e : Env) (op : String) : Except Fault (String × Env) := do
   | "getc" =>
     let (r, e) ← runG e (gzgetc g)
     return (s!"C{r.toInt}", e)
+  | "getcm" =>
+    -- the zlib.h macro; the C driver then prints g->have
+    let (r, e) ← runG e (Zlib.ZlibH.gzgetc g)
+    let (s, e) ← runM e (Zlib.Gzguts.ldS (Zlib.Gzguts.castState g))
+    return (s!"M{r.toInt}h{s.x.«have».toNat}", e)
   | "ungetc" =>
     let v ← pi 2
     let (r, e) ← runG e (gzungetc (Int32.ofInt v) g)

@@ -4,9 +4,8 @@ import ZlibF.Proof.«gz.inv-clearerr»
 /-!
 # gzread.c: `gzungetc` and `gzgetc` on a handle in `GzInv`
 
-`gzungetc_step_of`: the skeleton statement `gzungetc_step` (`GzCallSafe`), from the skeleton statement of
-`GzInv.gz_error`, its no-take-over fact `GzErrorOwn`, and restated statements of `gz_look_safe` (`GzLookSpec'`,
-post over `GzInvUpToSkip`) and `gz_skip_safe` (`GzSkipSpec'`, from `GzInvUpToSkip` back to `GzInv`).
+The `gzungetc` stages over a premise `GzSkipSpec'` (`gz_skip` from `GzInvUpToSkip`) were removed on 2026-11-14:
+that premise is false without `skip ≠ 0`. `gzungetc` is proved in `gz.read-getc-step` over the corrected `GzSkipSpecNZ`.
 `gzgetc_step_of`: the skeleton statement `gzgetc_step`, from the skeleton statements of `gz_read_safe` and
 `GzInv.gz_error` and `GzErrorOwn`. On the buffered path `GzReadInv.haveSkip` gives `skip = 0`, and `posHave` keeps
 `x.pos + 1` representable.
@@ -126,16 +125,6 @@ def GzLookSpec' : Prop :=
       (r = 0 ∨ r = -1) ∧ FdsKept fs fs' ∧ GzPost h i s [] fs' after GzInvUpToSkip ∧
       (∀ s', after.gzstates i = some s' → s'.size = 0 → s'.err ≠ Z_OK ∧ s'.err ≠ Z_BUF_ERROR) ∧
       (ReadsFinite fs s.fd → ReadsFinite fs' s.fd)
-
-/-- The skeleton statement `gz_skip_safe` as restated (from the invariant up to the pending skip, back to `GzInv`,
-no skip left on success), strengthened: the buffers stay. It is the conclusion of `gz_skip_safe_of'`
-(`gzread.c.skip-gets.lean`). -/
-def GzSkipSpec' : Prop :=
-  ∀ (i : Nat) (h : Heap) (fs : Fs) (s : GzState), GzInvUpToSkip h i s → FileSystem fs → s.mode = GZ_READ →
-    RunSafe (Zlib.Gzread.gz_skip (gzSt i)) fs h (ReadsFinite fs s.fd) fun r fs' after =>
-      (r = 0 ∨ r = -1) ∧ FdsKept fs fs' ∧ GzPost h i s [] fs' after GzInv ∧
-      (r = 0 → ∀ s', after.gzstates i = some s' → s'.skip = 0) ∧
-      (∀ s', after.gzstates i = some s' → s.size ≠ 0 → s'.size = s.size)
 
 /-- The skeleton statement `gz_read_safe` (branch `skeleton/gz`, `gz.skeleton-read.lean`). -/
 def GzReadSpec : Prop :=
@@ -1152,86 +1141,6 @@ theorem EffI.toEff {i : Nat} {h0 : Heap} {s0 : GzState} {fs0 fs : Fs} {h : Heap}
     have e' := Option.some.inj (u'.cur.symm.trans hs)
     subst e'
     exact u'.inv hc⟩
-
-/-- **`tAgain`**: the skip request, then `tSkip`. -/
-theorem tAgain_run (skip : GzSkipSpec') (gzerr : GzErrorSpec) (gzerrOwn : GzErrorOwn) {i : Nat} {c : Int32}
-    {h : Heap} {s : GzState} {fs fs1 : Fs} {hh : Heap} {s2 : GzState} (e : EffI GzInvUpToSkip i h s fs fs1 hh)
-    (u2 : GzInvUpToSkip hh i s2) (hm2 : s2.mode = GZ_READ) (hfd2 : s2.fd = s.fd) (hz2 : s2.size ≠ 0)
-    (hfin : ReadsFinite fs s.fd → ReadsFinite fs1 s.fd) :
-    RunSafe (tAgain c (some (.tab i))) fs1 hh (ReadsFinite fs s.fd) (fun _ fs' after => Eff i h s fs fs' after) := by
-  unfold tAgain
-  dsimp only
-  refine RunSafe.bind_lift (ldS_run u2.cur) ?_
-  refine RunSafe.ite (fun _ => ?_) (fun hk => ?_)
-  · refine RunSafe.bind (RunSafe.fin_mono (skip i hh fs1 s2 u2 e.2.1 hm2) (fun hf => by rw [hfd2]; exact hfin hf)) ?_
-    rintro r fs3 h3 ⟨hr01, k3, post3, hsk3, hsz3⟩
-    have e3 : Eff i h s fs fs3 h3 := EffI.trans good_skip good_inv e u2.cur post3 k3
-    obtain ⟨_, s3, inv3, m3, _, _⟩ := post3
-    refine RunSafe.ite (fun _ => RunSafe.pure' e3) (fun hr => ?_)
-    have hr0 : r = 0 := by
-      rcases hr01 with h0 | h0
-      · exact h0
-      · exact absurd (by simp [h0]) hr
-    exact tSkip_run gzerr gzerrOwn e3 inv3 (m3.trans hm2) (by rw [hsz3 s3 inv3.common.record hz2]; exact hz2)
-      (hsk3 hr0 s3 inv3.common.record)
-  · have hsk : s2.skip = 0 := by simpa using hk
-    exact tSkip_run gzerr gzerrOwn (e.toEff u2.cur (Or.inr hsk)) (u2.inv (Or.inr hsk)) hm2 hz2 hsk
-
-/-- **`tLook`**: the refusal after `gz_look`, the `again` reset, then `tAgain`. -/
-theorem tLook_run (skip : GzSkipSpec') (gzerr : GzErrorSpec) (gzerrOwn : GzErrorOwn) {i : Nat} {c : Int32}
-    {h : Heap} {s : GzState} {fs fs1 : Fs} {h1 : Heap} {s1 : GzState} (e : EffI GzInvUpToSkip i h s fs fs1 h1)
-    (u1 : GzInvUpToSkip h1 i s1) (hm1 : s1.mode = GZ_READ) (hfd1 : s1.fd = s.fd)
-    (hsz : s1.size = 0 → s1.err ≠ Z_OK ∧ s1.err ≠ Z_BUF_ERROR)
-    (hfin : ReadsFinite fs s.fd → ReadsFinite fs1 s.fd) :
-    RunSafe (tLook c (some (.tab i))) fs1 h1 (ReadsFinite fs s.fd) (fun _ fs' after => Eff i h s fs fs' after) := by
-  have r1 := u1.reader hm1
-  unfold tLook
-  refine RunSafe.bind_lift (ldS_run u1.cur) ?_
-  refine RunSafe.ite (fun hr => RunSafe.pure' ?_) (fun hr => ?_)
-  · have hz : s1.size = 0 := Classical.byContradiction fun hne => by simp [hne] at hr
-    exact e.toEff u1.cur (Or.inl (r1.unalloc hz).1)
-  have hz1 : s1.size ≠ 0 := by
-    intro hz
-    have ha : s1.again = 0 := r1.againSize hz
-    obtain ⟨n1, n2⟩ := hsz hz
-    exact hr (by simp [n1, n2, ha, hz])
-  dsimp only
-  refine RunSafe.ite (fun _ => ?_) (fun _ => tAgain_run skip gzerr gzerrOwn e u1 hm1 hfd1 hz1 hfin)
-  refine RunSafe.bind_lift (again_run u1) ?_
-  obtain ⟨u2, post2⟩ := again_step (fs := fs1) u1 hm1 e.2.1
-  exact tAgain_run skip gzerr gzerrOwn (EffI.trans good_skip good_skip e u1.cur post2 (fun _ => Iff.rfl)) u2 hm1
-    hfd1 hz1 hfin
-
-/-- **The run of `gzungetc`**: no fault but running out of fuel, a result under M7, and the effect `Eff`. -/
-theorem gzungetc_run (look : GzLookSpec') (skip : GzSkipSpec') (gzerr : GzErrorSpec) (gzerrOwn : GzErrorOwn)
-    (i : Nat) (c : Int32) (h : Heap) (fs : Fs) (s : GzState) (inv : GzInv h i s) (hfs : FileSystem fs) :
-    RunSafe (Zlib.Gzread.gzungetc c (some (.in_gzstate_x i))) fs h (ReadsFinite fs s.fd)
-      (fun _ fs' after => Eff i h s fs fs' after) := by
-  rw [gzungetc_eq]
-  refine RunSafe.bind_lift (ldS_run inv.common.record) ?_
-  refine RunSafe.ite (fun _ => RunSafe.pure' (Eff.refl inv hfs)) (fun hm => ?_)
-  have hm' : s.mode = GZ_READ := by simpa using hm
-  dsimp only
-  refine RunSafe.ite (fun hl => ?_) (fun hl => ?_)
-  · have hh : s.x.have = 0 := by simp at hl; exact hl.2
-    refine RunSafe.bind (RunSafe.fin_mono (look i h fs s inv hfs hm' hh) (fun _ => trivial)) ?_
-    rintro r fs1 h1 ⟨_, k1, post1, hsz1, hfin1⟩
-    have e1 : EffI GzInvUpToSkip i h s fs fs1 h1 := ⟨k1, post1⟩
-    obtain ⟨_, s1, u1, m1, f1, _⟩ := post1
-    exact tLook_run skip gzerr gzerrOwn e1 u1 (m1.trans hm') f1 (hsz1 s1 u1.cur) hfin1
-  · refine tLook_run skip gzerr gzerrOwn (Eff.refl inv hfs).upToSkip inv.upToSkip hm' rfl ?_ id
-    intro hz
-    obtain ⟨hh, _, hlook, _⟩ := (inv.reader hm').unalloc hz
-    exact absurd (by simp [hlook, hh]) hl
-
-/-- **`gzungetc_step`** (skeleton statement) from the callee premises. -/
-theorem gzungetc_step_of (look : GzLookSpec') (skip : GzSkipSpec') (gzerr : GzErrorSpec) (gzerrOwn : GzErrorOwn)
-    (i : Nat) (c : Int32) : GzCallSafe i (.gzungetc c (some (.in_gzstate_x i))) := by
-  intro h fs s inv hfs _
-  have R := gzungetc_run look skip gzerr gzerrOwn i c h fs s inv hfs
-  exact ⟨R.1, fun hn => R.2.1 (hn trivial), fun v fs' after he => Eff.post rfl (R.2.2 v fs' after he)⟩
-
-#print axioms gzungetc_step_of
 
 /-! ## `gzgetc` -/
 

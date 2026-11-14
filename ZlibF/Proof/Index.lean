@@ -1709,6 +1709,7 @@ import ZlibF.Proof.«gz.read-decomp»
 import ZlibF.Proof.«inflate.c.head-uses-input»
 import ZlibF.Proof.«inflate.c.stuck-no-output»
 import ZlibF.Proof.«gz.read-leaf-common»
+import ZlibF.Proof.«gzread.c.skip-terminates»
 import ZlibF.Proof.«gz.read-getc-step»
 import ZlibF.Proof.«gz.read-direct-step»
 import ZlibF.Proof.«gz.read-gets-step»
@@ -1733,7 +1734,9 @@ import ZlibF.Proof.«gz.inv-open»
 import ZlibF.Proof.«gz.inv-open-path»
 import ZlibF.Proof.«gz.inv-open-fd»
 import ZlibF.Proof.«gz.inv-open-fresh»
+import ZlibF.Proof.«zlib.h.gzgetc-macro»
 import ZlibF.Proof.«gz.sequence-safety»
+import ZlibF.Proof.«public-gz-sequence-safety»
 import ZlibF.Proof.«public-gz-sequence-nonvacuity»
 
 /-!

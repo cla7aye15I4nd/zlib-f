@@ -163,6 +163,8 @@ static void op(char *o) {
         int len = (int)num(f[2]); char *s = malloc(len > 0 ? (size_t)len : 1);
         char *r = gzgets(g, s, len); printf("g"); if (!r) printf("N"); else puthex((unsigned char *)s, strlen(s)); free(s);
     } else if (!strcmp(c, "getc")) { printf("C%d", (gzgetc)(g));
+    } else if (!strcmp(c, "getcm")) {  /* the zlib.h macro (never on a NULL handle: it dereferences g) */
+        printf("M%d", gzgetc(g)); printf("h%u", g->have);
     } else if (!strcmp(c, "ungetc")) { printf("u%d", gzungetc((int)num(f[2]), g));
     } else if (!strcmp(c, "seek")) { printf("S%lld", (long long)gzseek(g, (z_off_t)num(f[2]), (int)num(f[3])));
     } else if (!strcmp(c, "tell")) { printf("T%lld", (long long)gztell(g));
