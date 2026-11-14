@@ -1,4 +1,4 @@
-<!-- source-sha256: 83600e4ab1baee0721e5d8ea87fc0adfae13996550626f9a9354d473373cce0d -->
+<!-- source-sha256: c849cc59a0009a45ffec2dae096857d00dcbd5433292ba43c51a58e41a411ae0 -->
 # 证明进度与剩余工作
 
 本页集中记录证明证据和剩余工作。要了解目标陈述和证明的整体结构，请先读[总览](overview.md)。
@@ -1741,8 +1741,8 @@ deflate 安全性目标尚未完成的工作（2026-11-12）。调用之间的�
 | `copy_header` | `deflateCopy` 复制状态记录，因此副本中 `HeaderInv` 成立（`deflate.c.universal-ops-copy`，骨架陈述）。 | checked | 0 |
 | `copy_failure` | 某次分配失败的 `deflateCopy`（状态记录失败，或四个缓冲区请求的任意子集失败，它们都在空指针检查之前执行）返回 `Z_MEM_ERROR`，释放它分配的每个块，清除 `dest->state`，并保持源与其他活跃块不变（`deflate.c.copy-failure`）。 | checked | 0 |
 | `copy_success` | 所有分配都成功时，`deflateCopy` 返回 `Z_OK`：目标满足 `DGood`，其状态为 `copiedDeflate`，窗口、`head`、`prev` 的已复制部分、待发字节和符号都被复制，账目恰好增加五个新块（`deflate.c.copy-success`，来自 `copy_tail_run`）。 | checked | 0 |
-| `deflate_copy_public`、`deflate_copy_safety`（`public-deflate-copy`） | 类型为 `Goal.deflateCopy` 与 `Goal.deflateCopy_safety` 的定理：空参数被拒绝；从可达源出发，由 `copy_failure` 或 `copy_success` 得出。陈述先在真实 C 上测试（`tests/goals/deflate-copy`：144000 种组合，五次分配的每个失败子集，无违例）。`Goal.deflateCopy_safety` 还包含 zlib.h 对不一致源的拒绝（`deflateCopy_refused`）。尚未登记：登记需要 `Goal.deflateCopy` 的证明变异体（验收批次）。 | checked | 0 |
-| `inflate_refusal`、`deflate_refusal`（`public-stream-refusal`） | 类型为 `Goal.inflate_refusal` 与 `Goal.deflate_refusal` 的定理：`NULL` 或不一致的流（state 为 `NULL`、`zalloc` 或 `zfree` 为 `NULL`，或检查拒绝的存活状态）被 `inflate`、`inflateEnd`、`inflateReset`、`inflateReset2`、`inflateGetDictionary`、`inflateSetDictionary`、`inflateCopy`、`deflate`、`deflateSetDictionary`、`deflateParams`、`deflateGetDictionary` 与 `deflateCopy` 以 `Z_STREAM_ERROR` 拒绝，且不做任何改变（`inflate` 创建并释放其局部数组；复制会清除 `dest->state`）。陈述先在真实 C 上测试（`tests/goals/stream-refusal`：192 次调用，无违例）。随验收批次登记。 | checked | 0 |
+| `deflate_copy_public`、`deflate_copy_safety`（`public-deflate-copy`） | 类型为 `Goal.deflateCopy` 与 `Goal.deflateCopy_safety` 的定理：空参数被拒绝；从可达源出发，由 `copy_failure` 或 `copy_success` 得出。陈述先在真实 C 上测试（`tests/goals/deflate-copy`：144000 种组合，五次分配的每个失败子集，无违例）。`Goal.deflateCopy_safety` 还包含 zlib.h 对不一致源的拒绝（`deflateCopy_refused`）。已登记，带五个结构性公开变异（`tests/proof-mutants/public-streams.tsv`），每个都被内核重放拒绝。 | checked | 0 |
+| `inflate_refusal`、`deflate_refusal`（`public-stream-refusal`） | 类型为 `Goal.inflate_refusal` 与 `Goal.deflate_refusal` 的定理：`NULL` 或不一致的流（state 为 `NULL`、`zalloc` 或 `zfree` 为 `NULL`，或检查拒绝的存活状态）被 `inflate`、`inflateEnd`、`inflateReset`、`inflateReset2`、`inflateGetDictionary`、`inflateSetDictionary`、`inflateCopy`、`deflate`、`deflateSetDictionary`、`deflateParams`、`deflateGetDictionary` 与 `deflateCopy` 以 `Z_STREAM_ERROR` 拒绝，且不做任何改变（`inflate` 创建并释放其局部数组；复制会清除 `dest->state`）。陈述先在真实 C 上测试（`tests/goals/stream-refusal`：192 次调用，无违例）。已登记；拒绝变异在 `tests/proof-mutants/stream-refusal.tsv` 中。 | checked | 0 |
 | `reachable_inv` | 对 `StreamReachable` 归纳：每个可达状态都满足 `DInv`、`HeaderInv` 和 `CallFacts`（`reachable_inv_of`，`deflate.c.universal-sequence-safety`）。 | checked in skeleton | 0 |
 | `deflate_proof` | 类型为 `Goal.deflate` 的定理。已检查为 `deflate_proof_of (facts : SequenceFacts) : Goal.deflate`（`deflate.c.universal-deflate-proof`）：`reachable_inv_of`、`DInv.unique`、字段 `deflateCall`。一旦 `SequenceFacts` 的字段都成为定理，它就是 `Goal.deflate`。`CallFacts.finishBits`（M18）已检查。 | checked given hypotheses | 0 |
 | **小计 `Goal.deflateInit2_` 与 `Goal.deflate`** | | | **150** |
@@ -1882,7 +1882,7 @@ zlib.h 文档化的每个函数占一行。每行给出表明该调用不会出�
 | deflateEnd | 自身目标 + SeqD 的 End 子句 | `ZlibF.Spec.Public.DeflateEndProof.deflate_end_public`，`public-deflate-end.lean`；SeqD 的第 3 子句 | 是 | 自身目标需要 `DGood`。Refusal：`Zlib.Deflate.Proofs.deflateEnd_reject`（`deflate.c.life.end.lean`，已登记）覆盖 NULL、zalloc/zfree 为 NULL、state 为 NULL，以及被拒绝的活动 state。因此已覆盖：从未初始化（模型指针为 NULL）、NULL、state 为 NULL，以及复制失败之后。它不是类型为目标的定理。 |
 | deflateSetDictionary | SeqD | SeqD | 是 | 自身的 `Goal.deflateSetDictionary`：无定理。Refusal：`Goal.deflate_refusal`（checked）覆盖 NULL 与不一致的流。 |
 | deflateGetDictionary | 自身目标 + SeqD | `ZlibF.Spec.Public.DeflateDictionaryProof.deflate_getdict_public`，`public-deflate-getdict.lean` | 是 | 自身目标需要 `DGood`，且目标缓冲区与窗口分离。Refusal：`Zlib.Deflate.Proofs.deflateGetDictionary_reject`（`deflate.c.life.getdict.lean`）已检查，但**未登记**。 |
-| deflateCopy | 自身目标 | `Zlib.Deflate.Universal.deflate_copy_public` / `deflate_copy_safety`，`public-deflate-copy.lean` | 否（checked） | 不是 `StreamOperation`；`StreamReachable.deflateCopy` 只为 SeqD 的第 1 子句提供输入。缺口：`source ≠ dest`（偏差行）。不一致的源由 `Goal.deflate_refusal`（checked）覆盖。 |
+| deflateCopy | 自身目标 | `Zlib.Deflate.Universal.deflate_copy_public` / `deflate_copy_safety`，`public-deflate-copy.lean` | 是 | 不是 `StreamOperation`；`StreamReachable.deflateCopy` 只为 SeqD 的第 1 子句提供输入。缺口：`source ≠ dest`（偏差行）。不一致的源由 `Goal.deflate_refusal`（checked）覆盖。 |
 | deflateReset | 自身目标 + SeqD | `ZlibF.Spec.Public.DeflateResetProof.deflate_reset_public`，`public-deflate-reset.lean` | 是 | Refusal：`Zlib.Deflate.Proofs.deflateReset_reject`（已登记）。 |
 | deflateParams | SeqD | SeqD | 是 | 自身的 `Goal.deflateParams`：无定理。Refusal：`Goal.deflate_refusal`（checked）覆盖 NULL 与不一致的流。 |
 | deflateTune | 自身目标 + SeqD | `ZlibF.Spec.Public.DeflateQueryProof.tune_public`，`public-deflate-small-queries.lean` | 是 | 完整（`CheckedDeflate` 包含各 refusal）。 |
@@ -1970,10 +1970,10 @@ zlib.h 文档化的每个函数占一行。每行给出表明该调用不会出�
 对完整文档化定义域没有已检查无故障定理的已文档化函数：
 
 1. **inflateBack**：open。只有 `inflate_back_sequence_safety_of (FastOk)`；`LEN_fast_p` 和 `fast_alias` 未完成。progress.md 也把该目标行列为“Not proved”。
-2. **deflateCopy**：checked，未登记。假设 `source ≠ dest`（偏差行）。
+2. **deflateCopy**：已登记。假设 `source ≠ dest`（偏差行）。
 3. **inflateEnd**：已关闭。NULL、state 为 NULL、`End` 之后、初始化失败之后，以及复制失败的目标由 `Goal.inflate_refusal`（checked）覆盖。
 4. **inflateCopy**：已关闭。不一致的源由 `Goal.inflate_refusal`（checked）覆盖。
-5. **NULL 或不一致流的 refusal**：已关闭。`Goal.inflate_refusal` 与 `Goal.deflate_refusal`（checked）覆盖 `inflate`、`deflate`、`inflateEnd`、`inflateReset`、`inflateReset2`、`inflateGetDictionary`、`inflateSetDictionary`、`inflateCopy`、`deflateSetDictionary`、`deflateParams`、`deflateGetDictionary` 与 `deflateCopy`。这些目标与 `deflateGetDictionary_reject` 随验收批次登记。
+5. **NULL 或不一致流的 refusal**：已关闭。`Goal.inflate_refusal` 与 `Goal.deflate_refusal`（checked）覆盖 `inflate`、`deflate`、`inflateEnd`、`inflateReset`、`inflateReset2`、`inflateGetDictionary`、`inflateSetDictionary`、`inflateCopy`、`deflateSetDictionary`、`deflateParams`、`deflateGetDictionary` 与 `deflateCopy`。这些目标与 `deflateGetDictionary_reject` 已登记。
 6. **deflateParams、deflateSetDictionary、deflatePrime、deflateBound、deflateBound_z、inflateSync**：没有自身目标定理。可达流上的无故障只经由 SeqI 或 SeqD 得到。这对计划内的安全性已足够，但逐调用的自身目标仍为 open。
 7. **adler32、adler32_z**：定义域比 zlib.h 更窄（NULL 只在 `len = 0` 时允许）。`len = 1` 是真实的 C 错误（偏差行）。`len ≥ 2` 的 NULL 安全但未证明。
 8. **除 gzdopen、gzbuffer、gzeof、gzerror、gzclearerr、gzoffset(64)、gzrewind 之外的每个 gz 函数**：open（gzopen、gzopen64、gzclose、gzclose_r、gzclose_w、gzread、gzfread、gzgetc、gzgetc_、gzungetc、gzgets、gzdirect、gzwrite、gzfwrite、gzputc、gzputs、gzprintf、gzflush、gzsetparams、gzseek、gzseek64、gztell、gztell64）。已登记的 gz 定理依赖 `GzValid` 或 `GzReachable`（gzoffset 和 gzrewind 还依赖 `RegularOs`），而不是每个历史和每个预言世界。dev 上没有登记 gz 安全目标（`gz_sequence_safety` 只在 `skeleton/gz` 上）。

@@ -13,11 +13,12 @@ A computation has type `G α = StateT Fs C.M α`. `Fs` is separate from `Heap`; 
 returns both updated states or a runtime fault. Paths are flat byte strings. Nodes hold byte
 arrays or a directory marker. Each open descriptor stores a node, position and read/write/
 append flags. The regular-file `open` starts at descriptor 3 and chooses the lowest free
-represented slot; the OS-call oracle may choose any other free number.
+represented slot; the OS-call oracle may choose any other free number. A descriptor is a C `int`:
+when no descriptor below `2^31` is free, `open` fails with `EMFILE`.
 
 | Operation | Implemented behavior |
 | --- | --- |
-| `open` | Regular: read or write mode; creation, exclusion, truncation and append are represented. Invalid modes and modeled path failures set `errno` and return `-1`. Oracle: `-1` with any nonzero errno before anything is created, or the new descriptor moved to any free number below `2^31`. |
+| `open` | Regular: read or write mode; creation, exclusion, truncation and append are represented. Invalid modes and modeled path failures set `errno` and return `-1`. When no descriptor below `2^31` is free, `-1` with `EMFILE`, before anything is created or truncated. Oracle: `-1` with any nonzero errno before anything is created, or the new descriptor moved to any free number below `2^31`. |
 | `read` | Regular: copies the requested regular-file bytes up to EOF, cut to the read budget. Invalid descriptors, wrong access mode and directory reads fail. Oracle: `-1` with any nonzero errno, or any `k ∈ [0, n]` bytes of arbitrary data within the budget, whatever the descriptor's state. |
 | `write` | Regular: writes at the position or end in append mode. Seeking past EOF makes a later write fill the gap with zeros. Crossing `fsizeLimit` gives a short write; writing at the limit fails with `EFBIG`. Oracle: `-1` with any nonzero errno, or any count in `[1, n]` (0 for an empty buffer) without changing the file. |
 | `lseek` | Regular: supports set/current/end offsets, rejects negative results and results above `2^63 - 1`. Oracle: `-1` with any nonzero errno, or any value in `[0, 2^63 - 1]` without moving the descriptor. |

@@ -17,16 +17,15 @@ open C Zlib.GzFs Zlib.Gzguts Zlib.Gzlib.Spec ZlibF.Spec.Public.OffsetProof
 def openFdTable (fds : Array (Option OFile)) (slot : Nat) (file : OFile) : Array (Option OFile) :=
   (if slot < fds.size then fds else fds ++ Array.replicate (slot + 1 - fds.size) none).set! slot (some file)
 
-/-- The existing external syscall model, with its private slot search exposed
+/-- The existing external syscall model, with its slot search exposed
 as an existential function. The source equality is checked directly. -/
-def openSourceNode (slots : Fs → Nat) (n : Nat) (w : Fs) (acc : Int32)
+def openSourceNode (fd : Nat) (n : Nat) (w : Fs) (acc : Int32)
     (has : Int32 → Bool) : M (Int32 × Fs) :=
   let node := w.nodes[n]!
   let wr := acc == 1
   if wr && node.isDir then pure (-1, { w with errno := EISDIR })
   else
     let w := if wr && has O_TRUNC then { w with nodes := w.nodes.set! n { node with data := #[] } } else w
-    let fd := slots w
     let of : OFile := { node := n, pos := 0, rd := acc == 0, wr, append := has O_APPEND }
     pure (Int32.ofNat fd, { w with fds := openFdTable w.fds fd of })
 
@@ -35,17 +34,19 @@ def openSource (slots : Fs → Nat) (path : Array UInt8) (oflag : Int32) (w : Fs
   let acc := oflag &&& 3
   let has (f : Int32) := (oflag &&& f) != 0
   let fail (e : Int32) : M (Int32 × Fs) := pure (-1, { w with errno := e })
+  let fd := slots w
   if acc ≥ 2 then fail EINVAL
   else if path.isEmpty then fail ENOENT
+  else if fd ≥ 2 ^ 31 then fail EMFILE
   else match (w.names.find? (fun e => e.1 == path)).map (·.2) with
-    | some n => if has O_CREAT && has O_EXCL then fail EEXIST else openSourceNode slots n w acc has
+    | some n => if has O_CREAT && has O_EXCL then fail EEXIST else openSourceNode fd n w acc has
     | none =>
       if has O_CREAT then
         let n := w.nodes.size
-        openSourceNode slots n { w with names := w.names.push (path, n), nodes := w.nodes.push { data := #[], isDir := false } } acc has
+        openSourceNode fd n { w with names := w.names.push (path, n), nodes := w.nodes.push { data := #[], isDir := false } } acc has
       else fail ENOENT
 
-/-- Kernel source identity exposes the model's actual private search function;
+/-- Kernel source identity exposes the model's actual search function;
 no property of that function and no syscall contract is an assumption. -/
 theorem fsOpen_source_slots : ∃ slots : Fs → Nat,
     ∀ path flags fs, fsOpenReg path flags fs = openSource slots path flags fs := by
@@ -286,7 +287,10 @@ theorem writerOpen_natural_slot_reg (name : Array UInt8) (fs : Fs)
   split at hactual
   · simp only [pure_app, Except.ok.injEq, Prod.mk.injEq] at hactual
     exact False.elim (hr (congrArg Prod.fst hactual.1.symm))
-  · generalize hfind : (fs.names.find? (fun e => e.1 == name)).map (·.2) = found at hactual
+  · split at hactual
+    · simp only [pure_app, Except.ok.injEq, Prod.mk.injEq] at hactual
+      exact False.elim (hr (congrArg Prod.fst hactual.1.symm))
+    generalize hfind : (fs.names.find? (fun e => e.1 == name)).map (·.2) = found at hactual
     cases found with
     | some n =>
       simp only at hactual
@@ -350,7 +354,10 @@ theorem writerOpen_world_reg (name : Array UInt8) (fs : Fs)
   split at hactual
   · simp only [pure_app, Except.ok.injEq, Prod.mk.injEq] at hactual
     exact False.elim (hr (congrArg Prod.fst hactual.1.symm))
-  · generalize hfind : (fs.names.find? (fun e => e.1 == name)).map (·.2) = found at hactual
+  · split at hactual
+    · simp only [pure_app, Except.ok.injEq, Prod.mk.injEq] at hactual
+      exact False.elim (hr (congrArg Prod.fst hactual.1.symm))
+    generalize hfind : (fs.names.find? (fun e => e.1 == name)).map (·.2) = found at hactual
     cases found with
     | some n =>
       simp only at hactual
@@ -377,7 +384,7 @@ theorem writerOpen_world_reg (name : Array UInt8) (fs : Fs)
       rw [← hactual.1]
       let created : Fs := { fs with names := fs.names.push (name, fs.nodes.size), nodes := fs.nodes.push { data := #[], isDir := false } }
       obtain ⟨hvalid, hnode'⟩ := writerNodeWorld_valid created fs.nodes.size
-        (slots { created with nodes := created.nodes.set! fs.nodes.size { created.nodes[fs.nodes.size]! with data := #[] } })
+        (slots fs)
         (openFs_create_valid fs name hfs) (by simp [created]) (by simp [created])
       simp only [writerNodeWorld, created, hnode] at hvalid hnode'
       refine ⟨_, { node := fs.nodes.size, pos := 0, rd := false, wr := true, append := false },
@@ -418,7 +425,10 @@ theorem readerOpen_world_reg (name : Array UInt8) (fs : Fs)
   split at hactual
   · simp only [pure_app, Except.ok.injEq, Prod.mk.injEq] at hactual
     exact False.elim (hr (congrArg Prod.fst hactual.1.symm))
-  · generalize hfind : (fs.names.find? (fun e => e.1 == name)).map (·.2) = found at hactual
+  · split at hactual
+    · simp only [pure_app, Except.ok.injEq, Prod.mk.injEq] at hactual
+      exact False.elim (hr (congrArg Prod.fst hactual.1.symm))
+    generalize hfind : (fs.names.find? (fun e => e.1 == name)).map (·.2) = found at hactual
     cases found with
     | none =>
       simp only [pure_app, Except.ok.injEq, Prod.mk.injEq] at hactual

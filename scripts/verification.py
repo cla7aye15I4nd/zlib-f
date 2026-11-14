@@ -287,7 +287,7 @@ def replay_public_mutants(manifest: dict, selected: set[str] | None = None) -> N
 
 
 SAFETY_MUTANT_LISTS = ("tests/proof-mutants/deflate-header.tsv", "tests/proof-mutants/deflate-strategies.tsv",
-                       "tests/proof-mutants/deflate-ops.tsv")
+                       "tests/proof-mutants/deflate-ops.tsv", "tests/proof-mutants/stream-refusal.tsv")
 
 
 def mutation_partition(manifest: dict, count: int = 1, index: int = 0) -> tuple[set[str], dict[str, list[str]]]:
@@ -449,7 +449,7 @@ def coverage() -> dict:
                               "inflate_back_initialisation_domain", "gz_initialisation_domain"],
         "safety_goals": ["inflate_sequence_safety", "deflate_sequence_safety", "uncompress_safe", "uncompress_z_safe", "uncompress2_safe", "uncompress2_z_safe", "compress_safety", "compress_z_safety", "compress2_safety", "compress2_z_safety",
                          "inflate_back_sequence_safety", "deflateCopy_safety",
-                         "inflate_refusal", "deflate_refusal"],
+                         "inflate_refusal", "deflate_refusal", "gz_sequence_safety"],
     }
     for group, suffixes in groups.items():
         expected = ["ZlibF.Spec.Public.Goal." + suffix for suffix in suffixes]

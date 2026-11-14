@@ -1,4 +1,4 @@
-<!-- source-sha256: deebca68b693820fd86fac95eeab21fa9e89dff01a79b9808cbf31a045f0a016 -->
+<!-- source-sha256: 17cf5fd30faaf0f9912e369fd27d197df53e9e98bdcb72b1caf72d47200f2fac -->
 
 # 证明变异
 
@@ -46,6 +46,14 @@ bash tests/audit/proofmut.sh tests/audit/proofmut/crc32.tsv '^combine'
 - `cdoWhile` 循环体内的任何修改，哪怕只是去掉一个测试。两个循环体比较失败后，惰性 delta 在两边展开 `cdoWhile`。它的燃料递归随后一次展开一轮迭代，并在每一步再次比较循环体。`compress2_z` 上实测：467 s 后达到 12 GiB 预算；去掉一个测试的变异 214 s 后达到 16 GiB。
 
 循环外的修改很快被拒绝：去掉或替换的调用、去掉的存储、改变的常量。在 `uncompress2_z` 和 `compress2_z` 上，每个这样的行用 120 s 到 200 s，约 10.5 GB。因此公开记录指定结构性变异。**规则：**`tests/audit/public-mutants.json` 中指定的变异不得修改循环体或机器算术；这类变异只放在源码级的表中。超出预算的重放会在失败信息中说明这一点。表中也保留算术变异和循环体变异，每个变异分片都用重新繁饰检查它们，证明必须在语义引理处失败。`tests/proof-mutants/api-boundary.tsv` 是一个例子：`uncompress2_z-destLen-count` 和两个 `refill-off-by-one` 行由重新繁饰检查。意图相同、修改是结构性的行承担内核重放：`uncompress2_z-destLen-drop`（错误的 `destLen` 计数），以及两个 `initial-room` 行（输出空间超过剩余量）。
+
+`Goal.deflateCopy` 遵循同一规则。它在 `tests/proof-mutants/public-streams.tsv` 中的五行都是结构性的：
+- 空目标返回 `Z_OK`；
+- 状态分配失败时返回 `Z_OK`；
+- 缓冲区失败路径保留 `dest->state`；
+- 缓冲区失败路径跳过对 `pending_buf` 的释放；
+- 副本的反向指针被设为源。
+每一行都被重放拒绝；`deflate_copy_public` 的重放峰值约为 10.4 GB。拒绝目标 `Goal.inflate_refusal` 与 `Goal.deflate_refusal` 不是公开入口。它们的行在安全表 `tests/proof-mutants/stream-refusal.tsv` 中，由变异分片以重新繁饰检查：每一行把一次拒绝改为 `Z_OK`。
 
 ## 列表格式
 

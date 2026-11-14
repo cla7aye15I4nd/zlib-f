@@ -844,8 +844,8 @@ theorem upTo_live {h : Heap} {i : Nat} {s : GzState} (hu : GzInvUpToOutput h i s
 /-- The regions of `gz_decomp`'s post-condition. -/
 def outRegions (out : Region) (s0 : GzState) : List Region := if out.pointer = s0.out then [] else [out]
 
-/-- The loop state: the record, the invariant, the effect so far, the kept fields, the output window and the
-input left. -/
+/-- The loop state: the record, the invariant, the effect so far, the kept fields, the output window, the
+input left and the read budget. -/
 structure Base (i : Nat) (out : Region) (h0 : Heap) (fs0 : Fs) (s0 : GzState) (fs : Fs) (h : Heap) (s : GzState) :
     Prop where
   rcd : h.gzstates i = some s
@@ -861,6 +861,7 @@ structure Base (i : Nat) (out : Region) (h0 : Heap) (fs0 : Fs) (s0 : GzState) (f
   rb : ReadsBounded fs0 s0.fd → ReadsBounded fs s0.fd
   err : s0.err ≠ Z_STREAM_END → s.err ≠ Z_STREAM_END
   ml : MsgLit s
+  bud : BudgetAcc s0.fd fs0 fs 0
 
 /-- The view of a writable range keeps its size across a frame that does not change its block. -/
 theorem bf_view {h a : Heap} {C : Nat → Prop} {R : List Region} (bf : BufferFrame h a C R) {r : BRef}
@@ -928,7 +929,8 @@ theorem Base.step {i : Nat} {out : Region} {h0 : Heap} {fs0 : Fs} {s0 : GzState}
     (err : s0.err ≠ Z_STREAM_END → s'.err ≠ Z_STREAM_END) (ml : MsgLit s')
     (hlen : out.length ≠ 0) (hm0 : s0.mode = GZ_READ) (hsz0 : s0.size ≠ 0)
     (outLen : out.pointer = s0.out → out.length ≤ 2 * s0.size.toNat)
-    (views : Zlib.Inflate.Proofs.RegionViews (StartChanged h0 i s0) (outRegions out s0)) :
+    (views : Zlib.Inflate.Proofs.RegionViews (StartChanged h0 i s0) (outRegions out s0))
+    (bud : BudgetAcc s0.fd fs fs' 0) :
     Base i out h0 fs0 s0 fs' h' s' := by
   obtain ⟨hfs', t, inv', hmo, hfdp, bf, lc, ng⟩ := p
   have et : t = s' := Option.some.inj (inv'.1.symm.trans hs')
@@ -976,7 +978,7 @@ theorem Base.step {i : Nat} {out : Region} {h0 : Heap} {fs0 : Fs} {s0 : GzState}
   refine ⟨hs', ⟨hs', inv'.2⟩, fun j => (kept j).trans (B.kept j),
     post_compose B.post B.rcd post' within' views,
     ⟨em.trans em0, efd.trans efd0, esk.trans esk0, epos.trans epos0, esz.trans esz0, eout.trans eout0,
-      ein.trans ein0⟩, pos, wr', ?_, rf, rb, err, ml⟩
+      ein.trans ein0⟩, pos, wr', ?_, rf, rb, err, ml, (B.bud.trans bud).mono (Nat.zero_le _)⟩
   rcases B.side with hA | hB
   · left
     intro b hb ho
@@ -1189,7 +1191,7 @@ theorem avail_trans (St : Stat i out h0 s0) {fs : Fs} {h : Heap} {s : GzState} (
   have hfs : FileSystem fs := B.post.1
   obtain ⟨-, ex, post⟩ := gz_avail_safe i h fs s B.inv hm hfs hsz
   obtain ⟨r, fs', h', run⟩ := ex trivial
-  obtain ⟨hr, kept, p, s', hs', hrec, -, hflags, hist⟩ := post _ _ _ run
+  obtain ⟨hr, kept, p, s', hs', hrec, hafs, hflags, hist⟩ := post _ _ _ run
   obtain ⟨bud1, bud2, bud3⟩ := gz_avail_budget i h fs s B.inv hm hfs hsz run s' hs'
   have e := hrec
   simp only [AvailRec] at e
@@ -1200,6 +1202,7 @@ theorem avail_trans (St : Stat i out h0 s0) {fs : Fs} {h : Heap} {s : GzState} (
   refine Base.step B p hs' kept (Or.inl rfl)
     ⟨by rw [e], by rw [e], by rw [e], by rw [e], by rw [e], by rw [e], by rw [e]⟩ ?_ ?_ ?_ ?_
     (by rw [e]; exact B.ml) St.hlen St.hm0 St.hsz0 St.outLen St.views
+    (by rw [← hfd]; exact hafs.1.mono (Nat.zero_le _))
   · obtain ⟨d, hd, hdl⟩ := B.pos
     exact ⟨d, by rw [e]; exact hd, by rw [e]; exact hdl⟩
   · intro h0f
@@ -1241,6 +1244,7 @@ theorem inflate_trans (head : InflateHeadUsesInput) (St : Stat i out h0 s0) {fs 
   refine ⟨rc, after, z', used, produced, run, hrec', ?_, acct, codes, pOK, fun e => pBUF e hao, pHead⟩
   refine Base.step B post hrec' (fun _ => Iff.rfl) (Or.inr ⟨d, produced, rfl, by have := acct.2.1; omega⟩)
     ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩ ?_ ?_ B.rb B.err (pMsg B.ml) St.hlen St.hm0 St.hsz0 St.outLen St.views
+    (BudgetAcc.refl _ _)
   · refine ⟨d + produced, ?_, ?_⟩
     · show z'.next_out = _
       rw [acct.2.2.2.2.2.1, hd, advance_padv]
@@ -1268,7 +1272,7 @@ theorem put_trans (St : Stat i out h0 s0) {fs : Fs} {h : Heap} {s s2 : GzState} 
   refine Base.step B (post_put_rec B.inv hu2 B.post.1 same keep.1) (by simp [putGz]) (fun _ => Iff.rfl)
     (Or.inl rfl) ⟨same.2.2.2.2.2.1, keep.1, keep.2.1, keep.2.2, same.2.2.2.2.1, same.2.2.2.1, same.2.2.1⟩
     ⟨d, by rw [hno]; exact hd, by rw [hao]; exact hdl⟩ ?_ B.rb (fun he => by rw [herr]; exact B.err he) hml
-    St.hlen St.hm0 St.hsz0 St.outLen St.views
+    St.hlen St.hm0 St.hsz0 St.outLen St.views (BudgetAcc.refl _ _)
   intro h0f
   obtain ⟨f1, l1⟩ := B.rf h0f
   refine ⟨f1, Nat.le_trans ?_ l1⟩
@@ -1289,7 +1293,7 @@ theorem err_trans (St : Stat i out h0 s0) {fs : Fs} {h : Heap} {s : GzState} (B 
   refine Base.step B post hs' (fun _ => Iff.rfl) (Or.inl rfl)
     ⟨by rw [shape], by rw [shape], by rw [shape], by rw [shape], by rw [shape], by rw [shape], by rw [shape]⟩
     ⟨d, by rw [shape]; exact hd, by rw [shape]; exact hdl⟩ ?_ B.rb ?_ (by rw [shape]; exact B.ml) St.hlen St.hm0
-    St.hsz0 St.outLen St.views
+    St.hsz0 St.outLen St.views (BudgetAcc.refl _ _)
   · intro h0f
     obtain ⟨f1, l1⟩ := B.rf h0f
     refine ⟨f1, ?_⟩
@@ -1587,7 +1591,7 @@ theorem body_run (head : InflateHeadUsesInput) (St : Stat i out h0 s0) (had : UI
       exact absurd he (B1.err hne)
     · rw [if_neg c1]
       have r0 : r = 0 := hr.resolve_right (by simpa using c1)
-      refine mid_run head St had hhad B1 (by rw [e]; exact hgz) (by rw [e]; exact hao) (hflags.2.2 r0) ?_ k ?_ l hl hret
+      refine mid_run head St had hhad B1 (by rw [e]; exact hgz) (by rw [e]; exact hao) (hflags.2.2.1 r0) ?_ k ?_ l hl hret
       · intro a b c
         rcases hd a b c with ah | lt
         · left
@@ -1657,6 +1661,7 @@ def DecompPost (i : Nat) (out : Region) (h : Heap) (fs : Fs) (s : GzState) (r : 
   (r = 0 ∨ r = -1) ∧ FdsKept fs fs' ∧
       GzPost h i s (if out.pointer = s.out then [] else [out]) fs' after GzInvUpToOutput ∧
       (ReadsFinite fs s.fd → ReadsFinite fs' s.fd) ∧ (ReadsBounded fs s.fd → ReadsBounded fs' s.fd) ∧
+      BudgetAcc s.fd fs fs' 0 ∧
       ∃ s', after.gzstates i = some s' ∧ FetchKeeps s s' ∧ MsgLit s' ∧
         (ReadsFinite fs s.fd → inputLeft fs' s' ≤ inputLeft fs s) ∧
         (s.err ≠ Z_STREAM_END → s'.err ≠ Z_STREAM_END) ∧
@@ -1676,7 +1681,7 @@ theorem final_post {fs : Fs} {h : Heap} {s : GzState} (B : Base i out h0 fs0 s0 
     (prog : r = 0 → s.x.have ≠ 0 ∨ (s.eof ≠ 0 ∧ s.strm.avail_in = 0) ∨ (s.how = LOOK ∧ Strict h0 fs0 s0 fs s)) :
     DecompPost i out h0 fs0 s0 r fs h := by
   obtain ⟨em, efd, esk, epos, esz, eout, ein⟩ := B.keep
-  refine ⟨hr, B.kept, B.post, fun f => (B.rf f).1, B.rb, s, B.rcd, ⟨em, efd, esk, epos, fun _ => ⟨esz, eout, ein⟩⟩,
+  refine ⟨hr, B.kept, B.post, fun f => (B.rf f).1, B.rb, B.bud, s, B.rcd, ⟨em, efd, esk, epos, fun _ => ⟨esz, eout, ein⟩⟩,
     B.ml, fun f => (B.rf f).2, B.err, hx, hgl, ?_⟩
   intro r0
   rcases prog r0 with a | a | ⟨hl, st⟩
@@ -1832,7 +1837,7 @@ theorem gz_decomp_safe_of (head : InflateHeadUsesInput) : GzDecompSpec := by
   have B0 : Base i out h fs s fs h s := by
     refine ⟨hs, hu, fun _ => Iff.rfl, ⟨hfs, s, hu, rfl, rfl, Zlib.Infback.Safety.BufferFrame.refl h _ _, ?_,
       fun b hb => Or.inl hb⟩, ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩, ⟨0, by rw [hno, padv_zero], by omega⟩, hw, ?_,
-      fun f => ⟨f, Nat.le_refl _⟩, id, id, hml⟩
+      fun f => ⟨f, Nat.le_refl _⟩, id, id, hml, BudgetAcc.refl _ _⟩
     · intro b
       constructor
       · intro hl; exact Or.inl ⟨hl, fun hh => hh.2 hh.1⟩

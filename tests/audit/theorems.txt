@@ -388,6 +388,11 @@ ZlibF.Spec.Public.Proofs.InflateInit.inflate_init2_public
 Zlib.Inflate.Proofs.inflate_public
 Zlib.Inflate.Proofs.inflate_sequence_safety_public
 Zlib.Inflate.Proofs.inflate_copy_public
+Zlib.Deflate.Universal.deflate_copy_public
+Zlib.Deflate.Universal.deflate_copy_safety
+ZlibF.Spec.Public.RefusalProof.inflate_refusal
+ZlibF.Spec.Public.RefusalProof.Deflate.deflate_refusal
+Zlib.Deflate.Proofs.deflateGetDictionary_reject
 ZlibF.Spec.Public.Proofs.Uncompress.uncompress2_z_safe
 ZlibF.Spec.Public.Proofs.Uncompress.uncompress2_safe
 ZlibF.Spec.Public.Proofs.Uncompress.uncompress_z_safe

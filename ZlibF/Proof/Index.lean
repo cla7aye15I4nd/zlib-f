@@ -1711,7 +1711,14 @@ import ZlibF.Proof.«gzwrite.c.printf-run»
 import ZlibF.Proof.«gzwrite.c.printf-error-string-regression»
 import ZlibF.Proof.«gz.inv-seek»
 import ZlibF.Spec.Public.GzSafety
+import ZlibF.Proof.«gz.inv-offset-rewind»
 import ZlibF.Proof.«gzwrite.c.safety»
+import ZlibF.Proof.«gz.inv-close»
+import ZlibF.Proof.«gz.inv-open»
+import ZlibF.Proof.«gz.inv-open-path»
+import ZlibF.Proof.«gz.inv-open-fd»
+import ZlibF.Proof.«gz.inv-open-fresh»
+import ZlibF.Proof.«gz.sequence-safety»
 
 /-!
 Proof-only import point. Add new proof modules here without changing the locked root.

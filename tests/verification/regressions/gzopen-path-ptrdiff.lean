@@ -190,7 +190,7 @@ variable here, so nothing reduces it. -/
 theorem open_default_not_failed (p : Array UInt8) (hne : p.isEmpty = false) (h : Heap) (opened : Fs)
     (hopen : fsOpen p 577 default h = .ok ((-1, opened), h)) : False := by
   rw [Zlib.GzFs.Proofs.fsOpen_regular _ _ _ rfl rfl] at hopen
-  -- `fsOpenReg` is the source expression `openSource` with the model's private slot search (as in
+  -- `fsOpenReg` is the source expression `openSource` with the model's slot search (as in
   -- `fsOpen_source_slots`); the `rfl` assigns that search to `?s`.
   have hsrc : ∀ p f w, fsOpenReg p f w = openSource ?s p f w := by intro p f w; rfl
   rw [hsrc] at hopen
@@ -203,18 +203,14 @@ theorem open_default_not_failed (p : Array UInt8) (hne : p.isEmpty = false) (h :
   have h4 : ((577 : Int32) &&& O_TRUNC != 0) = true := by decide
   have hfind : Array.find? (fun e => e.fst == p) (#[] : Array (Array UInt8 × Nat)) = none := rfl
   have hdir : ((#[] : Array Node).push { data := #[], isDir := false })[0]!.isDir = false := rfl
-  simp only [openSource, openSourceNode, hne, tickW, hnames, hnodes, hfds, h1, h2, h3, h4, hfind, hdir,
+  -- With an empty descriptor table the lowest free slot is 3, below `2^31` (no `EMFILE`).
+  have hlow : ∀ w : Fs, w.fds = #[] → lowestFd w = 3 := by
+    intro w hw
+    simp [lowestFd, lowestFd.go, hw]
+  simp only [openSource, openSourceNode, hne, tickW, hnames, hnodes, hfds, h1, h2, h3, h4, hfind, hdir, hlow,
     ite_false, ite_true, Option.map_none, Bool.true_and, Bool.and_false, Bool.false_eq_true,
     Array.size_empty] at hopen
   simp [bind_app] at hopen
-  have pick : ∀ (x : Int32) (w w' o : Fs), (if x = -1 then (x, w) else (x, w')) = (-1, o) → x = -1 := by
-    intro x w w' o e
-    by_cases hx : x = -1
-    · exact hx
-    · rw [if_neg hx] at e
-      exact (Prod.mk.inj e).1
-  have hx := pick _ _ _ _ hopen
-  exact absurd hx (by intro e; cases e)
 
 theorem bigName_nonempty : bigName.toArray.isEmpty = false := by
   rw [Bool.eq_false_iff]

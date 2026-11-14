@@ -17,6 +17,7 @@ Zlib.Deflate.Engine.Proofs.lmCondR._unsafe_rec
 Zlib.GzFs.formatGo._unsafe_rec
 Zlib.GzFs.gdoWhile.go._unsafe_rec
 Zlib.GzFs.gwhile.go._unsafe_rec
+Zlib.GzFs.lowestFd.go._unsafe_rec
 Zlib.GzFs.parseFlags._unsafe_rec
 Zlib.GzFs.readNumGo._unsafe_rec
 Zlib.Inffast.Proofs.blitN._unsafe_rec
@@ -52,7 +53,6 @@ ZlibF.Spec.copyBack._unsafe_rec
 ZlibF.Spec.readBits._unsafe_rec
 ZlibF.Spec.readBytes._unsafe_rec
 ZlibF.Spec.readNats._unsafe_rec
-_private.ZlibF.Zlib.gzfs.0.Zlib.GzFs.lowestFd.go._unsafe_rec
 Zlib.Trees.Math.nextCode._unsafe_rec
 Zlib.Trees.Math.reverseLowBits._unsafe_rec
 Zlib.Trees.Math.scanCount._unsafe_rec

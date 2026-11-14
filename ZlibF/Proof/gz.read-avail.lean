@@ -447,9 +447,11 @@ def AvailFs (s s' : GzState) (fs fs' : Fs) : Prop :=
     s.strm.avail_in.toNat ≤ s'.strm.avail_in.toNat ∧ (s'.err = s.err ∨ s'.err = Z_ERRNO ∨ s'.err = Z_MEM_ERROR)
 
 /-- The result and the flags across `gz_avail`: a `-1` leaves an error that is not `Z_OK`; a `0` keeps the error, and
-a `0` with no input left has reached the end of the file (`eof ≠ 0`). -/
+a `0` with no input left has reached the end of the file (`eof ≠ 0`). A `0` that leaves `eof = 0` read at least one
+byte: `gz_load` ran, and a load of nothing sets `eof`. -/
 def AvailFlags (r : Int32) (s s' : GzState) : Prop :=
-  (r = -1 → s'.err ≠ Z_OK) ∧ (r = 0 → s'.err = s.err) ∧ (r = 0 → s'.strm.avail_in = 0 → s'.eof ≠ 0)
+  (r = -1 → s'.err ≠ Z_OK) ∧ (r = 0 → s'.err = s.err) ∧ (r = 0 → s'.strm.avail_in = 0 → s'.eof ≠ 0) ∧
+    (r = 0 → s'.eof = 0 → s.strm.avail_in.toNat < s'.strm.avail_in.toNat)
 
 theorem AvailFs.refl (s : GzState) (fs : Fs) : AvailFs s s fs fs :=
   ⟨by simpa using BudgetAcc.refl s.fd fs, Nat.le_refl _, Or.inl rfl⟩
@@ -502,7 +504,8 @@ theorem availLoad_run {h : Heap} {i : Nat} {s : GzState} {fs : Fs} (hu : GzInvUp
     simp only [beq_self_eq_true, ite_true]
     exact ⟨-1, fs1, h2, rfl, Or.inr rfl, hkept, postZ, s2, hs2, by unfold AvailRec; rfl,
       ⟨hbud2.mono (by show s.strm.avail_in.toNat - s.strm.avail_in.toNat ≤ _; omega), Nat.le_refl _, herr2⟩,
-      ⟨(fun _ => hf1 rfl), (fun h0 => absurd h0 (by decide)), (fun h0 => absurd h0 (by decide))⟩, hist2⟩
+      ⟨(fun _ => hf1 rfl), (fun h0 => absurd h0 (by decide)), (fun h0 => absurd h0 (by decide)),
+        (fun h0 => absurd h0 (by decide))⟩, hist2⟩
   have hr0 : r = 0 := hr.resolve_right hr1
   subst hr0
   have hne : ((0 : Int32) == -1) = false := by decide
@@ -551,13 +554,22 @@ theorem availLoad_run {h : Heap} {i : Nat} {s : GzState} {fs : Fs} (hu : GzInvUp
     rw [UInt32.toNat_add, Nat.mod_eq_of_lt (by have := hgot'; have := s.size.toNat_lt; omega)]
     omega
   · unfold AvailFlags
-    refine ⟨(fun h0 => absurd h0 (by decide)), (fun _ => hf0 rfl), (fun _ h0 => ?_)⟩
-    -- nothing was read: the last `read` returned `0`, so `gz_load` set `eof`
-    have hz0 : s3.strm.avail_in.toNat = 0 := by rw [h0]; rfl
-    have hg0 : got = 0 := UInt32.toNat_inj.mp (by rw [UInt32.toNat_zero]; omega)
-    show ef ≠ 0
-    rw [hf2 rfl hg0]
-    decide
+    refine ⟨(fun h0 => absurd h0 (by decide)), (fun _ => hf0 rfl), (fun _ h0 => ?_), (fun _ h0 => ?_)⟩
+    · -- nothing was read: the last `read` returned `0`, so `gz_load` set `eof`
+      have hz0 : s3.strm.avail_in.toNat = 0 := by rw [h0]; rfl
+      have hg0 : got = 0 := UInt32.toNat_inj.mp (by rw [UInt32.toNat_zero]; omega)
+      show ef ≠ 0
+      rw [hf2 rfl hg0]
+      decide
+    · -- `eof` stayed `0`, so the load read at least one byte
+      have h0' : ef = 0 := h0
+      have hg : got.toNat ≠ 0 := fun e => by
+        have hg0 : got = 0 := UInt32.toNat_inj.mp (by rw [UInt32.toNat_zero]; exact e)
+        rw [hf2 rfl hg0] at h0'
+        exact absurd h0' (by decide)
+      show s.strm.avail_in.toNat < s3.strm.avail_in.toNat
+      rw [e3]
+      omega
 
 /-- **`gz_avail(state)` is safe** (the skeleton statement `gz_avail_safe`, with the premise that the handle is a
 reader; `gz_avail` is a reading helper). It does not fault, returns `0` or `-1`, keeps the open descriptors, and
@@ -582,12 +594,13 @@ theorem gz_avail_safe (i : Nat) (h : Heap) (fs : Fs) (s : GzState)
     · rw [if_pos herr]
       exact ⟨-1, fs, h, rfl, Or.inr rfl, fun _ => Iff.rfl, post_refl hu hfs, s, hs, by unfold AvailRec; rfl, AvailFs.refl s fs,
         ⟨(fun _ e => by rw [e] at herr; revert herr; decide), (fun h0 => absurd h0 (by decide)),
-        (fun h0 => absurd h0 (by decide))⟩, fun _ => rfl⟩
+        (fun h0 => absurd h0 (by decide)), (fun h0 => absurd h0 (by decide))⟩, fun _ => rfl⟩
     rw [if_neg herr]
     by_cases heof : ¬ (s.eof == 0) = true
     · rw [if_neg heof]
       exact ⟨0, fs, h, rfl, Or.inl rfl, fun _ => Iff.rfl, post_refl hu hfs, s, hs, by unfold AvailRec; rfl, AvailFs.refl s fs,
-        ⟨(fun h0 => absurd h0 (by decide)), (fun _ => rfl), (fun _ _ e => heof (by simp [e]))⟩, fun _ => rfl⟩
+        ⟨(fun h0 => absurd h0 (by decide)), (fun _ => rfl), (fun _ _ e => heof (by simp [e])),
+          (fun _ e => (heof (by simp [e])).elim)⟩, fun _ => rfl⟩
     rw [if_pos (Classical.not_not.mp heof)]
     have heof0 : s.eof = 0 := by simpa using Classical.not_not.mp heof
     have hz : (StateT.lift (ldZ (strmOf (some (.tab i)))) : G ZStream) fs h = .ok ((s.strm, fs), h) := by
